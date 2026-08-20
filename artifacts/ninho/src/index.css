@@ -204,6 +204,7 @@
 .focus-copy .progress-line { margin-top: auto; background: rgba(255,255,255,.19); }
 .focus-copy .progress-line span { background: #c47af2; }
 .orbit-illustration { position: relative; width: 42%; height: 143px; }
+.orbit-illustration img { position: absolute; right: 3px; top: 14px; width: 112px; height: 112px; border-radius: 50% 46% 50% 42%; object-fit: cover; opacity: .35; filter: saturate(.75) contrast(1.08); transform: rotate(8deg); box-shadow: 0 0 0 5px rgba(233, 195, 255, .1); }
 .orbit-illustration::before, .orbit-illustration::after { position: absolute; right: 4px; top: 14px; width: 112px; height: 112px; border: 1px solid rgba(221, 176, 255, .54); border-radius: 50%; transform: rotate(42deg) skewX(-16deg); content: ""; }
 .orbit-illustration::after { right: 14px; top: 26px; width: 89px; height: 89px; border-color: rgba(193, 126, 237, .7); transform: rotate(-30deg) skewX(20deg); }
 .orbit-illustration i, .orbit-illustration b { position: absolute; right: 30px; top: 41px; display: block; width: 55px; height: 72px; border-radius: 50% 48% 52% 42%; background: linear-gradient(140deg, #d38bfa, #8c4fbd); transform: rotate(33deg); box-shadow: inset -8px -4px 0 rgba(63, 26, 81, .17); }
@@ -276,12 +277,14 @@
 .milestone-done .milestone-icon { color: #fff; background: #b568dd; }
 .milestone-done > svg { color: #ad5ed7; }
 
-.shower-hero { min-height: 166px; padding: 16px; }
+.shower-hero { display: flex; min-height: 166px; align-items: stretch; padding: 0; }
+.shower-photo { width: 44%; min-height: 166px; object-fit: cover; opacity: .78; filter: saturate(.72) contrast(1.03); }
+.shower-copy { position: relative; z-index: 1; flex: 1; padding: 16px 12px 16px 14px; background: linear-gradient(90deg, rgba(54, 38, 65, .38), rgba(67, 49, 80, .84)); }
 .shower-hero h2 { margin: 9px 0 0; font-size: 22px; letter-spacing: -.07em; line-height: .98; }
-.shower-hero p { max-width: 160px; margin: 10px 0 0; color: #d9cde2; font-size: 9px; line-height: 1.35; }
+.shower-hero p { max-width: 140px; margin: 10px 0 0; color: #eee5f3; font-size: 9px; line-height: 1.35; }
 .shower-hero .card-kicker { color: #d5bce2; }
 .shower-hero::after { right: -56px; bottom: -73px; }
-.abstract-gift { position: absolute; right: 20px; top: 52px; display: grid; width: 58px; height: 58px; place-items: center; border: 1px solid rgba(255,255,255,.4); border-radius: 19px 22px 16px 24px; color: #fff; background: rgba(191, 113, 237, .76); transform: rotate(14deg); }
+.abstract-gift { position: absolute; z-index: 2; left: calc(44% - 29px); top: 52px; display: grid; width: 58px; height: 58px; place-items: center; border: 1px solid rgba(255,255,255,.4); border-radius: 19px 22px 16px 24px; color: #fff; background: rgba(191, 113, 237, .82); transform: rotate(14deg); box-shadow: 0 8px 18px rgba(39, 22, 50, .2); }
 .date-input { width: 100%; margin-top: 12px; padding: 9px 10px; border: 1px solid #e4e0e8; border-radius: 10px; color: #37313e; background: #f8f7f9; font-size: 10px; outline: none; }
 .share-button { justify-content: space-between; width: 100%; margin-top: 9px; padding: 10px 11px; border: 0; border-radius: 11px; color: #9451bc; background: #f3e8fa; font-size: 9px; font-weight: 700; }
 
