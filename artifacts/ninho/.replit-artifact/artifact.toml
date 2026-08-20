@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Ninho — Gestão de Enxoval"
+description = "Um app web mobile-first para gestantes organizarem o enxoval do bebê com checklist personalizado, progresso visual acolhedor, marcos de preparação e chá de bebê colaborativo."
+version = "1.0.0"
+id = "artifacts/ninho"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18444
+
+[services.development]
+run = "pnpm --filter @workspace/ninho run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ninho", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ninho/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18444"
+BASE_PATH = "/"

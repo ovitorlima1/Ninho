@@ -1,0 +1,151 @@
+PRD — Ninho (nome provisório)
+App de gestão de enxoval gamificado para gestantes
+
+Versão: 1.0 Autor: Vitor Status: Rascunho para desenvolvimento (Replit)
+
+1. Resumo executivo
+
+Ninho transforma a organização do enxoval de bebê — hoje feita em planilhas estáticas ou listas de papel — em uma experiência de app mobile-first com progresso visual, checklist personalizado por data prevista/cidade, e mecânicas de gamificação que dão à gestante uma sensação tangível de avanço em um período cheio de ansiedade e decisões.
+
+Problema: Montar enxoval é sobrecarregante — centenas de itens, dúvidas sobre quantidade, medo de esquecer algo essencial ou comprar demais. Soluções atuais (planilha, Pinterest, PDF) não dão feedback de progresso nem ajudam a priorizar.
+
+Solução: Checklist inteligente com barra de progresso por categoria, sistema de níveis/conquistas atrelado às semanas de gestação, e compartilhamento social (chá de bebê) — tudo em uma interface calma e acolhedora, não infantilizada.
+
+2. Objetivos
+Objetivo	Métrica de sucesso
+Validar retenção de uso ao longo da gestação	% de usuárias ativas semana a semana até o parto
+Provar que gamificação aumenta conclusão do enxoval	% médio de itens marcados como comprados até a semana 36
+Gerar tração inicial sem custo de aquisição pago	Nº de listas compartilhadas → convites de chá de bebê
+Validar monetização via afiliados	CTR nos links de produto sugeridos
+
+Fora de escopo nesta v1: pagamento nativo, integração com lojas (checkout in-app), app nativo iOS/Android (web app responsivo primeiro).
+
+3. Público-alvo
+Primária: gestantes de primeira viagem, 25–38 anos, classe B/C, usuárias de smartphone, Brasil.
+Secundária: familiares/amigas convidadas a contribuir com o chá de bebê (não precisam de conta completa).
+4. Conceito de gamificação
+
+A gamificação não deve infantilizar a experiência (a usuária já lida com muita "baby talk" em outros apps). O tom é conquista e cuidado, não pontos coloridos e emojis em excesso.
+
+4.1 Mecânicas principais
+Barra de progresso "fita métrica" — cada categoria (Roupas, Higiene, Alimentação, Acessórios) tem uma barra visual estilo fita de alfaiate que se preenche conforme os itens são marcados como comprados. É o elemento central de feedback, não um extra.
+Marcos por semana de gestação — o app cruza a data prevista do parto com checkpoints recomendados:
+Semana 20: "Defina o estilo do quarto"
+Semana 28: "Feche a lista de roupas RN"
+Semana 36: "Mala da maternidade pronta" Cumprir o marco na janela recomendada gera uma "conquista" (badge simples, sem som/confete exagerado — só um selo elegante no perfil).
+Nível de preparo — um score de 0 a 100 combinando: % de itens essenciais comprados + marcos cumpridos no prazo. Substitui "pontos" por algo emocionalmente relevante: "Você está 68% pronta para a chegada dela."
+Sequência de cuidado (streak leve) — não é streak diário agressivo (isso geraria culpa/ansiedade, contraindicado no contexto de gravidez). É semanal: "3 semanas seguidas mantendo o ritmo do enxoval." Quebrar a sequência não gera penalidade visual negativa, só reinicia sem drama.
+Chá de bebê como evento colaborativo — convidados marcam o que vão presentear (evita duplicidade), e cada presente confirmado also alimenta a barra de progresso da anfitriã. Gamifica a colaboração, não só o consumo individual.
+4.2 O que evitar
+Sons, confetes ou pop-ups excessivos (contexto emocional sensível — ansiedade pré-parto é real).
+Rankings públicos entre usuárias (comparação é gatilho negativo nesse público).
+Streaks diárias punitivas.
+Gamificação que pareça "infantil" — o tom visual e verbal é adulto, acolhedor, editorial.
+5. Escopo funcional (MVP)
+5.1 Onboarding
+Data prevista do parto
+Cidade (para ajuste de clima/estação nas recomendações de roupas)
+Primeiro bebê / segundo ou mais / gêmeos
+Vai amamentar? (ajusta lista de alimentação/mamadeiras)
+Geração automática da lista personalizada base (a partir de um template mestre editável no backend)
+5.2 Painel (Home)
+Contagem regressiva até a data prevista
+"Nível de preparo" (score agregado)
+Foco da semana (1 recomendação contextual)
+Progresso por categoria (cards com barra "fita métrica")
+5.3 Checklist
+Categorias: Roupas (por tamanho RN/0-3/3-6/6-9/9-12), Higiene, Introdução Alimentar, Acessórios
+Cada item: nome, quantidade recomendada, quantidade comprada, status (a comprar / comprado / ganhei de presente), campo opcional de valor gasto
+Adicionar item customizado
+Editar quantidade recomendada (a gestante pode ajustar para sua realidade)
+Links de produto sugeridos por item (afiliado — monetização)
+5.4 Marcos e conquistas
+Timeline de marcos por semana de gestação
+Badge ao cumprir marco no prazo
+Notificação leve (push/e-mail) quando um marco se aproxima
+5.5 Chá de bebê
+Criar evento com data e itens da lista disponíveis para presente
+Link compartilhável (convidado não precisa criar conta completa — apenas nome)
+Convidado marca item como "vou presentear" → item sai da lista pública, mas fica sinalizado para a anfitriã
+Anfitriã vê quem confirmou o quê
+5.6 Orçamento
+Valor previsto vs. gasto por categoria (soma dos itens com valor preenchido)
+Total geral investido no enxoval até o momento
+5.7 Perfil
+Dados da gestação (editáveis)
+Badges conquistadas
+Nível de preparo histórico (opcional: gráfico simples de evolução)
+6. Fora do MVP (backlog para v2+)
+Comparador de preços entre lojas
+Checkout/compra dentro do app
+Modo "segundo bebê" reaproveitando itens de uma gestação anterior
+Comunidade / fórum entre usuárias
+App nativo (hoje: web app responsivo)
+Notificações push nativas (v1 usa e-mail ou web push)
+Multi-idioma
+7. Fluxos principais (user flows)
+
+Fluxo 1 — Primeira lista Onboarding → geração automática da lista → Home → usuária entra em uma categoria → marca itens → progresso atualiza em tempo real → nível de preparo recalcula.
+
+Fluxo 2 — Chá de bebê Home → aba Chá → criar evento → selecionar itens elegíveis para presente → gerar link → compartilhar via WhatsApp → convidada abre link → escolhe item → confirma nome → anfitriã recebe notificação.
+
+Fluxo 3 — Marco cumprido Sistema detecta semana gestacional atual (via data prevista) → compara com itens/categorias-alvo do marco → se cumprido, gera badge → exibido no painel e no perfil.
+
+8. Modelo de dados (alto nível)
+users
+ - id, email, nome, due_date, city, is_first_baby, is_twins, breastfeeding_plan, created_at
+
+items (catálogo mestre, curado pela equipe)
+ - id, category, subcategory, size_range, name, default_qty, affiliate_link_template
+
+user_items (checklist real de cada usuária)
+ - id, user_id, item_id (nullable se for item customizado), custom_name,
+   qty_recommended, qty_purchased, status, amount_spent, updated_at
+
+milestones (marcos mestre)
+ - id, week_start, week_end, title, description, related_category
+
+user_milestones
+ - id, user_id, milestone_id, completed_at, badge_awarded
+
+baby_showers
+ - id, user_id, event_date, share_token, created_at
+
+baby_shower_gifts
+ - id, baby_shower_id, user_item_id, guest_name, confirmed_at
+9. Stack técnica sugerida (Replit)
+
+Dado o ambiente Replit e o perfil técnico do time (TypeScript, Supabase/Postgres, Drizzle já em uso em outros projetos):
+
+Frontend: React + TypeScript + Tailwind (mobile-first, PWA-ready)
+Backend: Node.js/Express (ou API routes se usar framework fullstack tipo Next.js)
+Banco: PostgreSQL via Supabase (reaproveita padrão já usado internamente)
+ORM: Drizzle
+Autenticação: Supabase Auth (e-mail/senha + magic link — reduz fricção no onboarding)
+Compartilhamento (chá de bebê): rota pública com token, sem exigir login do convidado
+Deploy: Replit (dev/staging) → domínio próprio depois
+
+Justificativa: mesma stack de outros projetos internos (Billi Capital Intelligence Platform, LDR dashboard), reduz curva de aprendizado e permite reaproveitar padrões.
+
+10. Design e tom de voz
+Direção visual já prototipada: paleta terrosa/ivory com sage e vinho, tipografia serifada (Fraunces) para títulos + sans (Karla) para corpo, motivo de "fita métrica" como elemento de progresso — remete a costura/enxoval sem cair no clichê rosa-azul de app infantil.
+Copywriting em tom adulto e acolhedor: nunca "parabéns campeã!", sempre algo como "Você está mais perto do que imagina."
+Erros e estados vazios devem orientar, nunca soar genéricos ("Nenhum item ainda" → "Comece adicionando o que já sabe que vai precisar").
+11. Métricas de sucesso (v1)
+Ativação: % de usuárias que completam onboarding e marcam ao menos 1 item na primeira sessão
+Retenção: % de usuárias que retornam semanalmente até a data prevista
+Progresso: % médio de itens essenciais comprados até a semana 36
+Viralidade: nº médio de convidados por chá de bebê criado
+Monetização (sinal, não meta de receita ainda): CTR nos links de produto afiliados
+12. Riscos e mitigação
+Risco	Mitigação
+Gamificação parecer infantil/deslocada para o público adulto	Validar tom visual e copy com 3-5 gestantes reais antes do build final
+Baixa adesão ao "nível de preparo" (pode soar como pressão)	Enquadrar como acompanhamento, nunca como cobrança; testar copy alternativa
+Convidados do chá de bebê acharem o fluxo de link complicado	Fluxo sem login obrigatório, testar com usuária não-técnica
+Lista mestre de itens desatualizada ou genérica	Reaproveitar a curadoria já existente na planilha original como fonte inicial
+13. Próximos passos sugeridos
+Validar este PRD com 2-3 gestantes reais (entrevista rápida sobre a mecânica de gamificação)
+Detalhar wireframes das telas que faltam (Chá de bebê, Orçamento, Perfil, Marcos)
+Modelar o catálogo mestre de itens a partir da planilha original
+Setup do projeto no Replit com a stack definida (seção 9)
+Build do MVP em fases: Onboarding + Checklist → Painel + Marcos → Chá de bebê → Orçamento
