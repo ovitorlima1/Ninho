@@ -53,10 +53,10 @@ type ChecklistItem = {
 const queryClient = new QueryClient();
 
 const categoryMeta: Record<CategoryKey, { color: string; tint: string; description: string }> = {
-  Roupas: { color: '#7a9b7d', tint: '#e5eee2', description: 'Conforto para cada fase' },
-  Higiene: { color: '#c98562', tint: '#f3e4da', description: 'Pequenos rituais de cuidado' },
-  Alimentação: { color: '#b26d78', tint: '#f1dfe2', description: 'Para os primeiros encontros' },
-  Acessórios: { color: '#b89c62', tint: '#eee6ce', description: 'O que deixa tudo mais simples' },
+  Roupas: { color: '#aa68e5', tint: '#eee2fa', description: 'Conforto para cada fase' },
+  Higiene: { color: '#8b72d9', tint: '#e8e3f8', description: 'Pequenos rituais de cuidado' },
+  Alimentação: { color: '#c06bc9', tint: '#f3e1f5', description: 'Para os primeiros encontros' },
+  Acessórios: { color: '#9b86d0', tint: '#e9e5f5', description: 'O que deixa tudo mais simples' },
 };
 
 const initialItems: ChecklistItem[] = [
@@ -98,10 +98,10 @@ function Logo({ light = false }: { light?: boolean }) {
   );
 }
 
-function ProgressTape({ value, color = '#7a9b7d', className = '' }: { value: number; color?: string; className?: string }) {
+function ProgressTape({ value, color = '#aa68e5', className = '' }: { value: number; color?: string; className?: string }) {
   return (
     <div className={`h-2 overflow-hidden rounded-full bg-[#e5ded0] ${className}`} aria-label={`${value}% concluído`}>
-      <div className="relative h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${value}%`, backgroundColor: color }}>
+      <div className="relative h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${value}%`, backgroundColor: color === '#7a9b7d' ? '#aa68e5' : color }}>
         <div className="absolute inset-y-0 right-1 w-px bg-white/60" />
       </div>
     </div>
@@ -113,8 +113,8 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const current = location === '/' ? '/' : `/${location.split('/')[1]}`;
   return (
-    <div className="paper-grain min-h-[100dvh] bg-[#f3eee4] text-[#4f3036]">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[256px] flex-col justify-between bg-[#713643] px-7 py-8 text-[#f8f0e4] lg:flex">
+    <div className="paper-grain ninho-canvas min-h-[100dvh] bg-[#f3eee4] text-[#4f3036]">
+      <aside className="hidden">
         <div>
           <Logo light />
           <div className="mb-7 mt-14 text-[10px] font-bold uppercase tracking-[0.25em] text-[#cdb9b2]">Acompanhe seu preparo</div>
@@ -164,11 +164,11 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <main className="min-h-[100dvh] lg:pl-[256px]">
-        <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-[#ded6c8]/70 bg-[#f3eee4]/90 px-5 backdrop-blur-md sm:px-8 lg:px-12">
+      <main className="ninho-phone relative mx-auto min-h-[100dvh] max-w-[760px] overflow-hidden bg-[#f3eee4]/55 shadow-[0_20px_70px_rgba(76,54,107,.08)]">
+        <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-[#ded6c8]/70 bg-[#f3eee4]/75 px-4 backdrop-blur-xl sm:px-7">
           <button className="rounded-xl p-2 text-[#713643] hover:bg-[#e8e0d4] lg:hidden" onClick={() => setMobileOpen(true)} data-testid="button-open-mobile-menu" aria-label="Abrir menu"><Menu className="h-5 w-5" /></button>
           <div className="ml-1 lg:hidden"><Logo /></div>
-          <div className="hidden text-[12px] font-medium text-[#8e746f] sm:block"><span className="text-[#b6a49a]">Ninho</span><span className="mx-2 text-[#c2aa9d]">/</span>{navItems.find((item) => item.href === current)?.label || 'Visão geral'}</div>
+           <div className="hidden text-[12px] font-medium text-[#8e746f] sm:block"><span className="text-[#b6a49a]">Ninho</span><span className="mx-2 text-[#c2aa9d]">/</span>{navItems.find((item) => item.href === current)?.label || 'Visão geral'}</div>
           <div className="flex items-center gap-2.5 sm:gap-4">
             <button onClick={() => setLocation('/milestones')} className="relative rounded-xl p-2 text-[#856c67] transition-colors hover:bg-[#e8e0d4] hover:text-[#713643]" data-testid="button-notifications" aria-label="Notificações"><Bell className="h-[18px] w-[18px]" strokeWidth={1.7} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#b26d78]" /></button>
             <div className="hidden h-6 w-px bg-[#ded6c8] sm:block" />
@@ -178,9 +178,9 @@ function Shell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </header>
-        <div className="mx-auto max-w-[1380px] px-5 pb-24 pt-7 sm:px-8 lg:px-12 lg:pb-12 lg:pt-10">{children}</div>
+         <div className="mx-auto max-w-[720px] px-4 pb-32 pt-6 sm:px-7 sm:pt-8">{children}</div>
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid h-[70px] grid-cols-5 border-t border-[#dcd3c4] bg-[#f8f3ea]/95 px-2 pb-1 backdrop-blur-md lg:hidden" aria-label="Navegação móvel">
+       <nav className="ninho-bottom-nav fixed bottom-4 left-1/2 z-40 grid h-[67px] w-[calc(100%-24px)] max-w-[480px] -translate-x-1/2 grid-cols-5 rounded-[25px] border border-white/80 bg-[#f8f3ea]/85 px-2 pb-1 shadow-[0_16px_42px_rgba(64,44,96,.18)] backdrop-blur-xl" aria-label="Navegação principal">
         {[navItems[0], navItems[1], navItems[3], navItems[4], navItems[5]].map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} data-testid={`bottom-link-${label.toLowerCase().replaceAll(' ', '-')}`} className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold tracking-[0.03em] ${current === href ? 'text-[#713643]' : 'text-[#9d8a80]'}`}>
             <Icon className="h-[19px] w-[19px]" strokeWidth={current === href ? 2.2 : 1.7} /><span>{label === 'Visão geral' ? 'Início' : label === 'Meu checklist' ? 'Lista' : label}</span>
@@ -266,7 +266,7 @@ function Checklist({ items, setItems }: { items: ChecklistItem[]; setItems: Reac
   return (
     <div className="page-enter">
       <SectionHeading eyebrow="a parte prática" title="Meu checklist" description="Uma lista feita para sair da cabeça e entrar na casa — no seu ritmo." action={<button onClick={() => setModalOpen(true)} className="flex items-center gap-2 rounded-full bg-[#713643] px-4 py-2.5 text-[12px] font-bold text-[#fff8ed] shadow-[0_8px_18px_rgba(113,54,67,.14)]" data-testid="button-add-item"><Plus className="h-4 w-4" /> <span className="hidden sm:inline">adicionar item</span><span className="sm:hidden">adicionar</span></button>} />
-      <div className="mb-7 flex gap-2 overflow-x-auto pb-1">{(Object.keys(categoryMeta) as CategoryKey[]).map((key) => <button key={key} onClick={() => setCategory(key)} className={`whitespace-nowrap rounded-full px-4 py-2.5 text-[12px] font-bold transition-all ${category === key ? 'bg-[#713643] text-[#fff8ed]' : 'border border-[#ddd2c4] bg-[#f8f3ea] text-[#876f68] hover:border-[#b99a8e]'}`} data-testid={`button-category-${key.toLowerCase()}`}>{key}<span className={`ml-2 font-mono-app text-[10px] ${category === key ? 'text-[#e4c987]' : 'text-[#ac958c]'}`}>{items.filter((i) => i.category === key && i.status !== 'A comprar').length}/{items.filter((i) => i.category === key).length}</span></button>)}</div>
+       <div className="segmented-filters mb-7 flex gap-2 overflow-x-auto pb-1">{(Object.keys(categoryMeta) as CategoryKey[]).map((key) => <button key={key} onClick={() => setCategory(key)} className={`whitespace-nowrap rounded-full px-4 py-2.5 text-[12px] font-bold transition-all ${category === key ? 'bg-[#713643] text-[#fff8ed]' : 'border border-[#ddd2c4] bg-[#f8f3ea] text-[#876f68] hover:border-[#b99a8e]'}`} data-testid={`button-category-${key.toLowerCase()}`}>{key}<span className={`ml-2 font-mono-app text-[10px] ${category === key ? 'text-[#e4c987]' : 'text-[#ac958c]'}`}>{items.filter((i) => i.category === key && i.status !== 'A comprar').length}/{items.filter((i) => i.category === key).length}</span></button>)}</div>
       <div className="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><div className="font-display text-[27px] text-[#633441]">{category}</div><div className="mt-1 text-[12px] text-[#927b73]">{categoryMeta[category].description}</div></div><div className="relative w-full sm:w-[220px]"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="buscar na lista" className="w-full rounded-full border border-[#ddd2c4] bg-[#f8f3ea] px-4 py-2.5 text-[12px] text-[#633441] outline-none transition-colors placeholder:text-[#ad9990] focus:border-[#9b6972]" data-testid="input-search-checklist" /></div></div>
       <div className="overflow-hidden rounded-[24px] border border-[#e0d7c8] bg-[#f8f3ea]">
         <div className="hidden grid-cols-[1fr_100px_115px_110px] border-b border-[#e5ddd0] bg-[#f2eadf] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b8179] sm:grid"><span>item</span><span>quantidade</span><span>progresso</span><span>situação</span></div>
