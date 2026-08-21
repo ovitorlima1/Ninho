@@ -58,6 +58,7 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const loginHeroImage = `${basePath}/login-pregnancy.png`;
 const clerkLocalization = {
   ...ptBR,
   signIn: {
@@ -413,11 +414,11 @@ function WelcomePage() {
 }
 
 function SignInPage() {
-  return <main className="auth-page"><div className="auth-panel"><Brand /><div className="auth-copy"><span className="desktop-eyebrow">SEU ESPAÇO ESTÁ AQUI</span><h1>Que bom<br />ter você de volta.</h1><p>Entre para continuar preparando cada detalhe com calma.</p></div></div><div className="auth-clerk"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div></main>;
+  return <main className="auth-page"><div className="auth-panel"><img className="auth-hero-image" src={loginHeroImage} alt="" /><Brand /><div className="auth-copy"><span className="desktop-eyebrow">SEU ESPAÇO ESTÁ AQUI</span><h1>Que bom<br />ter você de volta.</h1><p>Entre para continuar preparando cada detalhe com calma.</p></div></div><div className="auth-mobile-visual"><img src={loginHeroImage} alt="" /><div className="auth-mobile-overlay" /><Brand /></div><div className="auth-clerk"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div></main>;
 }
 
 function SignUpPage() {
-  return <main className="auth-page"><div className="auth-panel"><Brand /><div className="auth-copy"><span className="desktop-eyebrow">COMECE QUANDO QUISER</span><h1>Um ninho<br />feito por vocês.</h1><p>Crie sua conta e reúna tudo o que importa para a chegada.</p></div></div><div className="auth-clerk"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div></main>;
+  return <main className="auth-page"><div className="auth-panel"><img className="auth-hero-image" src={loginHeroImage} alt="" /><Brand /><div className="auth-copy"><span className="desktop-eyebrow">COMECE QUANDO QUISER</span><h1>Um ninho<br />feito por vocês.</h1><p>Crie sua conta e reúna tudo o que importa para a chegada.</p></div></div><div className="auth-mobile-visual"><img src={loginHeroImage} alt="" /><div className="auth-mobile-overlay" /><Brand /></div><div className="auth-clerk"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div></main>;
 }
 
 function HomeRedirect() {
