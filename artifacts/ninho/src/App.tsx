@@ -1,7 +1,8 @@
-import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { Route, Router as WouterRouter, Switch, useLocation } from "wouter";
 import {
   Activity,
+  ArrowUpRight,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -238,18 +239,85 @@ function AddItemModal({ onClose, onAdd, category }: { onClose: () => void; onAdd
   return <div className="modal-backdrop" onClick={onClose}><div className="modal-card" onClick={(event) => event.stopPropagation()}><div className="modal-top"><div><span className="card-kicker">SUA LISTA, SUAS REGRAS</span><h2>Adicionar item</h2></div><TinyButton onClick={onClose} label="Fechar" testId="button-close-add-item"><X size={17} /></TinyButton></div><label className="modal-label">NOME DO ITEM<input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && name.trim() && onAdd(name.trim())} placeholder="ex.: manta para o carrinho" data-testid="input-new-item" /></label><p>Este item entra em <strong>{category}</strong>.</p><button type="button" className="primary-button" onClick={() => name.trim() && onAdd(name.trim())} disabled={!name.trim()} data-testid="button-confirm-add-item"><Plus size={15} /> colocar na lista</button></div></div>;
 }
 
+function DesktopSidebar({ location, go }: { location: string; go: (path: string, panel?: number) => void }) {
+  const links = [
+    { path: "/", label: "Visão geral", icon: Home, panel: 0 },
+    { path: "/checklist", label: "Minha lista", icon: ListChecks, panel: 1 },
+    { path: "/milestones", label: "Linha do tempo", icon: History, panel: 2 },
+  ];
+  return <aside className="desktop-sidebar">
+    <div className="desktop-sidebar-brand"><Brand /><span>gestão de enxoval</span></div>
+    <div className="desktop-nav-label">SEU NINHO</div>
+    <nav className="desktop-nav" aria-label="Navegação principal">
+      {links.map(({ path, label, icon: Icon, panel }) => {
+        const selected = location === path || (path === "/milestones" && location === "/shower");
+        return <button type="button" key={path} className={`desktop-nav-item ${selected ? "selected" : ""}`} onClick={() => go(path, panel)} data-testid={`button-desktop-nav-${label.toLowerCase().replaceAll(" ", "-")}`}><Icon size={17} /><span>{label}</span>{selected && <span className="desktop-nav-indicator" />}</button>;
+      })}
+    </nav>
+    <div className="desktop-nav-label desktop-secondary-label">ORGANIZAÇÃO</div>
+    <nav className="desktop-nav">
+      <button type="button" className={`desktop-nav-item ${location === "/budget" ? "selected" : ""}`} onClick={() => go("/budget", 0)} data-testid="button-desktop-nav-orcamento"><WalletCards size={17} /><span>Orçamento</span></button>
+      <button type="button" className={`desktop-nav-item ${location === "/profile" ? "selected" : ""}`} onClick={() => go("/profile", 0)} data-testid="button-desktop-nav-perfil"><UserRound size={17} /><span>Meu perfil</span></button>
+    </nav>
+    <div className="desktop-sidebar-footer"><div className="desktop-footer-orbit"><Sparkles size={15} /></div><div><strong>Um passo de cada vez.</strong><span>sem pressa, sem excesso</span></div></div>
+  </aside>;
+}
+
+function DesktopSideSummary({ items, go }: { items: ChecklistItem[]; go: (path: string, panel?: number) => void }) {
+  const done = items.filter((item) => item.status !== "A comprar").length;
+  const score = Math.round((done / items.length) * 100);
+  return <aside className="desktop-side">
+    <div className="desktop-side-card desktop-next-card">
+      <div className="desktop-side-card-top"><span className="card-kicker">PRÓXIMO PASSO</span><span className="desktop-side-icon"><ChevronRight size={15} /></span></div>
+      <h3>Fechar as roupas RN</h3>
+      <p>Você já resolveu 4 de 6 peças essenciais para os primeiros dias.</p>
+      <Progress value={68} />
+      <button type="button" className="desktop-text-button" onClick={() => go("/checklist", 1)} data-testid="button-desktop-next-step">abrir checklist <ArrowUpRight size={14} /></button>
+    </div>
+    <div className="desktop-side-card">
+      <div className="desktop-side-card-top"><span className="card-kicker">SEU PROGRESSO</span><span className="desktop-progress-number">{score}%</span></div>
+      <div className="desktop-progress-row"><strong>{done}</strong><span>itens já resolvidos<br />de {items.length} no total</span></div>
+      <div className="desktop-mini-bars"><i style={{ height: "58%" }} /><i style={{ height: "73%" }} /><i className="current" style={{ height: `${Math.max(35, score)}%` }} /><i style={{ height: "44%" }} /><i style={{ height: "64%" }} /></div>
+    </div>
+    <button type="button" className="desktop-share-card" onClick={() => go("/shower", 2)} data-testid="button-desktop-open-shower"><span className="desktop-share-icon"><Gift size={18} /></span><span><strong>Chá de bebê</strong><small>organize junto com quem ama vocês</small></span><ChevronRight size={16} /></button>
+  </aside>;
+}
+
+function DesktopWorkspace({ location, go, items, content }: { location: string; go: (path: string, panel?: number) => void; items: ChecklistItem[]; content: ReactNode }) {
+  const title = location === "/" ? "Visão geral" : location === "/checklist" ? "Minha lista" : location === "/milestones" || location === "/shower" ? "Linha do tempo" : location === "/budget" ? "Orçamento" : "Meu perfil";
+  const isOverview = location === "/";
+  return <div className="desktop-workspace">
+    <DesktopSidebar location={location} go={go} />
+    <main className="desktop-main">
+      <header className="desktop-header"><div><span className="desktop-greeting">terça-feira, 12 de março</span><h1>{title}</h1></div><div className="desktop-header-actions"><button type="button" className="desktop-help-button"><Sparkles size={15} /> seu espaço, do seu jeito</button><span className="toolbar-avatar">ML</span></div></header>
+      {isOverview && <section className="desktop-welcome"><div><span className="desktop-eyebrow">BEM-VINDA DE VOLTA, MARINA</span><h2>Seu caminho está tomando forma.</h2><p>Uma visão tranquila do que já foi resolvido e do que vem a seguir.</p></div><div className="desktop-welcome-score"><span>PREPARAÇÃO</span><strong>{Math.round((items.filter((item) => item.status !== "A comprar").length / items.length) * 100)}%</strong><small>do enxoval resolvido</small></div></section>}
+      <div className={`desktop-content-grid ${isOverview ? "" : "desktop-content-grid-single"}`}><section className="desktop-primary"><div className="desktop-panel-surface">{content}</div></section>{isOverview && <DesktopSideSummary items={items} go={go} />}</div>
+    </main>
+  </div>;
+}
+
 function Workspace() {
   const [items, setItems] = useState<ChecklistItem[]>(initialItems);
   const [location, setLocation] = useLocation();
+  const [desktopView, setDesktopView] = useState(() => window.innerWidth > 900);
   const [activePanel, setActivePanel] = useState(location === "/checklist" ? 1 : location === "/milestones" || location === "/shower" ? 2 : 0);
   const [addOpen, setAddOpen] = useState(false);
   const [milestones, setMilestones] = useState<number[]>([20]);
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 901px)");
+    const syncViewport = () => setDesktopView(media.matches);
+    syncViewport();
+    media.addEventListener("change", syncViewport);
+    return () => media.removeEventListener("change", syncViewport);
+  }, []);
   const addItem = (name: string) => { setItems((current) => [...current, { id: Date.now(), name, category: "Roupas", group: "Adicionado por você", qty: 1, owned: 0, status: "A comprar", price: 0 }]); setAddOpen(false); };
   const go = (path: string, panel?: number) => { if (panel !== undefined) setActivePanel(panel); setLocation(path); };
   const panelOne = location === "/budget" ? <BudgetPanel items={items} /> : location === "/profile" ? <ProfilePanel /> : <OverviewPanel items={items} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} />;
   const panelTwo = location === "/checklist" ? <ChecklistPanel items={items} setItems={setItems} onAdd={() => setAddOpen(true)} /> : <ChecklistPanel items={items} setItems={setItems} onAdd={() => setAddOpen(true)} />;
   const panelThree = location === "/shower" ? <ShowerPanel setLocation={(path) => go(path, path === "/checklist" ? 1 : 2)} /> : <TimelinePanel setLocation={(path) => go(path, 2)} completed={milestones} setCompleted={setMilestones} />;
-  return <div className="ninho-app"><header className="stage-toolbar"><div className="toolbar-left"><Brand /><span className="toolbar-divider" /><span className="toolbar-caption">gestão de enxoval</span></div><div className="toolbar-actions"><button type="button" onClick={() => go("/budget", 0)} className={`toolbar-link ${location === "/budget" ? "selected" : ""}`} data-testid="button-open-budget"><WalletCards size={14} /> orçamento</button><button type="button" onClick={() => go("/profile", 0)} className={`toolbar-link ${location === "/profile" ? "selected" : ""}`} data-testid="button-open-profile"><UserRound size={14} /> perfil</button><span className="toolbar-avatar">ML</span></div></header><div className="mobile-panel-switcher">{[["visão geral", 0, "/"], ["lista", 1, "/checklist"], ["linha do tempo", 2, "/milestones"]].map(([label, index, path]) => <button type="button" key={String(index)} onClick={() => go(String(path), Number(index))} className={activePanel === Number(index) ? "selected" : ""} data-testid={`button-mobile-panel-${index}`}>{label}</button>)}</div><main className="phone-stage"><Phone title="Ninho" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelOne}</Phone><Phone title="Registro rápido" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelTwo}</Phone><Phone title="Histórico" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelThree}</Phone></main>{addOpen && <AddItemModal category="Roupas" onClose={() => setAddOpen(false)} onAdd={addItem} />}<div className="stage-note"><span><span className="note-dot" /> preparado para a chegada</span><span>sem pressa, sem excesso</span></div></div>;
+  const desktopContent = location === "/" ? <OverviewPanel items={items} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} /> : location === "/checklist" ? panelTwo : location === "/shower" ? panelThree : location === "/milestones" ? panelThree : location === "/budget" ? panelOne : <ProfilePanel />;
+  const mobileWorkspace = <><header className="stage-toolbar"><div className="toolbar-left"><Brand /><span className="toolbar-divider" /><span className="toolbar-caption">gestão de enxoval</span></div><div className="toolbar-actions"><button type="button" onClick={() => go("/budget", 0)} className={`toolbar-link ${location === "/budget" ? "selected" : ""}`} data-testid="button-open-budget"><WalletCards size={14} /> orçamento</button><button type="button" onClick={() => go("/profile", 0)} className={`toolbar-link ${location === "/profile" ? "selected" : ""}`} data-testid="button-open-profile"><UserRound size={14} /> perfil</button><span className="toolbar-avatar">ML</span></div></header><div className="mobile-panel-switcher">{[["visão geral", 0, "/"], ["lista", 1, "/checklist"], ["linha do tempo", 2, "/milestones"]].map(([label, index, path]) => <button type="button" key={String(index)} onClick={() => go(String(path), Number(index))} className={activePanel === Number(index) ? "selected" : ""} data-testid={`button-mobile-panel-${index}`}>{label}</button>)}</div><main className="phone-stage"><Phone title="Ninho" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelOne}</Phone><Phone title="Registro rápido" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelTwo}</Phone><Phone title="Histórico" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelThree}</Phone></main><div className="stage-note"><span><span className="note-dot" /> preparado para a chegada</span><span>sem pressa, sem excesso</span></div></>;
+  return <div className="ninho-app">{desktopView ? <DesktopWorkspace location={location} go={go} items={items} content={desktopContent} /> : mobileWorkspace}{addOpen && <AddItemModal category="Roupas" onClose={() => setAddOpen(false)} onAdd={addItem} />}</div>;
 }
 
 function AppRouter() {
