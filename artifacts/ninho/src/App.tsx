@@ -408,13 +408,8 @@ function Workspace() {
   return <div className="ninho-app">{desktopView ? <DesktopWorkspace location={location} go={go} items={items} content={desktopContent} /> : mobileWorkspace}{addOpen && <AddItemModal category="Roupas" onClose={() => setAddOpen(false)} onAdd={addItem} />}</div>;
 }
 
-function WelcomePage() {
-  const [, setLocation] = useLocation();
-  return <main className="welcome-page"><div className="welcome-orbit welcome-orbit-one" /><div className="welcome-orbit welcome-orbit-two" /><header className="welcome-header"><Brand /><button type="button" onClick={() => setLocation("/sign-in")} className="welcome-signin">já tenho conta</button></header><section className="welcome-content"><div className="welcome-copy"><span className="desktop-eyebrow">GESTÃO DE ENXOVAL, SEM EXCESSO</span><h1>Preparar a chegada<br />também pode ser <strong>leve.</strong></h1><p>Organize o enxoval, acompanhe cada marco e compartilhe sua lista com quem ama vocês.</p><div className="welcome-actions"><button type="button" className="welcome-primary" onClick={() => setLocation("/sign-up")} data-testid="button-create-account">criar minha conta <ArrowUpRight size={16} /></button><button type="button" className="welcome-secondary" onClick={() => setLocation("/sign-in")} data-testid="button-open-sign-in">entrar</button></div><span className="welcome-note"><span /> seu espaço, do seu jeito</span></div><div className="welcome-preview" aria-label="Prévia da organização do enxoval"><div className="welcome-preview-card"><span className="card-kicker">PREPARAÇÃO</span><strong>50%</strong><small>do enxoval já tomou forma</small><Progress value={50} /></div><div className="welcome-preview-list"><div><span className="card-kicker">PRÓXIMO MARCO</span><strong>Semana 28</strong><small>fechar as roupas RN</small></div><span className="welcome-preview-icon"><Heart size={17} /></span></div><div className="welcome-preview-footer"><span className="purple-dot"><Gift size={12} /></span><span>organize com quem ama vocês</span><ChevronRight size={15} /></div></div></section></main>;
-}
-
 function SignInPage() {
-  return <main className="auth-page"><div className="auth-panel"><img className="auth-hero-image" src={loginHeroImage} alt="" /><Brand /><div className="auth-copy"><span className="desktop-eyebrow">SEU ESPAÇO ESTÁ AQUI</span><h1>Que bom<br />ter você de volta.</h1><p>Entre para continuar preparando cada detalhe com calma.</p></div></div><div className="auth-mobile-visual"><img src={loginHeroImage} alt="" /><div className="auth-mobile-overlay" /><Brand /></div><div className="auth-clerk"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div></main>;
+  return <main className="auth-page"><div className="auth-panel"><img className="auth-hero-image" src={loginHeroImage} alt="" /><Brand /><div className="auth-copy"><span className="desktop-eyebrow">GESTÃO DE ENXOVAL, SEM EXCESSO</span><h1 className="auth-tagline">Preparar a chegada<br />também pode ser <strong>leve.</strong></h1><p>Entre para continuar preparando cada detalhe com calma.</p></div></div><div className="auth-mobile-visual"><img src={loginHeroImage} alt="" /><div className="auth-mobile-overlay" /><Brand /><p className="auth-mobile-tagline">Preparar a chegada<br />também pode ser <strong>leve.</strong></p></div><div className="auth-clerk"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div></main>;
 }
 
 function SignUpPage() {
@@ -422,7 +417,7 @@ function SignUpPage() {
 }
 
 function HomeRedirect() {
-  return <><Show when="signed-in"><Redirect to="/dashboard" /></Show><Show when="signed-out"><WelcomePage /></Show></>;
+  return <><Show when="signed-in"><Redirect to="/dashboard" /></Show><Show when="signed-out"><Redirect to="/sign-in" /></Show></>;
 }
 
 function ProtectedRoutes() {

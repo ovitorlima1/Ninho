@@ -220,6 +220,8 @@
 .auth-copy { max-width: 370px; margin: auto 0; text-shadow: 0 2px 20px rgba(42, 25, 52, .28); }
 .auth-copy .desktop-eyebrow { color: #dac1e8; }
 .auth-copy h1 { margin: 14px 0 13px; font-size: clamp(42px, 4.5vw, 64px); font-weight: 600; letter-spacing: -.09em; line-height: .9; }
+.auth-copy .auth-tagline { max-width: 460px; font-size: clamp(40px, 3.4vw, 48px); }
+.auth-copy h1 strong, .auth-mobile-tagline strong { color: #e0a4fb; }
 .auth-copy p { margin: 0; color: #e3d6e9; font-size: 13px; line-height: 1.55; }
 .auth-clerk { display: grid; min-height: 100%; place-items: center; padding: 36px 24px; background: radial-gradient(circle at 82% 20%, rgba(229,212,245,.75), transparent 25rem), #f8f6fa; }
 .auth-mobile-visual { display: none; }
@@ -509,6 +511,7 @@
   .auth-mobile-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(51, 34, 60, .76), rgba(96, 52, 112, .34)); }
   .auth-mobile-visual .brand { position: relative; z-index: 1; color: #fff; }
   .auth-mobile-visual .brand-word { color: #fff; }
+  .auth-mobile-tagline { position: absolute; z-index: 1; bottom: 18px; left: 24px; max-width: 250px; margin: 0; color: #fff; font-size: 21px; font-weight: 600; letter-spacing: -.07em; line-height: .95; text-shadow: 0 2px 12px rgba(39, 21, 47, .36); }
   .auth-clerk { min-height: calc(100dvh - 158px); padding: 24px 16px 34px; background: radial-gradient(circle at 85% 0%, rgba(229,212,245,.63), transparent 22rem), #f8f6fa; }
   .stage-toolbar { width: calc(100% - 32px); padding: 18px 0 13px; }
   .toolbar-caption, .toolbar-divider, .toolbar-link { display: none; }
