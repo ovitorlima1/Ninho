@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import { Route, Router as WouterRouter, Switch, useLocation } from "wouter";
+import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from "wouter";
+import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
+import { publishableKeyFromHost } from "@clerk/react/internal";
+import { shadcn } from "@clerk/themes";
+import { ptBR } from "@clerk/localizations";
 import {
   Activity,
   ArrowUpRight,
@@ -14,6 +18,7 @@ import {
   History,
   Home,
   ListChecks,
+  LogOut,
   MapPin,
   MoreHorizontal,
   Pencil,
@@ -47,6 +52,31 @@ type ChecklistItem = {
 };
 
 const queryClient = new QueryClient();
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const clerkLocalization = {
+  ...ptBR,
+  signIn: {
+    ...ptBR.signIn,
+    start: {
+      ...(ptBR.signIn?.start ?? {}),
+      title: "Que bom ter você de volta",
+      subtitle: "Entre para continuar preparando com calma.",
+    },
+  },
+  signUp: {
+    ...ptBR.signUp,
+    start: {
+      ...(ptBR.signUp?.start ?? {}),
+      title: "Crie seu espaço",
+      subtitle: "Comece a organizar a chegada com leveza.",
+    },
+  },
+};
 const categories: CategoryKey[] = ["Roupas", "Higiene", "Alimentação", "Acessórios"];
 const initialItems: ChecklistItem[] = [
   { id: 1, name: "Body manga curta", category: "Roupas", group: "RN · essenciais", qty: 6, owned: 4, status: "Comprado", price: 38, essential: true },
@@ -74,6 +104,63 @@ function Brand() {
   );
 }
 
+const clerkAppearance = {
+  theme: shadcn,
+  cssLayerName: "clerk",
+  options: {
+    logoPlacement: "inside" as const,
+    logoLinkUrl: basePath || "/",
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+  },
+  variables: {
+    colorPrimary: "#a453d1",
+    colorForeground: "#24202a",
+    colorMutedForeground: "#766f7d",
+    colorDanger: "#c44c5c",
+    colorBackground: "#ffffff",
+    colorInput: "#f8f5fa",
+    colorInputForeground: "#24202a",
+    colorNeutral: "#e3dce8",
+    fontFamily: "DM Sans, ui-sans-serif, sans-serif",
+    borderRadius: "14px",
+  },
+  elements: {
+    rootBox: "w-full max-w-[440px] flex justify-center",
+    cardBox: "bg-white rounded-[24px] w-full overflow-hidden border border-[#e4d9ec] shadow-[0_24px_60px_rgba(81,57,99,0.16)]",
+    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
+    footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
+    headerTitle: "text-[#24202a]",
+    headerSubtitle: "text-[#766f7d]",
+    socialButtonsBlockButtonText: "text-[#403847]",
+    formFieldLabel: "text-[#51495a]",
+    footerActionLink: "text-[#9b50c7]",
+    footerActionText: "text-[#766f7d]",
+    dividerText: "text-[#8c8493]",
+    identityPreviewEditButton: "text-[#9b50c7]",
+    formFieldSuccessText: "text-[#5e8e68]",
+    alertText: "text-[#5c4351]",
+    logoBox: "py-3",
+    logoImage: "h-11 w-11 rounded-xl",
+    socialButtonsBlockButton: "border-[#e3dce8] bg-[#fbf9fc] hover:bg-[#f5eef9]",
+    formButtonPrimary: "bg-[#a453d1] hover:bg-[#9144bf] text-white",
+    formFieldInput: "bg-[#f8f5fa] border-[#e3dce8] text-[#24202a]",
+    footerAction: "bg-[#fbf9fc]",
+    dividerLine: "bg-[#e5dfea]",
+    alert: "bg-[#f9edf2]",
+    otpCodeFieldInput: "bg-[#f8f5fa] border-[#e3dce8]",
+    formFieldRow: "gap-2",
+    main: "gap-4",
+  },
+};
+
+function AccountControl() {
+  const { signOut } = useClerk();
+  const { user } = useUser();
+  const name = user?.firstName || user?.username || "Você";
+  const initials = name.slice(0, 2).toUpperCase();
+  return <div className="account-control"><span className="toolbar-avatar">{initials}</span><button type="button" onClick={() => signOut({ redirectUrl: basePath || "/" })} className="account-signout" data-testid="button-sign-out"><LogOut size={14} /> sair</button></div>;
+}
+
 function TinyButton({ children, onClick, label, testId }: { children: ReactNode; onClick: () => void; label?: string; testId: string }) {
   return <button type="button" className="icon-button" onClick={onClick} aria-label={label} data-testid={testId}>{children}</button>;
 }
@@ -95,7 +182,7 @@ function Phone({ children, title, activeRoute, setLocation, activePanel, onPanel
   onPanel: (index: number) => void;
 }) {
   const tabs = [
-    { path: "/", label: "Início", icon: Home, panel: 0 },
+    { path: "/dashboard", label: "Início", icon: Home, panel: 0 },
     { path: "/checklist", label: "Lista", icon: ListChecks, panel: 1 },
     { path: "/milestones", label: "Marcos", icon: History, panel: 2 },
     { path: "/profile", label: "Perfil", icon: UserRound, panel: 0 },
@@ -241,7 +328,7 @@ function AddItemModal({ onClose, onAdd, category }: { onClose: () => void; onAdd
 
 function DesktopSidebar({ location, go }: { location: string; go: (path: string, panel?: number) => void }) {
   const links = [
-    { path: "/", label: "Visão geral", icon: Home, panel: 0 },
+    { path: "/dashboard", label: "Visão geral", icon: Home, panel: 0 },
     { path: "/checklist", label: "Minha lista", icon: ListChecks, panel: 1 },
     { path: "/milestones", label: "Linha do tempo", icon: History, panel: 2 },
   ];
@@ -284,12 +371,12 @@ function DesktopSideSummary({ items, go }: { items: ChecklistItem[]; go: (path: 
 }
 
 function DesktopWorkspace({ location, go, items, content }: { location: string; go: (path: string, panel?: number) => void; items: ChecklistItem[]; content: ReactNode }) {
-  const title = location === "/" ? "Visão geral" : location === "/checklist" ? "Minha lista" : location === "/milestones" || location === "/shower" ? "Linha do tempo" : location === "/budget" ? "Orçamento" : "Meu perfil";
-  const isOverview = location === "/";
+  const title = location === "/dashboard" ? "Visão geral" : location === "/checklist" ? "Minha lista" : location === "/milestones" || location === "/shower" ? "Linha do tempo" : location === "/budget" ? "Orçamento" : "Meu perfil";
+  const isOverview = location === "/dashboard";
   return <div className="desktop-workspace">
     <DesktopSidebar location={location} go={go} />
     <main className="desktop-main">
-      <header className="desktop-header"><div><span className="desktop-greeting">terça-feira, 12 de março</span><h1>{title}</h1></div><div className="desktop-header-actions"><button type="button" className="desktop-help-button"><Sparkles size={15} /> seu espaço, do seu jeito</button><span className="toolbar-avatar">ML</span></div></header>
+      <header className="desktop-header"><div><span className="desktop-greeting">terça-feira, 12 de março</span><h1>{title}</h1></div><div className="desktop-header-actions"><button type="button" className="desktop-help-button"><Sparkles size={15} /> seu espaço, do seu jeito</button><AccountControl /></div></header>
       {isOverview && <section className="desktop-welcome"><div><span className="desktop-eyebrow">BEM-VINDA DE VOLTA, MARINA</span><h2>Seu caminho está tomando forma.</h2><p>Uma visão tranquila do que já foi resolvido e do que vem a seguir.</p></div><div className="desktop-welcome-score"><span>PREPARAÇÃO</span><strong>{Math.round((items.filter((item) => item.status !== "A comprar").length / items.length) * 100)}%</strong><small>do enxoval resolvido</small></div></section>}
       <div className={`desktop-content-grid ${isOverview ? "" : "desktop-content-grid-single"}`}><section className="desktop-primary"><div className="desktop-panel-surface">{content}</div></section>{isOverview && <DesktopSideSummary items={items} go={go} />}</div>
     </main>
@@ -315,17 +402,45 @@ function Workspace() {
   const panelOne = location === "/budget" ? <BudgetPanel items={items} /> : location === "/profile" ? <ProfilePanel /> : <OverviewPanel items={items} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} />;
   const panelTwo = location === "/checklist" ? <ChecklistPanel items={items} setItems={setItems} onAdd={() => setAddOpen(true)} /> : <ChecklistPanel items={items} setItems={setItems} onAdd={() => setAddOpen(true)} />;
   const panelThree = location === "/shower" ? <ShowerPanel setLocation={(path) => go(path, path === "/checklist" ? 1 : 2)} /> : <TimelinePanel setLocation={(path) => go(path, 2)} completed={milestones} setCompleted={setMilestones} />;
-  const desktopContent = location === "/" ? <OverviewPanel items={items} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} /> : location === "/checklist" ? panelTwo : location === "/shower" ? panelThree : location === "/milestones" ? panelThree : location === "/budget" ? panelOne : <ProfilePanel />;
-  const mobileWorkspace = <><header className="stage-toolbar"><div className="toolbar-left"><Brand /><span className="toolbar-divider" /><span className="toolbar-caption">gestão de enxoval</span></div><div className="toolbar-actions"><button type="button" onClick={() => go("/budget", 0)} className={`toolbar-link ${location === "/budget" ? "selected" : ""}`} data-testid="button-open-budget"><WalletCards size={14} /> orçamento</button><button type="button" onClick={() => go("/profile", 0)} className={`toolbar-link ${location === "/profile" ? "selected" : ""}`} data-testid="button-open-profile"><UserRound size={14} /> perfil</button><span className="toolbar-avatar">ML</span></div></header><div className="mobile-panel-switcher">{[["visão geral", 0, "/"], ["lista", 1, "/checklist"], ["linha do tempo", 2, "/milestones"]].map(([label, index, path]) => <button type="button" key={String(index)} onClick={() => go(String(path), Number(index))} className={activePanel === Number(index) ? "selected" : ""} data-testid={`button-mobile-panel-${index}`}>{label}</button>)}</div><main className="phone-stage"><Phone title="Ninho" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelOne}</Phone><Phone title="Registro rápido" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelTwo}</Phone><Phone title="Histórico" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelThree}</Phone></main><div className="stage-note"><span><span className="note-dot" /> preparado para a chegada</span><span>sem pressa, sem excesso</span></div></>;
+  const desktopContent = location === "/dashboard" ? <OverviewPanel items={items} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} /> : location === "/checklist" ? panelTwo : location === "/shower" ? panelThree : location === "/milestones" ? panelThree : location === "/budget" ? panelOne : <ProfilePanel />;
+  const mobileWorkspace = <><header className="stage-toolbar"><div className="toolbar-left"><Brand /><span className="toolbar-divider" /><span className="toolbar-caption">gestão de enxoval</span></div><div className="toolbar-actions"><button type="button" onClick={() => go("/budget", 0)} className={`toolbar-link ${location === "/budget" ? "selected" : ""}`} data-testid="button-open-budget"><WalletCards size={14} /> orçamento</button><button type="button" onClick={() => go("/profile", 0)} className={`toolbar-link ${location === "/profile" ? "selected" : ""}`} data-testid="button-open-profile"><UserRound size={14} /> perfil</button><AccountControl /></div></header><div className="mobile-panel-switcher">{[["visão geral", 0, "/dashboard"], ["lista", 1, "/checklist"], ["linha do tempo", 2, "/milestones"]].map(([label, index, path]) => <button type="button" key={String(index)} onClick={() => go(String(path), Number(index))} className={activePanel === Number(index) ? "selected" : ""} data-testid={`button-mobile-panel-${index}`}>{label}</button>)}</div><main className="phone-stage"><Phone title="Ninho" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelOne}</Phone><Phone title="Registro rápido" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelTwo}</Phone><Phone title="Histórico" activeRoute={location} setLocation={(path) => go(path, path === "/checklist" ? 1 : path === "/milestones" || path === "/shower" ? 2 : 0)} activePanel={activePanel} onPanel={setActivePanel}>{panelThree}</Phone></main><div className="stage-note"><span><span className="note-dot" /> preparado para a chegada</span><span>sem pressa, sem excesso</span></div></>;
   return <div className="ninho-app">{desktopView ? <DesktopWorkspace location={location} go={go} items={items} content={desktopContent} /> : mobileWorkspace}{addOpen && <AddItemModal category="Roupas" onClose={() => setAddOpen(false)} onAdd={addItem} />}</div>;
 }
 
+function WelcomePage() {
+  const [, setLocation] = useLocation();
+  return <main className="welcome-page"><div className="welcome-orbit welcome-orbit-one" /><div className="welcome-orbit welcome-orbit-two" /><header className="welcome-header"><Brand /><button type="button" onClick={() => setLocation("/sign-in")} className="welcome-signin">já tenho conta</button></header><section className="welcome-content"><div className="welcome-copy"><span className="desktop-eyebrow">GESTÃO DE ENXOVAL, SEM EXCESSO</span><h1>Preparar a chegada<br />também pode ser <strong>leve.</strong></h1><p>Organize o enxoval, acompanhe cada marco e compartilhe sua lista com quem ama vocês.</p><div className="welcome-actions"><button type="button" className="welcome-primary" onClick={() => setLocation("/sign-up")} data-testid="button-create-account">criar minha conta <ArrowUpRight size={16} /></button><button type="button" className="welcome-secondary" onClick={() => setLocation("/sign-in")} data-testid="button-open-sign-in">entrar</button></div><span className="welcome-note"><span /> seu espaço, do seu jeito</span></div><div className="welcome-preview" aria-label="Prévia da organização do enxoval"><div className="welcome-preview-card"><span className="card-kicker">PREPARAÇÃO</span><strong>50%</strong><small>do enxoval já tomou forma</small><Progress value={50} /></div><div className="welcome-preview-list"><div><span className="card-kicker">PRÓXIMO MARCO</span><strong>Semana 28</strong><small>fechar as roupas RN</small></div><span className="welcome-preview-icon"><Heart size={17} /></span></div><div className="welcome-preview-footer"><span className="purple-dot"><Gift size={12} /></span><span>organize com quem ama vocês</span><ChevronRight size={15} /></div></div></section></main>;
+}
+
+function SignInPage() {
+  return <main className="auth-page"><div className="auth-panel"><Brand /><div className="auth-copy"><span className="desktop-eyebrow">SEU ESPAÇO ESTÁ AQUI</span><h1>Que bom<br />ter você de volta.</h1><p>Entre para continuar preparando cada detalhe com calma.</p></div></div><div className="auth-clerk"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div></main>;
+}
+
+function SignUpPage() {
+  return <main className="auth-page"><div className="auth-panel"><Brand /><div className="auth-copy"><span className="desktop-eyebrow">COMECE QUANDO QUISER</span><h1>Um ninho<br />feito por vocês.</h1><p>Crie sua conta e reúna tudo o que importa para a chegada.</p></div></div><div className="auth-clerk"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div></main>;
+}
+
+function HomeRedirect() {
+  return <><Show when="signed-in"><Redirect to="/dashboard" /></Show><Show when="signed-out"><WelcomePage /></Show></>;
+}
+
+function ProtectedRoutes() {
+  return <><Show when="signed-in"><Switch><Route path="/dashboard" component={Workspace} /><Route path="/checklist" component={Workspace} /><Route path="/milestones" component={Workspace} /><Route path="/shower" component={Workspace} /><Route path="/budget" component={Workspace} /><Route path="/profile" component={Workspace} /><Route component={NotFound} /></Switch></Show><Show when="signed-out"><Redirect to="/" /></Show></>;
+}
+
 function AppRouter() {
-  return <ErrorBoundary resetKey={window.location.pathname}><Switch><Route path="/" component={Workspace} /><Route path="/checklist" component={Workspace} /><Route path="/milestones" component={Workspace} /><Route path="/shower" component={Workspace} /><Route path="/budget" component={Workspace} /><Route path="/profile" component={Workspace} /><Route component={NotFound} /></Switch></ErrorBoundary>;
+  return <ErrorBoundary resetKey={window.location.pathname}><Switch><Route path="/" component={HomeRedirect} /><Route path="/sign-in/*?" component={SignInPage} /><Route path="/sign-up/*?" component={SignUpPage} /><Route component={ProtectedRoutes} /></Switch></ErrorBoundary>;
+}
+
+function ClerkApp() {
+  const [, setLocation] = useLocation();
+  const stripBase = (path: string) => basePath && path.startsWith(basePath) ? path.slice(basePath.length) || "/" : path;
+  return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={clerkLocalization} routerPush={(to) => setLocation(stripBase(to))} routerReplace={(to) => setLocation(stripBase(to), { replace: true })}><QueryClientProvider client={queryClient}><TooltipProvider><AppRouter /><Toaster /></TooltipProvider></QueryClientProvider></ClerkProvider>;
 }
 
 function App() {
-  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}><AppRouter /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
+  if (!clerkPubKey) throw new Error("Não foi possível carregar a autenticação.");
+  return <WouterRouter base={basePath}><ClerkApp /></WouterRouter>;
 }
 
 export default App;
