@@ -96,6 +96,14 @@ const clerkPubKey = publishableKeyFromHost(
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const loginHeroImage = `${basePath}/login-pregnancy.png`;
 
+// Clerk emits full browser paths, while Wouter routes are relative to the
+// artifact base path. Keep auth navigation client-side and avoid a full reload.
+function stripBase(path: string): string {
+  return basePath && path.startsWith(basePath)
+    ? path.slice(basePath.length) || "/"
+    : path;
+}
+
 const CATEGORIES: CategoryKey[] = ["Roupas", "Higiene", "Alimentação", "Acessórios"];
 
 const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -1122,7 +1130,12 @@ function SignInPage() {
         </div>
       </div>
       <div className="auth-clerk">
-        <SignIn routing="path" path={`${basePath}/sign-in`} appearance={clerkAppearance} />
+        <SignIn
+          routing="path"
+          path={`${basePath}/sign-in`}
+          signUpUrl={`${basePath}/sign-up`}
+          appearance={clerkAppearance}
+        />
       </div>
     </div>
   );
@@ -1141,7 +1154,12 @@ function SignUpPage() {
         </div>
       </div>
       <div className="auth-clerk">
-        <SignUp routing="path" path={`${basePath}/sign-up`} appearance={clerkAppearance} />
+        <SignUp
+          routing="path"
+          path={`${basePath}/sign-up`}
+          signInUrl={`${basePath}/sign-in`}
+          appearance={clerkAppearance}
+        />
       </div>
     </div>
   );
@@ -1183,6 +1201,8 @@ function AppRouter() {
 }
 
 function ClerkApp() {
+  const [, setLocation] = useLocation();
+
   return (
     <ClerkProvider
       publishableKey={clerkPubKey}
@@ -1192,6 +1212,8 @@ function ClerkApp() {
       signUpUrl={`${basePath}/sign-up`}
       signInFallbackRedirectUrl={`${basePath}/dashboard`}
       signUpFallbackRedirectUrl={`${basePath}/dashboard`}
+      routerPush={(to) => setLocation(stripBase(to))}
+      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
