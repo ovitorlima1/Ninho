@@ -1172,6 +1172,7 @@ function AppRouter() {
       <Route path="/sign-in/sso-callback" component={SignInPage} />
       <Route path="/sign-up" component={SignUpPage} />
       <Route path="/sign-up/sso-callback" component={SignUpPage} />
+      <Route path="/"><Redirect to={isSignedIn ? "/dashboard" : "/sign-in"} /></Route>
       {isSignedIn ? (
         <Route path="/:rest*" component={AuthenticatedApp} />
       ) : (

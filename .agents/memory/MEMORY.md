@@ -1,0 +1,1 @@
+- [Database startup migrations](database-startup-migrations.md) — apply schema changes outside API startup so a migration-history mismatch cannot take down authentication.
