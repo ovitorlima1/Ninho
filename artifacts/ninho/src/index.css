@@ -648,6 +648,26 @@
 }
 .profile-form input:not(:disabled) { border-color: #e3dce8; background: #f8f5fa; }
 .profile-form input:focus { outline: 2px solid #a453d1; outline-offset: -1px; }
+.profile-section { padding: 15px 0 4px; border-bottom: 1px solid #f0ecf4; }
+.profile-section:first-child { padding-top: 2px; }
+.profile-section:last-of-type { border-bottom: 0; }
+.profile-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.profile-section-heading h2 { margin: 5px 0 0; color: #24202a; font-size: 16px; letter-spacing: -.05em; }
+.optional-badge { flex: none; padding: 5px 7px; border-radius: 8px; color: #9b55c7; background: #f4eafa; font-family: var(--app-font-mono); font-size: 6px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.profile-section-copy { margin: 7px 0 2px; color: #9a96a2; font-size: 9px; line-height: 1.4; }
+.profile-section label { border-bottom: 0; }
+.profile-section input, .profile-section textarea { width: 100%; }
+.profile-section textarea { min-height: 68px; resize: vertical; padding: 9px 10px; border: 1px solid transparent; border-radius: 9px; color: #24202a; background: transparent; font-size: 12px; font-family: inherit; line-height: 1.4; transition: border-color .2s ease, background .2s ease; }
+.profile-section textarea:not(:disabled) { border-color: #e3dce8; background: #f8f5fa; }
+.profile-section textarea:focus { outline: 2px solid #a453d1; outline-offset: -1px; }
+.profile-section textarea:disabled { color: #807987; background: #f4f2f6; }
+.profile-week { display: flex; align-items: center; gap: 8px; margin: 8px 0 5px; padding: 9px 10px; border-radius: 10px; color: #a054c9; background: #f7effb; font-size: 9px; }
+.profile-week span { display: flex; flex-direction: column; gap: 2px; color: #9a95a2; }
+.profile-week strong { color: #5a4265; font-size: 10px; font-weight: 700; }
+.profile-save-message { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding: 10px; border-radius: 10px; font-size: 9px; line-height: 1.35; }
+.profile-save-error { color: #a2475a; background: #fbedf0; }
+.profile-save-success { color: #4f8660; background: #edf8ef; }
+.profile-save-dot { width: 10px; height: 10px; border: 2px solid #d5b9e3; border-top-color: #a453d1; border-radius: 50%; animation: spin .8s linear infinite; }
 
 /* ─── Budget row ─────────────────────────────────────────────────────────── */
 

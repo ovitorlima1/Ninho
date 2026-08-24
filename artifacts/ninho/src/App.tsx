@@ -57,7 +57,9 @@ import {
   type ServerBudgetCategory,
   type ItemStatus,
   type CategoryKey,
+  type UpdateProfileInput,
 } from "@/lib/api";
+import { calcGestationalWeek } from "@/lib/gestation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -113,15 +115,6 @@ const iconForCategory = (cat: CategoryKey) =>
 function formatDate(iso: string): string {
   const d = new Date(iso + "T12:00:00");
   return d.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
-}
-
-function calcWeek(dueDate: string | null): number | null {
-  if (!dueDate) return null;
-  const due = new Date(dueDate + "T12:00:00");
-  const today = new Date();
-  const daysToGo = (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
-  const w = Math.round(40 - daysToGo / 7);
-  return Math.max(1, Math.min(44, w));
 }
 
 function todayLabel(): string {
@@ -357,7 +350,7 @@ function OverviewPanel({
   const done = items.filter((i) => i.status !== "A comprar").length;
   const score = items.length ? Math.round((done / items.length) * 100) : 0;
   const name = profile.displayName || "você";
-  const week = calcWeek(profile.dueDate);
+  const week = calcGestationalWeek(profile.dueDate);
   const spent = items.filter((i) => i.status !== "A comprar").reduce((s, i) => s + i.price, 0);
   const totalPlanned = budget.reduce((s, b) => s + parseFloat(b.planned), 0);
   const nextMilestone = miles.find((m) => !m.completed && (week === null || m.week >= (week ?? 0)));
@@ -493,7 +486,7 @@ function TimelinePanel({
   profile: ServerProfile;
   onToggle: (id: number, completed: boolean) => void;
 }) {
-  const week = calcWeek(profile.dueDate);
+  const week = calcGestationalWeek(profile.dueDate);
   const name = profile.displayName || "você";
   const progress = week ? Math.round((week / 40) * 100) : 0;
 
@@ -623,38 +616,60 @@ function BudgetPanel({
 }
 
 function ProfilePanel({
-  profile, onSave,
+  profile, onSave, saveState, saveError,
 }: {
   profile: ServerProfile;
-  onSave: (data: { displayName?: string; dueDate?: string | null; city?: string | null }) => void;
+  onSave: (data: UpdateProfileInput) => void;
+  saveState: "idle" | "saving" | "error" | "success";
+  saveError: string | null;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile.displayName || "");
   const [city, setCity] = useState(profile.city || "");
+  const [babyName, setBabyName] = useState(profile.babyName || "");
   const [dueDate, setDueDateVal] = useState(profile.dueDate || "");
+  const [hospital, setHospital] = useState(profile.hospital || "");
+  const [supportPerson, setSupportPerson] = useState(profile.supportPerson || "");
+  const [personalNotes, setPersonalNotes] = useState(profile.personalNotes || "");
   const { signOut } = useClerk();
   const qc = useQueryClient();
 
   useEffect(() => {
     setName(profile.displayName || "");
     setCity(profile.city || "");
+    setBabyName(profile.babyName || "");
     setDueDateVal(profile.dueDate || "");
+    setHospital(profile.hospital || "");
+    setSupportPerson(profile.supportPerson || "");
+    setPersonalNotes(profile.personalNotes || "");
   }, [profile]);
 
+  useEffect(() => {
+    if (saveState === "success") setEditing(false);
+  }, [saveState]);
+
   const save = () => {
-    onSave({ displayName: name.trim() || undefined, dueDate: dueDate || null, city: city.trim() || null });
-    setEditing(false);
+    onSave({
+      displayName: name.trim() || null,
+      city: city.trim() || null,
+      babyName: babyName.trim() || null,
+      dueDate: dueDate || null,
+      hospital: hospital.trim() || null,
+      supportPerson: supportPerson.trim() || null,
+      personalNotes: personalNotes.trim() || null,
+    });
   };
 
   const initials = (profile.displayName || "?").slice(0, 2).toUpperCase();
-  const week = calcWeek(profile.dueDate);
+  const week = calcGestationalWeek(profile.dueDate);
+  const canSave = editing && saveState !== "saving";
 
   return (
     <div className="phone-content flow">
       <div className="eyebrow-row">
         <span>SEU ESPAÇO</span>
-        <TinyButton onClick={() => editing ? save() : setEditing(true)} label={editing ? "Salvar" : "Editar"} testId="button-phone-edit-profile">
-          {editing ? <Check size={15} /> : <Pencil size={14} />}
+        <TinyButton onClick={() => editing ? canSave && save() : setEditing(true)} label={editing ? "Salvar" : "Editar"} testId="button-phone-edit-profile">
+          {editing ? (saveState === "saving" ? <span className="profile-save-dot" /> : <Check size={15} />) : <Pencil size={14} />}
         </TinyButton>
       </div>
       <h1 className="phone-heading">Tudo sobre<br /><strong>vocês dois.</strong></h1>
@@ -662,32 +677,79 @@ function ProfilePanel({
         <div className="avatar">{initials}</div>
         <div>
           <h2>{profile.displayName || "Meu perfil"}</h2>
-          <p>{week ? `semana ${week}` : "data prevista não configurada"}</p>
+          <p>{week ? `semana ${week} de 40` : "data prevista não configurada"}</p>
         </div>
         <Sparkles size={16} />
       </div>
       <div className="white-card profile-form">
-        <label>
-          SEU NOME
-          <input value={name} onChange={(e) => setName(e.target.value)} disabled={!editing} data-testid="input-phone-profile-name" />
-        </label>
-        <label>
-          CIDADE
-          <input value={city} onChange={(e) => setCity(e.target.value)} disabled={!editing} data-testid="input-phone-profile-city" />
-        </label>
-        <label>
-          DATA PREVISTA DO PARTO
-          <input type={editing ? "date" : "text"} value={editing ? dueDate : (profile.dueDate ? formatDate(profile.dueDate) : "Não configurada")} onChange={(e) => setDueDateVal(e.target.value)} disabled={!editing} className="date-input" data-testid="input-phone-profile-due-date" />
-        </label>
-        {profile.city && (
-          <div className="profile-detail"><MapPin size={15} /><span>onde você está<strong>{profile.city}</strong></span></div>
+        <section className="profile-section">
+          <div className="profile-section-heading">
+            <div><span className="card-kicker">QUEM ESTÁ PREPARANDO</span><h2>Sobre você</h2></div>
+            <span className="optional-badge">opcional</span>
+          </div>
+          <p className="profile-section-copy">Um jeito carinhoso de deixar seu espaço com a sua cara.</p>
+          <label>
+            NOME OU APELIDO
+            <input value={name} onChange={(e) => setName(e.target.value)} disabled={!editing} placeholder="Como você prefere ser chamada?" data-testid="input-phone-profile-name" />
+          </label>
+          <label>
+            CIDADE
+            <input value={city} onChange={(e) => setCity(e.target.value)} disabled={!editing} placeholder="Onde você está?" data-testid="input-phone-profile-city" />
+          </label>
+        </section>
+
+        <section className="profile-section">
+          <div className="profile-section-heading">
+            <div><span className="card-kicker">A PEQUENA PESSOA</span><h2>Sobre o bebê</h2></div>
+            <span className="optional-badge">opcional</span>
+          </div>
+          <p className="profile-section-copy">Pode ser o nome, um apelido ou deixar para decidir depois.</p>
+          <label>
+            NOME OU APELIDO DO BEBÊ
+            <input value={babyName} onChange={(e) => setBabyName(e.target.value)} disabled={!editing} placeholder="Como vocês chamam o bebê?" data-testid="input-phone-profile-baby-name" />
+          </label>
+          <label>
+            DATA PREVISTA DO PARTO
+            <input type={editing ? "date" : "text"} value={editing ? dueDate : (profile.dueDate ? formatDate(profile.dueDate) : "Não configurada")} onChange={(e) => setDueDateVal(e.target.value)} disabled={!editing} className="date-input" data-testid="input-phone-profile-due-date" />
+          </label>
+          {week && (
+            <div className="profile-week"><CalendarDays size={15} /><span>semana gestacional<strong>semana {week} de 40</strong></span></div>
+          )}
+        </section>
+
+        <section className="profile-section">
+          <div className="profile-section-heading">
+            <div><span className="card-kicker">PARA CHEGAR COM CALMA</span><h2>Organização da chegada</h2></div>
+            <span className="optional-badge">opcional</span>
+          </div>
+          <p className="profile-section-copy">Detalhes úteis para você se organizar, sem pressa e sem excesso.</p>
+          <label>
+            MATERNIDADE OU HOSPITAL
+            <input value={hospital} onChange={(e) => setHospital(e.target.value)} disabled={!editing} placeholder="Onde você imagina a chegada?" data-testid="input-phone-profile-hospital" />
+          </label>
+          <label>
+            PESSOA DE APOIO
+            <input value={supportPerson} onChange={(e) => setSupportPerson(e.target.value)} disabled={!editing} placeholder="Quem estará com você?" data-testid="input-phone-profile-support-person" />
+          </label>
+          <label className="profile-notes-label">
+            OBSERVAÇÕES PESSOAIS
+            <textarea value={personalNotes} onChange={(e) => setPersonalNotes(e.target.value)} disabled={!editing} placeholder="Anote algo importante para lembrar depois." rows={3} data-testid="input-phone-profile-notes" />
+          </label>
+        </section>
+
+        {saveState === "error" && (
+          <div className="profile-save-message profile-save-error" role="alert">
+            Não foi possível salvar agora. {saveError || "Tente novamente em instantes."}
+          </div>
         )}
-        {profile.dueDate && (
-          <div className="profile-detail"><CalendarDays size={15} /><span>data prevista<strong>{formatDate(profile.dueDate)}</strong></span></div>
+        {saveState === "success" && !editing && (
+          <div className="profile-save-message profile-save-success" role="status">
+            <CheckCircle2 size={14} /> Perfil salvo com carinho.
+          </div>
         )}
         {editing && (
-          <button type="button" className="primary-button" style={{ marginTop: 12 }} onClick={save} data-testid="button-save-profile">
-            <Check size={14} /> salvar perfil
+          <button type="button" className="primary-button" style={{ marginTop: 12 }} onClick={save} disabled={!canSave} data-testid="button-save-profile">
+            {saveState === "saving" ? "salvando…" : <><Check size={14} /> salvar perfil</>}
           </button>
         )}
       </div>
@@ -772,7 +834,7 @@ function DesktopSidebar({ location, go }: { location: string; go: (path: string,
 function DesktopSideSummary({ items, milestones: miles, profile, go }: { items: ChecklistItem[]; milestones: ServerMilestone[]; profile: ServerProfile; go: (path: string, panel?: number) => void }) {
   const done = items.filter((i) => i.status !== "A comprar").length;
   const score = items.length ? Math.round((done / items.length) * 100) : 0;
-  const week = calcWeek(profile.dueDate);
+  const week = calcGestationalWeek(profile.dueDate);
   const nextMilestone = miles.find((m) => !m.completed && (week === null || m.week >= (week ?? 0)));
   const nextItem = items.find((i) => i.status === "A comprar" && i.essential);
 
@@ -980,6 +1042,15 @@ function Workspace() {
     },
   });
 
+  const profileSaveState: "idle" | "saving" | "error" | "success" = profileMutation.isPending
+    ? "saving"
+    : profileMutation.isError
+      ? "error"
+      : profileMutation.isSuccess
+        ? "success"
+        : "idle";
+  const profileSaveError = profileMutation.error instanceof Error ? profileMutation.error.message : null;
+
   // ── Loading / Error states ───────────────────────────────────────────────
 
   if (workspaceQuery.isLoading) {
@@ -1037,7 +1108,8 @@ function Workspace() {
     milestoneMutation.mutate({ id, completed });
   };
 
-  const handleProfileSave = (data: { displayName?: string; dueDate?: string | null; city?: string | null }) => {
+  const handleProfileSave = (data: UpdateProfileInput) => {
+    profileMutation.reset();
     profileMutation.mutate(data);
   };
 
@@ -1059,7 +1131,14 @@ function Workspace() {
     <TimelinePanel milestones={miles} profile={profile} onToggle={handleMilestoneToggle} />
   );
   const budgetPanel = <BudgetPanel items={items} budget={budget} onSave={handleBudgetSave} />;
-  const profilePanel = <ProfilePanel profile={profile} onSave={handleProfileSave} />;
+  const profilePanel = (
+    <ProfilePanel
+      profile={profile}
+      onSave={handleProfileSave}
+      saveState={profileSaveState}
+      saveError={profileSaveError}
+    />
+  );
 
   const desktopContent = location === "/checklist" ? checklistPanel
     : location === "/milestones" ? milestonePanel

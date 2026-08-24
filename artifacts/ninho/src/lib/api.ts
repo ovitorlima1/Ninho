@@ -18,6 +18,10 @@ export interface ServerProfile {
   displayName: string | null;
   dueDate: string | null;
   city: string | null;
+  babyName: string | null;
+  hospital: string | null;
+  supportPerson: string | null;
+  personalNotes: string | null;
   onboardingComplete: boolean;
   createdAt: string;
   updatedAt: string;
@@ -74,9 +78,13 @@ export async function fetchWorkspace(): Promise<Workspace> {
 // ─── Profile ──────────────────────────────────────────────────────────────────
 
 export interface UpdateProfileInput {
-  displayName?: string;
+  displayName?: string | null;
   dueDate?: string | null;
   city?: string | null;
+  babyName?: string | null;
+  hospital?: string | null;
+  supportPerson?: string | null;
+  personalNotes?: string | null;
   onboardingComplete?: boolean;
 }
 
