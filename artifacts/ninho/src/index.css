@@ -533,3 +533,150 @@
   .phone { height: calc(100dvh - 132px); min-height: 590px; }
   .stage-note { display: none; }
 }
+
+/* ─── Loading & Error states ─────────────────────────────────────────────── */
+
+.loading-state, .error-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 40px; text-align: center; color: #8b8797;
+}
+.loading-state p, .error-state p { margin: 0; font-size: 13px; }
+.loading-spinner {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 3px solid #e5ddf0; border-top-color: #a453d1;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Onboarding Modal ───────────────────────────────────────────────────── */
+
+.onboarding-card { max-width: 440px; }
+.onboarding-progress {
+  display: flex; gap: 6px; margin-bottom: 22px;
+}
+.onboarding-progress span {
+  flex: 1; height: 3px; border-radius: 99px; background: #e5ddf0; transition: background .3s ease;
+}
+.onboarding-progress span.step-active { background: #a453d1; }
+.onboarding-actions {
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 20px;
+}
+.onboarding-actions .text-action { justify-content: center; color: #9a96a2; }
+
+/* ─── Modal shared ───────────────────────────────────────────────────────── */
+
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: rgba(30, 22, 40, .52); backdrop-filter: blur(4px);
+}
+.modal-card {
+  width: 100%; max-width: 380px; padding: 20px; border-radius: 24px;
+  background: #fff; box-shadow: 0 24px 56px rgba(60, 42, 80, .18);
+}
+.modal-top { justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.modal-top h2 { margin: 4px 0 0; font-size: 16px; letter-spacing: -.04em; }
+.modal-label {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-top: 12px; color: #8b8797; font-family: var(--app-font-mono); font-size: 8px; font-weight: 700; letter-spacing: .07em;
+}
+.modal-label input {
+  padding: 10px 12px; border: 1px solid #e3dce8; border-radius: 12px;
+  color: #24202a; background: #f8f5fa; font-size: 13px; font-weight: 500; font-family: inherit;
+}
+.modal-label input:focus { outline: 2px solid #a453d1; outline-offset: -1px; }
+.modal-card > p { margin: 8px 0 0; color: #9a96a2; font-size: 10px; }
+.primary-button {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; padding: 12px 16px; border: 0; border-radius: 13px;
+  color: #fff; background: linear-gradient(135deg, #bf72e9, #9851d0);
+  box-shadow: 0 8px 20px rgba(152, 81, 208, .22);
+  font-size: 12px; font-weight: 700; font-family: inherit;
+  transition: transform .2s ease, box-shadow .2s ease; cursor: pointer;
+}
+.primary-button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(152, 81, 208, .28); }
+.primary-button:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ─── Checklist enhancements ─────────────────────────────────────────────── */
+
+.check-item-row {
+  display: flex; align-items: center;
+}
+.check-item-row .check-item {
+  flex: 1;
+}
+.delete-item-btn {
+  display: grid; place-items: center; width: 28px; height: 28px;
+  border: 0; border-radius: 8px; color: #c4a5d6; background: transparent;
+  flex: none; opacity: 0; transition: opacity .2s ease, color .2s ease, background .2s ease;
+}
+.check-item-row:hover .delete-item-btn { opacity: 1; }
+.delete-item-btn:hover { color: #c44c5c; background: #faeaed; }
+
+.empty-category {
+  padding: 24px 12px; text-align: center; color: #9a96a2; font-size: 11px;
+}
+.empty-category .text-action { margin: 8px auto 0; }
+
+/* ─── Timeline empty state ───────────────────────────────────────────────── */
+
+.empty-timeline {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 30px 20px; border-radius: 18px; text-align: center;
+  color: #9a96a2; background: rgba(241, 235, 248, .55);
+}
+.empty-timeline svg { color: #c4a5d6; }
+.empty-timeline p { margin: 0; font-size: 11px; line-height: 1.5; max-width: 220px; }
+
+/* ─── Milestone past state ───────────────────────────────────────────────── */
+
+.milestone-past { opacity: .55; }
+
+/* ─── Profile form ───────────────────────────────────────────────────────── */
+
+.profile-form { display: flex; flex-direction: column; gap: 0; }
+.profile-form label {
+  display: flex; flex-direction: column; gap: 5px; padding: 10px 0;
+  border-bottom: 1px solid #f0ecf4;
+  color: #8b8797; font-family: var(--app-font-mono); font-size: 7px; font-weight: 700; letter-spacing: .07em;
+}
+.profile-form label:last-of-type { border-bottom: 0; }
+.profile-form input {
+  padding: 8px 10px; border: 1px solid transparent; border-radius: 9px;
+  color: #24202a; background: transparent; font-size: 12px; font-weight: 500; font-family: inherit;
+  transition: border-color .2s ease, background .2s ease;
+}
+.profile-form input:not(:disabled) { border-color: #e3dce8; background: #f8f5fa; }
+.profile-form input:focus { outline: 2px solid #a453d1; outline-offset: -1px; }
+
+/* ─── Budget row ─────────────────────────────────────────────────────────── */
+
+.budget-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 0; border-bottom: 1px solid #f0ecf4;
+  font-size: 11px; font-weight: 600; color: #24202a;
+}
+.budget-row:last-of-type { border-bottom: 0; }
+.budget-row input {
+  width: 90px; padding: 5px 8px; border: 1px solid #e3dce8; border-radius: 8px;
+  color: #24202a; background: #f8f5fa; font-size: 11px; font-weight: 600; font-family: inherit;
+  text-align: right;
+}
+
+/* ─── Mobile panel switcher dots ─────────────────────────────────────────── */
+
+.panel-dot { width: 8px !important; height: 8px; flex: none !important; padding: 0 !important; border-radius: 50% !important; background: #d4c8e0; border: 0; cursor: pointer; transition: background .2s ease, transform .2s ease; }
+.panel-dot.dot-active { background: #a453d1; transform: scale(1.25); }
+.mobile-panel-switcher { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; }
+
+/* ─── Feedback link ──────────────────────────────────────────────────────── */
+
+.feedback-link { text-decoration: none; }
+.feedback-link a { color: inherit; text-decoration: none; flex: 1; }
+
+/* ─── Date input ─────────────────────────────────────────────────────────── */
+
+.date-input {
+  width: 100%; padding: 9px 12px; border: 1px solid #e3dce8; border-radius: 11px;
+  color: #24202a; background: #f8f5fa; font-size: 12px; font-family: inherit; margin-top: 6px;
+}
