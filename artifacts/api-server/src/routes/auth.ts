@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { authUsers, passwordResetTokens } from "@workspace/db/schema";
@@ -14,6 +14,7 @@ import {
   verifySessionToken,
   createPasswordResetToken,
   hashPasswordResetToken,
+  authAttemptLimiter,
 } from "../lib/auth";
 import { sendPasswordResetEmail } from "../lib/email";
 
@@ -23,6 +24,7 @@ type Credentials = { email: string; password: string };
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 const PASSWORD_RESET_RESPONSE_MIN_MS = 400;
 const GENERIC_RESET_MESSAGE = "Se houver uma conta com este e-mail, enviaremos um link para redefinir sua senha.";
+const AUTH_RATE_LIMIT_MESSAGE = "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.";
 
 function validateCredentials(body: unknown): { data: Credentials } | { error: string } {
   if (!body || typeof body !== "object") return { error: "Confira os dados informados." };
@@ -39,6 +41,34 @@ function validateCredentials(body: unknown): { data: Credentials } | { error: st
 
 function publicUser(user: typeof authUsers.$inferSelect) {
   return { id: user.id, email: user.email };
+}
+
+function getRequestOrigin(req: Request): string {
+  return req.ip || req.socket.remoteAddress || "unknown";
+}
+
+function getAuthAttemptKeys(scope: "login" | "register", email: string, origin: string): string[] {
+  return [`auth:${scope}:origin:${origin}`, `auth:${scope}:account:${email}`];
+}
+
+function rejectRateLimitedRequest(
+  req: Request,
+  res: Response,
+  route: "login" | "register",
+  result: { allowed: false; retryAfterSeconds: number },
+  origin: string,
+): void {
+  req.log.warn({
+    event: "auth_attempts_rate_limited",
+    route,
+    origin,
+    retryAfterSeconds: result.retryAfterSeconds,
+  }, "authentication attempt rate limit exceeded");
+  res.set("Retry-After", String(result.retryAfterSeconds));
+  res.status(429).json({
+    error: AUTH_RATE_LIMIT_MESSAGE,
+    retryAfterSeconds: result.retryAfterSeconds,
+  });
 }
 
 function getPublicAppUrl(): string {
@@ -71,6 +101,13 @@ router.post("/register", async (req, res) => {
     return;
   }
   const { data } = validated;
+  const origin = getRequestOrigin(req);
+  const attemptKeys = getAuthAttemptKeys("register", data.email, origin);
+  const rateLimit = authAttemptLimiter.consume(attemptKeys);
+  if (!rateLimit.allowed) {
+    rejectRateLimitedRequest(req, res, "register", rateLimit, origin);
+    return;
+  }
 
   try {
     const [existing] = await db.select({ id: authUsers.id }).from(authUsers).where(eq(authUsers.email, data.email));
@@ -92,6 +129,7 @@ router.post("/register", async (req, res) => {
     res.append("Set-Cookie", sessionCookie(createSessionToken(user.id, user.sessionVersion)));
     res.status(201).json({ user: publicUser(user) });
   } catch (err) {
+    authAttemptLimiter.release(attemptKeys);
     req.log.error({ err }, "registration error");
     res.status(500).json({ error: "Não foi possível criar sua conta agora." });
   }
@@ -105,6 +143,13 @@ router.post("/login", async (req, res) => {
     return;
   }
   const { data } = validated;
+  const origin = getRequestOrigin(req);
+  const attemptKeys = getAuthAttemptKeys("login", data.email, origin);
+  const rateLimit = authAttemptLimiter.consume(attemptKeys);
+  if (!rateLimit.allowed) {
+    rejectRateLimitedRequest(req, res, "login", rateLimit, origin);
+    return;
+  }
 
   try {
     const [user] = await db.select().from(authUsers).where(eq(authUsers.email, data.email));
@@ -114,9 +159,11 @@ router.post("/login", async (req, res) => {
       return;
     }
 
+    authAttemptLimiter.release(attemptKeys);
     res.append("Set-Cookie", sessionCookie(createSessionToken(user.id, user.sessionVersion)));
     res.json({ user: publicUser(user) });
   } catch (err) {
+    authAttemptLimiter.release(attemptKeys);
     req.log.error({ err }, "login error");
     res.status(500).json({ error: "Não foi possível entrar agora." });
   }
