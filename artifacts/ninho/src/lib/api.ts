@@ -38,6 +38,7 @@ export interface ServerChecklistItem {
   status: string;
   price: string; // numeric as string from DB
   essential: boolean;
+  recommendationId: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -149,6 +150,7 @@ export interface CreateItemInput {
   group?: string;
   qty?: number;
   price?: number;
+  recommendationId?: string | null;
 }
 
 export async function createChecklistItem(data: CreateItemInput): Promise<ServerChecklistItem> {
@@ -164,6 +166,7 @@ export interface UpdateItemInput {
   status?: ItemStatus;
   qty?: number;
   price?: number;
+  recommendationId?: string | null;
 }
 
 export async function updateChecklistItem(

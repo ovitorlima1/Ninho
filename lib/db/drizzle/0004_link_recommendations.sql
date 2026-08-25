@@ -1,0 +1,2 @@
+ALTER TABLE "checklist_items" ADD COLUMN "recommendation_id" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "checklist_items_user_recommendation_unique" ON "checklist_items" USING btree ("user_id","recommendation_id");

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
 import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from "wouter";
 import {
   Activity,
@@ -78,6 +78,7 @@ type ChecklistItem = {
   status: ItemStatus;
   price: number;
   essential: boolean;
+  recommendationId: string | null;
 };
 
 function adaptItem(s: ServerChecklistItem): ChecklistItem {
@@ -90,8 +91,14 @@ function adaptItem(s: ServerChecklistItem): ChecklistItem {
     status: s.status as ItemStatus,
     price: parseFloat(s.price) || 0,
     essential: s.essential,
+    recommendationId: s.recommendationId,
   };
 }
+
+type RecommendationFeedback = {
+  tone: "success" | "error";
+  message: string;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -391,12 +398,14 @@ function OverviewPanel({
 }
 
 function ChecklistPanel({
-  items, onToggle, onAdd, onDelete,
+  items, onToggle, onAdd, onDelete, onOpenRecommendation, onUnlinkRecommendation,
 }: {
   items: ChecklistItem[];
   onToggle: (id: number, current: ItemStatus) => void;
   onAdd: (category: CategoryKey) => void;
   onDelete: (id: number) => void;
+  onOpenRecommendation: (id: string) => void;
+  onUnlinkRecommendation: (id: number) => void;
 }) {
   const [category, setCategory] = useState<CategoryKey>("Roupas");
   const visible = items.filter((i) => i.category === category);
@@ -445,6 +454,26 @@ function ChecklistPanel({
                   <small>{item.qty} un. · {item.status} {item.price > 0 ? `· ${money(item.price)}` : ""}</small>
                 </span>
               </button>
+                {item.recommendationId && (
+                  <div className="check-recommendation-actions">
+                    <button
+                      type="button"
+                      className="check-recommendation-link"
+                      onClick={() => onOpenRecommendation(item.recommendationId!)}
+                      data-testid={`button-open-item-recommendation-${item.id}`}
+                    >
+                      <Sparkles size={10} /> ver recomendação
+                    </button>
+                    <button
+                      type="button"
+                      className="check-recommendation-unlink"
+                      onClick={() => onUnlinkRecommendation(item.id)}
+                      data-testid={`button-unlink-recommendation-${item.id}`}
+                    >
+                      desvincular
+                    </button>
+                  </div>
+                )}
               <button type="button" className="delete-item-btn" onClick={() => onDelete(item.id)} aria-label="Remover item" data-testid={`button-phone-delete-${item.id}`}>
                 <Trash2 size={13} />
               </button>
@@ -767,9 +796,25 @@ function ProfilePanel({
   );
 }
 
-function RecommendationCard({ recommendation, isRelevant }: { recommendation: Recommendation; isRelevant: boolean }) {
+function RecommendationCard({
+  recommendation,
+  isRelevant,
+  linkedItem,
+  matchingItems,
+  onAdd,
+  onOpenLinkedItem,
+  isPending,
+}: {
+  recommendation: Recommendation;
+  isRelevant: boolean;
+  linkedItem?: ChecklistItem;
+  matchingItems: ChecklistItem[];
+  onAdd: () => void;
+  onOpenLinkedItem: (item: ChecklistItem) => void;
+  isPending: boolean;
+}) {
   return (
-    <article className="recommendation-card">
+    <article className={`recommendation-card ${linkedItem ? "recommendation-card-linked" : ""}`} id={`recommendation-${recommendation.id}`}>
       <div className="recommendation-image-wrap">
         <img
           src={`${basePath}${recommendation.image}`}
@@ -789,17 +834,144 @@ function RecommendationCard({ recommendation, isRelevant }: { recommendation: Re
             <strong>{money(recommendation.price)}</strong>
             <small>em {recommendation.store}</small>
           </div>
-          <a href={recommendation.url} target="_blank" rel="noopener noreferrer" data-testid={`link-recommendation-${recommendation.id}`}>
-            ver na loja <ArrowUpRight size={13} />
-          </a>
+          <div className="recommendation-actions">
+            {linkedItem ? (
+              <button
+                type="button"
+                className="recommendation-add-button recommendation-add-done"
+                onClick={() => onOpenLinkedItem(linkedItem)}
+                data-testid={`button-recommendation-added-${recommendation.id}`}
+              >
+                <Check size={12} /> na sua lista
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="recommendation-add-button"
+                onClick={onAdd}
+                disabled={isPending}
+                data-testid={`button-add-recommendation-${recommendation.id}`}
+              >
+                <Plus size={12} /> {matchingItems.length ? "adicionar ou vincular" : "adicionar à lista"}
+              </button>
+            )}
+            <a href={recommendation.url} target="_blank" rel="noopener noreferrer" data-testid={`link-recommendation-${recommendation.id}`}>
+              ver na loja <ArrowUpRight size={13} />
+            </a>
+          </div>
         </div>
       </div>
     </article>
   );
 }
 
-function RecommendationsPanel({ items }: { items: ChecklistItem[] }) {
+function RecommendationLinkModal({
+  recommendation,
+  items,
+  onClose,
+  onCreate,
+  onLink,
+  isPending,
+}: {
+  recommendation: Recommendation;
+  items: ChecklistItem[];
+  onClose: () => void;
+  onCreate: () => void;
+  onLink: (item: ChecklistItem) => void;
+  isPending: boolean;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const createButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    createButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocus?.focus();
+    };
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        ref={dialogRef}
+        className="modal-card recommendation-link-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`recommendation-link-title-${recommendation.id}`}
+        aria-describedby={`recommendation-link-description-${recommendation.id}`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="modal-top">
+          <div><span className="card-kicker">PARA A SUA LISTA</span><h2 id={`recommendation-link-title-${recommendation.id}`}>Como guardar esta ideia?</h2></div>
+          <TinyButton onClick={onClose} label="Fechar" testId="button-close-recommendation-modal"><X size={17} /></TinyButton>
+        </div>
+        <p className="recommendation-link-description" id={`recommendation-link-description-${recommendation.id}`}>
+          <strong>{recommendation.name}</strong> combina com {items.length === 1 ? "um item" : "itens"} de {recommendation.category.toLowerCase()} que já está {items.length === 1 ? "na sua lista" : "na sua lista"}.
+        </p>
+        <button ref={createButtonRef} type="button" className="primary-button" onClick={onCreate} disabled={isPending} data-testid={`button-create-recommendation-item-${recommendation.id}`}>
+          <Plus size={14} /> adicionar como item novo
+        </button>
+        <div className="recommendation-existing">
+          <span className="card-kicker">VINCULAR A UM ITEM EXISTENTE</span>
+          {items.map((item) => (
+            <button type="button" className="recommendation-existing-item" key={item.id} onClick={() => onLink(item)} disabled={isPending} data-testid={`button-link-recommendation-${recommendation.id}-${item.id}`}>
+              <span><strong>{item.name}</strong><small>{item.qty} un. · {item.status}</small></span>
+              <ChevronRight size={14} />
+            </button>
+          ))}
+        </div>
+        <p className="recommendation-link-note">A recomendação fica ligada ao item, mas você continua comprando onde preferir.</p>
+      </div>
+    </div>
+  );
+}
+
+function RecommendationsPanel({
+  items,
+  onAddRecommendation,
+  onLinkRecommendation,
+  onOpenLinkedItem,
+  isActionPending,
+  feedback,
+  focusId,
+}: {
+  items: ChecklistItem[];
+  onAddRecommendation: (recommendation: Recommendation) => void;
+  onLinkRecommendation: (recommendation: Recommendation, item: ChecklistItem) => void;
+  onOpenLinkedItem: (item: ChecklistItem) => void;
+  isActionPending: boolean;
+  feedback: RecommendationFeedback | null;
+  focusId: string | null;
+}) {
   const [category, setCategory] = useState<"Para você" | CategoryKey>("Para você");
+  const [linkingRecommendation, setLinkingRecommendation] = useState<Recommendation | null>(null);
   const pendingCategories = useMemo(
     () => new Set(items.filter((item) => item.status === "A comprar").map((item) => item.category)),
     [items],
@@ -813,6 +985,14 @@ function RecommendationsPanel({ items }: { items: ChecklistItem[] }) {
     }
     return recommendation.category === category;
   });
+
+  useEffect(() => {
+    if (!focusId) return;
+    const recommendation = RECOMMENDATIONS.find((item) => item.id === focusId);
+    if (!recommendation) return;
+    setCategory(recommendation.category);
+    requestAnimationFrame(() => document.getElementById(`recommendation-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  }, [focusId]);
 
   return (
     <div className="phone-content flow recommendations-content">
@@ -831,13 +1011,25 @@ function RecommendationsPanel({ items }: { items: ChecklistItem[] }) {
           <Pill key={key} active={category === key} onClick={() => setCategory(key)} testId={`button-recommendation-category-${key.toLowerCase()}`}>{key}</Pill>
         ))}
       </div>
+      {feedback && <div className={`recommendation-feedback recommendation-feedback-${feedback.tone}`} role="status">{feedback.tone === "success" ? <CheckCircle2 size={14} /> : <X size={14} />}{feedback.message}</div>}
       <div className="recommendation-grid">
         {visible.map((recommendation) => (
-          <RecommendationCard
-            key={recommendation.id}
-            recommendation={recommendation}
-            isRelevant={pendingCategories.has(recommendation.category)}
-          />
+          (() => {
+            const linkedItem = items.find((item) => item.recommendationId === recommendation.id);
+            const matchingItems = items.filter((item) => item.category === recommendation.category && !item.recommendationId);
+            return (
+              <RecommendationCard
+                key={recommendation.id}
+                recommendation={recommendation}
+                isRelevant={pendingCategories.has(recommendation.category)}
+                linkedItem={linkedItem}
+                matchingItems={matchingItems}
+                onAdd={() => matchingItems.length ? setLinkingRecommendation(recommendation) : onAddRecommendation(recommendation)}
+                onOpenLinkedItem={onOpenLinkedItem}
+                isPending={isActionPending}
+              />
+            );
+          })()
         ))}
       </div>
       {visible.length === 0 && (
@@ -847,6 +1039,16 @@ function RecommendationsPanel({ items }: { items: ChecklistItem[] }) {
         </div>
       )}
       <p className="recommendation-disclaimer">As recomendações são uma curadoria editorial. O Ninho não vende os produtos; ao escolher um item, você será direcionada para a loja.</p>
+      {linkingRecommendation && (
+        <RecommendationLinkModal
+          recommendation={linkingRecommendation}
+          items={items.filter((item) => item.category === linkingRecommendation.category && !item.recommendationId)}
+          onClose={() => setLinkingRecommendation(null)}
+          onCreate={() => { onAddRecommendation(linkingRecommendation); setLinkingRecommendation(null); }}
+          onLink={(item) => { onLinkRecommendation(linkingRecommendation, item); setLinkingRecommendation(null); }}
+          isPending={isActionPending}
+        />
+      )}
     </div>
   );
 }
@@ -1027,6 +1229,8 @@ function Workspace({ userId: uid }: { userId: string }) {
   const [activePanel, setActivePanel] = useState(location === "/checklist" ? 1 : location === "/milestones" ? 2 : 0);
   const [addOpen, setAddOpen] = useState(false);
   const [addCategory, setAddCategory] = useState<CategoryKey>("Roupas");
+  const [recommendationFocusId, setRecommendationFocusId] = useState<string | null>(null);
+  const [recommendationFeedback, setRecommendationFeedback] = useState<RecommendationFeedback | null>(null);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 901px)");
@@ -1055,7 +1259,7 @@ function Workspace({ userId: uid }: { userId: string }) {
   });
 
   const updateItemMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { status?: ItemStatus; qty?: number } }) =>
+    mutationFn: ({ id, data }: { id: number; data: { status?: ItemStatus; qty?: number; recommendationId?: string | null } }) =>
       updateChecklistItem(id, data),
     onMutate: async ({ id, data }) => {
       await qc.cancelQueries({ queryKey: wqKey });
@@ -1173,6 +1377,53 @@ function Workspace({ userId: uid }: { userId: string }) {
     deleteItemMutation.mutate(id);
   };
 
+  const handleAddRecommendation = (recommendation: Recommendation) => {
+    setRecommendationFeedback(null);
+    addItemMutation.mutate(
+      {
+        name: recommendation.name,
+        category: recommendation.category,
+        group: "Recomendação Ninho",
+        price: recommendation.price,
+        recommendationId: recommendation.id,
+      },
+      {
+        onSuccess: () => setRecommendationFeedback({ tone: "success", message: "Ideia adicionada à sua lista como “A comprar”." }),
+        onError: (error) => setRecommendationFeedback({
+          tone: "error",
+          message: error instanceof Error && error.message ? error.message : "Não foi possível adicionar esta ideia agora.",
+        }),
+      },
+    );
+  };
+
+  const handleLinkRecommendation = (recommendation: Recommendation, item: ChecklistItem) => {
+    setRecommendationFeedback(null);
+    updateItemMutation.mutate(
+      { id: item.id, data: { recommendationId: recommendation.id } },
+      {
+        onSuccess: () => setRecommendationFeedback({ tone: "success", message: "Recomendação vinculada ao item da sua lista." }),
+        onError: (error) => setRecommendationFeedback({
+          tone: "error",
+          message: error instanceof Error && error.message ? error.message : "Não foi possível vincular esta ideia agora.",
+        }),
+      },
+    );
+  };
+
+  const handleUnlinkRecommendation = (id: number) => {
+    updateItemMutation.mutate(
+      { id, data: { recommendationId: null } },
+      {
+        onSuccess: () => setRecommendationFeedback({ tone: "success", message: "A recomendação foi desvinculada; o item continua na sua lista." }),
+        onError: (error) => setRecommendationFeedback({
+          tone: "error",
+          message: error instanceof Error && error.message ? error.message : "Não foi possível desvincular esta ideia agora.",
+        }),
+      },
+    );
+  };
+
   const handleMilestoneToggle = (id: number, completed: boolean) => {
     milestoneMutation.mutate({ id, completed });
   };
@@ -1194,7 +1445,14 @@ function Workspace({ userId: uid }: { userId: string }) {
     />
   );
   const checklistPanel = (
-    <ChecklistPanel items={items} onToggle={handleToggle} onAdd={openAdd} onDelete={handleDelete} />
+    <ChecklistPanel
+      items={items}
+      onToggle={handleToggle}
+      onAdd={openAdd}
+      onDelete={handleDelete}
+      onOpenRecommendation={(id) => { setRecommendationFocusId(id); go("/recommendations", 0); }}
+      onUnlinkRecommendation={handleUnlinkRecommendation}
+    />
   );
   const milestonePanel = (
     <TimelinePanel milestones={miles} profile={profile} onToggle={handleMilestoneToggle} />
@@ -1208,7 +1466,17 @@ function Workspace({ userId: uid }: { userId: string }) {
       saveError={profileSaveError}
     />
   );
-  const recommendationsPanel = <RecommendationsPanel items={items} />;
+  const recommendationsPanel = (
+    <RecommendationsPanel
+      items={items}
+      onAddRecommendation={handleAddRecommendation}
+      onLinkRecommendation={handleLinkRecommendation}
+      onOpenLinkedItem={(_item) => go("/checklist", 1)}
+      isActionPending={addItemMutation.isPending || updateItemMutation.isPending}
+      feedback={recommendationFeedback}
+      focusId={recommendationFocusId}
+    />
+  );
 
   const desktopContent = location === "/checklist" ? checklistPanel
     : location === "/milestones" ? milestonePanel

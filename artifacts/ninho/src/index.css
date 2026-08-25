@@ -505,6 +505,26 @@
 .recommendation-footer a { display: inline-flex; min-height: 24px; align-items: center; gap: 2px; flex: none; padding: 4px 0; color: #9854c3; font-size: 8px; font-weight: 700; text-decoration: none; }
 .recommendation-footer a:hover { color: #703e91; text-decoration: underline; }
 .recommendation-footer a:focus-visible { border-radius: 5px; outline: 2px solid #9f52ce; outline-offset: 3px; }
+.recommendation-card-linked { border-color: #c9a3dc; box-shadow: 0 8px 20px rgba(151, 83, 190, .12); }
+.recommendation-actions { display: grid; justify-items: end; gap: 3px; }
+.recommendation-add-button { display: inline-flex; min-height: 24px; align-items: center; gap: 4px; padding: 4px 6px; border: 0; border-radius: 7px; color: #8b46b4; background: #f3e5fa; font-size: 7px; font-weight: 700; white-space: nowrap; }
+.recommendation-add-button:hover:not(:disabled) { color: #6f348f; background: #ead6f4; }
+.recommendation-add-button:disabled { cursor: wait; opacity: .55; }
+.recommendation-add-done { color: #fff; background: #ad65d1; }
+.recommendation-add-done:hover { color: #fff; background: #9954be; }
+.recommendation-feedback { display: flex; align-items: center; gap: 7px; margin: 0 0 12px; padding: 9px 11px; border-radius: 11px; font-size: 9px; line-height: 1.35; }
+.recommendation-feedback-success { color: #537d66; background: #edf7f0; }
+.recommendation-feedback-error { color: #a2475a; background: #f9edf2; }
+.recommendation-link-modal { max-height: min(700px, calc(100dvh - 36px)); overflow: auto; }
+.recommendation-link-description { color: #756b80; line-height: 1.45; }
+.recommendation-existing { display: grid; gap: 7px; margin-top: 18px; }
+.recommendation-existing-item { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border: 1px solid #e3d6e9; border-radius: 11px; color: #8a4cad; background: #fff; text-align: left; }
+.recommendation-existing-item:hover:not(:disabled) { border-color: #bd8bd2; background: #fbf6fd; }
+.recommendation-existing-item:disabled { cursor: wait; opacity: .55; }
+.recommendation-existing-item > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.recommendation-existing-item strong { overflow: hidden; color: #403447; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.recommendation-existing-item small { color: #9a929e; font-size: 8px; }
+.recommendation-link-note { color: #9a929e !important; background: transparent !important; font-size: 8px !important; }
 .recommendation-disclaimer { margin: 14px 2px 0; color: #98919f; font-size: 8px; line-height: 1.45; }
 .empty-recommendations { display: flex; min-height: 170px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 20px; border: 1px dashed #d7c4e1; border-radius: 18px; color: #a287ae; text-align: center; background: rgba(248, 242, 251, .72); }
 .empty-recommendations p { max-width: 210px; margin: 0; font-size: 10px; line-height: 1.4; }
@@ -689,18 +709,23 @@
 /* ─── Checklist enhancements ─────────────────────────────────────────────── */
 
 .check-item-row {
-  display: flex; align-items: center;
+  display: flex; align-items: center; flex-wrap: wrap;
 }
 .check-item-row .check-item {
-  flex: 1;
+  flex: 1; order: 0;
 }
 .delete-item-btn {
   display: grid; place-items: center; width: 28px; height: 28px;
   border: 0; border-radius: 8px; color: #c4a5d6; background: transparent;
-  flex: none; opacity: 0; transition: opacity .2s ease, color .2s ease, background .2s ease;
+  flex: none; order: 1; opacity: 0; transition: opacity .2s ease, color .2s ease, background .2s ease;
 }
 .check-item-row:hover .delete-item-btn { opacity: 1; }
 .delete-item-btn:hover { color: #c44c5c; background: #faeaed; }
+.check-recommendation-actions { display: flex; width: 100%; align-items: center; gap: 9px; order: 2; padding: 0 0 7px 28px; }
+.check-recommendation-link, .check-recommendation-unlink { display: inline-flex; min-height: 24px; align-items: center; gap: 4px; padding: 4px 0; border: 0; background: transparent; font-size: 8px; font-weight: 700; }
+.check-recommendation-link { color: #9854c3; }
+.check-recommendation-unlink { color: #a39ca8; font-weight: 600; }
+.check-recommendation-link:hover, .check-recommendation-unlink:hover { text-decoration: underline; }
 
 .empty-category {
   padding: 24px 12px; text-align: center; color: #9a96a2; font-size: 11px;
