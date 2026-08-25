@@ -869,6 +869,7 @@ function DesktopWorkspace({ location, go, items, milestones: miles, profile, bud
   const titles: Record<string, string> = { "/dashboard": "Visão geral", "/checklist": "Minha lista", "/milestones": "Linha do tempo", "/budget": "Orçamento", "/profile": "Meu perfil" };
   const title = titles[location] ?? "Ninho";
   const isOverview = location === "/dashboard";
+  const routeClass = `desktop-route-${location.slice(1) || "dashboard"}`;
   const done = items.filter((i) => i.status !== "A comprar").length;
   const score = items.length ? Math.round((done / items.length) * 100) : 0;
   const name = profile.displayName || "você";
@@ -896,7 +897,7 @@ function DesktopWorkspace({ location, go, items, milestones: miles, profile, bud
             </div>
           </section>
         )}
-        <div className={`desktop-content-grid ${isOverview ? "" : "desktop-content-grid-single"}`}>
+        <div className={`desktop-content-grid ${routeClass} ${isOverview ? "" : "desktop-content-grid-single"}`}>
           <section className="desktop-primary"><div className="desktop-panel-surface">{content}</div></section>
           {isOverview && <DesktopSideSummary items={items} milestones={miles} profile={profile} go={go} />}
         </div>
@@ -929,7 +930,7 @@ function Workspace({ userId: uid }: { userId: string }) {
   });
 
   const [location, setLocation] = useLocation();
-  const [desktopView, setDesktopView] = useState(() => window.innerWidth > 900);
+  const [desktopView, setDesktopView] = useState(() => window.matchMedia("(min-width: 901px)").matches);
   const [activePanel, setActivePanel] = useState(location === "/checklist" ? 1 : location === "/milestones" ? 2 : 0);
   const [addOpen, setAddOpen] = useState(false);
   const [addCategory, setAddCategory] = useState<CategoryKey>("Roupas");

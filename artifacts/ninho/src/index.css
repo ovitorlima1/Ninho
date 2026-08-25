@@ -129,7 +129,8 @@
 .account-control { display: flex; align-items: center; gap: 6px; }
 .account-signout { display: flex; align-items: center; gap: 5px; padding: 8px 9px; border: 0; border-radius: 9px; color: #756b7c; background: transparent; font-size: 9px; font-weight: 700; transition: color .2s ease, background .2s ease; }
 .account-signout:hover { color: #8d4eb6; background: rgba(255,255,255,.7); }
-.desktop-welcome { display: flex; min-height: 138px; align-items: center; justify-content: space-between; gap: 28px; margin: 25px 0 18px; padding: 22px 24px; overflow: hidden; border-radius: 21px; color: #fff; background: linear-gradient(118deg, #302438 0%, #493258 54%, #9a5bc0 142%); box-shadow: 0 15px 30px rgba(85, 55, 108, .15); }
+.desktop-header, .desktop-welcome, .desktop-content-grid { width: min(100%, 1280px); margin-right: auto; margin-left: auto; }
+.desktop-welcome { display: flex; min-height: 138px; align-items: center; justify-content: space-between; gap: 28px; margin-top: 25px; margin-bottom: 18px; padding: 22px 24px; overflow: hidden; border-radius: 21px; color: #fff; background: linear-gradient(118deg, #302438 0%, #493258 54%, #9a5bc0 142%); box-shadow: 0 15px 30px rgba(85, 55, 108, .15); }
 .desktop-welcome h2 { margin: 8px 0 7px; font-size: clamp(21px, 2.3vw, 30px); letter-spacing: -.07em; line-height: 1; }
 .desktop-welcome p { max-width: 480px; margin: 0; color: #d7c9e0; font-size: 10px; }
 .desktop-welcome .desktop-eyebrow { color: #cdb6da; }
@@ -139,10 +140,12 @@
 .desktop-welcome-score strong { position: relative; z-index: 1; margin: 3px 0; font-size: 32px; letter-spacing: -.08em; }
 
 .desktop-content-grid { display: grid; grid-template-columns: minmax(0, 1fr) 245px; align-items: start; gap: 18px; }
-.desktop-content-grid-single { grid-template-columns: minmax(0, 1fr); max-width: 850px; }
+.desktop-content-grid-single { grid-template-columns: minmax(0, 1fr); max-width: 1120px; }
+.desktop-route-profile, .desktop-route-budget { max-width: 920px; }
 .desktop-primary { min-width: 0; }
 .desktop-panel-surface { min-width: 0; min-height: 530px; border: 1px solid rgba(216, 212, 222, .72); border-radius: 22px; background: rgba(255, 255, 255, .72); box-shadow: 0 13px 26px rgba(102, 91, 121, .06); }
 .desktop-panel-surface .phone-content { height: auto; overflow: visible; padding: 21px 22px 26px; }
+.desktop-route-profile .phone-content, .desktop-route-budget .phone-content { width: 100%; max-width: 780px; margin-right: auto; margin-left: auto; }
 .desktop-panel-surface .phone-heading { margin: 12px 0 19px; font-size: clamp(28px, 3vw, 39px); }
 .desktop-panel-surface .focus-card { min-height: 194px; }
 .desktop-panel-surface .focus-copy strong { font-size: 54px; }
@@ -150,8 +153,8 @@
 .desktop-panel-surface .two-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .desktop-panel-surface .filter-row { flex-wrap: wrap; }
 .desktop-panel-surface .shower-hero { max-width: 560px; }
-.desktop-panel-surface .budget-total { max-width: 590px; }
-.desktop-panel-surface .profile-card, .desktop-panel-surface .profile-form { max-width: 590px; }
+.desktop-panel-surface .budget-total { max-width: none; }
+.desktop-panel-surface .profile-card, .desktop-panel-surface .profile-form { max-width: none; }
 
 .desktop-side { display: grid; gap: 14px; }
 .desktop-side-card { padding: 16px; border: 1px solid rgba(216, 212, 222, .76); border-radius: 18px; background: rgba(255, 255, 255, .7); box-shadow: 0 9px 20px rgba(102, 91, 121, .05); }
@@ -521,12 +524,16 @@
 }
 
 @media (max-width: 1040px) and (min-width: 901px) {
+  .desktop-workspace { grid-template-columns: 172px minmax(0, 1fr); }
   .desktop-sidebar { padding-right: 10px; padding-left: 10px; }
   .desktop-sidebar-brand { padding-right: 6px; padding-left: 6px; }
   .desktop-nav-item { gap: 8px; padding-right: 8px; padding-left: 8px; font-size: 10px; }
+  .desktop-sidebar-footer { padding-right: 4px; padding-left: 4px; }
+  .desktop-sidebar-footer span { display: none; }
   .desktop-header-actions { gap: 5px; }
   .desktop-help-button { display: none; }
   .desktop-panel-surface .phone-content { padding-right: 18px; padding-left: 18px; }
+  .desktop-route-profile .phone-content, .desktop-route-budget .phone-content { max-width: none; }
 }
 
 @media (max-width: 900px) {
