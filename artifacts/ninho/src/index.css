@@ -814,3 +814,159 @@
   width: 100%; padding: 9px 12px; border: 1px solid #e3dce8; border-radius: 11px;
   color: #24202a; background: #f8f5fa; font-size: 12px; font-family: inherit; margin-top: 6px;
 }
+
+/* ─── Readable type scale ─────────────────────────────────────────────────── */
+
+:root {
+  --type-body: 15px;
+  --type-control: 13px;
+  --type-meta: 12px;
+  --type-label: 10px;
+}
+
+body { font-size: var(--type-body); line-height: 1.45; }
+
+/* Workspace shell */
+.desktop-sidebar-brand > span,
+.desktop-sidebar-footer strong { font-size: var(--type-meta); }
+.desktop-sidebar-footer span,
+.desktop-nav-label,
+.desktop-greeting,
+.desktop-eyebrow { font-size: var(--type-label); }
+.desktop-nav-item { font-size: var(--type-control); }
+.desktop-help-button,
+.account-signout { font-size: var(--type-control); }
+.desktop-header h1 { font-size: 28px; }
+.desktop-welcome p { font-size: var(--type-control); line-height: 1.45; }
+.desktop-welcome-score span,
+.desktop-welcome-score small { font-size: var(--type-label); }
+.desktop-side-card p,
+.desktop-progress-row span { font-size: var(--type-meta); }
+.desktop-text-button,
+.desktop-share-card strong { font-size: var(--type-control); }
+.desktop-share-card small { font-size: var(--type-meta); }
+
+/* Public and authentication surfaces */
+.welcome-signin,
+.welcome-secondary,
+.welcome-primary { font-size: var(--type-control); }
+.welcome-note,
+.welcome-preview-footer { font-size: var(--type-meta); }
+.welcome-preview-card small { font-size: var(--type-meta); }
+.welcome-preview-list small { font-size: var(--type-label); }
+.auth-copy p { font-size: 14px; }
+.auth-card-header p { font-size: var(--type-control); }
+.auth-field,
+.auth-forgot { font-size: var(--type-meta); }
+.auth-error,
+.auth-switch { font-size: var(--type-control); }
+
+/* Main content and controls */
+.toolbar-caption,
+.toolbar-link { font-size: var(--type-control); }
+.toolbar-avatar,
+.avatar { font-size: var(--type-meta); }
+.status-row { font-size: var(--type-label); }
+.eyebrow-row,
+.card-kicker { font-size: var(--type-label); }
+.phone-heading { font-size: clamp(30px, 2.5vw, 36px); }
+.focus-copy > span:not(.card-kicker) { font-size: var(--type-control); }
+.orbit-illustration em small { font-size: var(--type-label); }
+.section-line { font-size: var(--type-control); }
+.section-line button,
+.text-action { font-size: var(--type-meta); }
+.card-head h2 { font-size: 16px; }
+.muted-copy { font-size: var(--type-control); line-height: 1.5; }
+.mini-stat { font-size: var(--type-meta); }
+.mini-stat > span:last-child { font-size: var(--type-label); }
+.compact-card strong { font-size: 15px; }
+.compact-card .muted-copy { font-size: var(--type-meta); }
+.soft-action { font-size: var(--type-control); }
+.recommendation-prompt strong { font-size: var(--type-control); }
+.recommendation-prompt small { font-size: var(--type-meta); }
+.pill { font-size: var(--type-meta); }
+.check-name strong { font-size: var(--type-control); }
+.check-name small,
+.check-recommendation-link,
+.check-recommendation-unlink { font-size: var(--type-label); }
+.log-title { font-size: var(--type-control); }
+.log-row { font-size: var(--type-meta); }
+.log-row small { font-size: var(--type-label); }
+.chart-top,
+.chart-foot { font-size: var(--type-label); }
+.chart-top strong { font-size: var(--type-control); }
+.milestone-text small { font-size: var(--type-label); }
+.milestone-text strong { font-size: var(--type-control); }
+.shower-hero p { font-size: var(--type-control); }
+.share-button,
+.budget-row,
+.budget-row input { font-size: var(--type-control); }
+.profile-card p,
+.profile-section-copy { font-size: var(--type-meta); }
+.profile-form label { font-size: var(--type-label); }
+.profile-form input,
+.profile-section input,
+.profile-section textarea { font-size: var(--type-control); }
+.profile-detail,
+.profile-detail strong,
+.profile-week { font-size: var(--type-meta); }
+.profile-week strong { font-size: var(--type-control); }
+.profile-save-message { font-size: var(--type-meta); }
+
+/* Recommendation catalogue */
+.recommendation-intro p { font-size: var(--type-meta); }
+.recommendation-category,
+.recommendation-match,
+.recommendation-copy .card-kicker { font-size: var(--type-label); }
+.recommendation-copy h2 { font-size: 14px; }
+.recommendation-copy p { min-height: 52px; font-size: var(--type-meta); line-height: 1.45; }
+.recommendation-footer strong { font-size: var(--type-control); }
+.recommendation-footer small { font-size: var(--type-label); }
+.recommendation-footer a,
+.recommendation-add-button { font-size: var(--type-label); }
+.recommendation-feedback { font-size: var(--type-meta); }
+.recommendation-existing-item strong { font-size: var(--type-control); }
+.recommendation-existing-item small,
+.recommendation-link-note,
+.recommendation-disclaimer { font-size: var(--type-label) !important; }
+.empty-recommendations p { font-size: var(--type-control); }
+.phone-tab { font-size: var(--type-label); }
+.stage-note { font-size: var(--type-label); }
+
+/* Dialogs and empty states */
+.modal-top h2 { font-size: 21px; }
+.modal-label { font-size: var(--type-label); }
+.modal-label input,
+.date-input { font-size: var(--type-control); }
+.modal-card > p { font-size: var(--type-control); line-height: 1.5; }
+.primary-button { font-size: var(--type-control); }
+.empty-category,
+.empty-timeline p,
+.loading-state p,
+.error-state p { font-size: var(--type-control); }
+.optional-badge { font-size: var(--type-label); }
+
+/* Larger type needs room to wrap instead of clipping or squeezing controls. */
+.check-name,
+.recommendation-copy,
+.recommendation-footer > div,
+.recommendation-existing-item > span,
+.desktop-welcome > div:first-child,
+.auth-card,
+.modal-card { min-width: 0; }
+.check-name strong,
+.recommendation-copy h2,
+.recommendation-copy p,
+.recommendation-existing-item strong,
+.profile-section-copy { overflow-wrap: anywhere; }
+.recommendation-footer { align-items: flex-start; }
+.recommendation-footer a { white-space: normal; text-align: right; }
+.phone-tabs { height: 62px; }
+.phone-content { padding-bottom: 96px; }
+
+@media (max-width: 430px) {
+  .phone-heading { font-size: clamp(30px, 8.2vw, 34px); }
+  .recommendation-copy { padding-right: 10px; padding-left: 10px; }
+  .recommendation-footer { gap: 5px; }
+  .recommendation-footer a { max-width: 76px; }
+}
