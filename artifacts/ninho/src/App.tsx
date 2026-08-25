@@ -340,11 +340,6 @@ function Phone({ children, title, activeRoute, setLocation, activePanel, onPanel
   return (
     <section className={`phone phone-${panelIdx} ${activePanel === panelIdx ? "is-mobile-active" : ""}`} aria-label={title}>
       <div className="phone-screen">
-        <div className="status-row"><span>9:41</span><span className="status-icons"><span /><span /><span /></span></div>
-        <div className="phone-header">
-          <div className="phone-title">{title}</div>
-          <TinyButton onClick={() => setLocation("/profile")} label="Abrir perfil" testId={`button-phone-profile-${activePanel}`}><MoreHorizontal size={17} /></TinyButton>
-        </div>
         {children}
         <nav className="phone-tabs" aria-label="Navegação do Ninho">
           {tabs.map(({ path, label, icon: Icon, panel }) => {
@@ -363,6 +358,15 @@ function Phone({ children, title, activeRoute, setLocation, activePanel, onPanel
 
 // ─── Panels ───────────────────────────────────────────────────────────────────
 
+function getNextMilestone(miles: ServerMilestone[], week: number | null): ServerMilestone | undefined {
+  const pending = miles
+    .filter((milestone) => !milestone.completed)
+    .slice()
+    .sort((first, second) => first.week - second.week);
+
+  return pending.find((milestone) => week === null || milestone.week >= week);
+}
+
 function OverviewPanel({
   items, profile, milestones: miles, budget, setLocation,
 }: {
@@ -378,7 +382,7 @@ function OverviewPanel({
   const week = calcGestationalWeek(profile.dueDate);
   const spent = items.filter((i) => i.status !== "A comprar").reduce((s, i) => s + i.price, 0);
   const totalPlanned = budget.reduce((s, b) => s + parseFloat(b.planned), 0);
-  const nextMilestone = miles.find((m) => !m.completed && (week === null || m.week >= (week ?? 0)));
+  const nextMilestone = getNextMilestone(miles, week);
   const focusCategory = items.filter((i) => i.category === "Roupas" && i.essential);
   const focusDone = focusCategory.filter((i) => i.status !== "A comprar").length;
 
@@ -1332,7 +1336,7 @@ function DesktopSideSummary({ items, milestones: miles, profile, go }: { items: 
   const done = items.filter((i) => i.status !== "A comprar").length;
   const score = items.length ? Math.round((done / items.length) * 100) : 0;
   const week = calcGestationalWeek(profile.dueDate);
-  const nextMilestone = miles.find((m) => !m.completed && (week === null || m.week >= (week ?? 0)));
+  const nextMilestone = getNextMilestone(miles, week);
   const nextItem = items.find((i) => i.status === "A comprar" && i.essential);
 
   return (
