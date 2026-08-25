@@ -1159,11 +1159,6 @@ function Workspace({ userId: uid }: { userId: string }) {
           {panelThree}
         </Phone>
       </div>
-      <div className="mobile-panel-switcher">
-        {[0, 1, 2].map((i) => (
-          <button key={i} type="button" className={`panel-dot ${activePanel === i ? "dot-active" : ""}`} onClick={() => setActivePanel(i)} aria-label={`Painel ${i + 1}`} />
-        ))}
-      </div>
       {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} />}
     </div>
   );

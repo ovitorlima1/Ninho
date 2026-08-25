@@ -553,14 +553,16 @@
   .toolbar-caption, .toolbar-divider, .toolbar-link { display: none; }
   .toolbar-actions { gap: 4px; }
   .account-signout { padding: 7px 4px; font-size: 8px; }
-  .phone-stage { width: 100%; min-height: 0; padding: 0 12px 24px; }
-  .phone { display: none; width: min(100%, 620px); min-width: 0; height: max(0px, calc(100dvh - 142px)); min-height: 0; padding: 7px; border-radius: 31px; }
+  .phone-stage { display: block; width: 100%; min-height: 0; padding: 0; }
+  .phone { display: none; width: 100%; min-width: 0; height: max(0px, calc(100dvh - 120px)); min-height: 0; padding: 0; border-radius: 0; background: transparent; box-shadow: none; }
   .phone.is-mobile-active { display: flex; }
   .phone:nth-child(2), .phone:nth-child(3) { transform: none; }
+  .phone-screen { width: 100%; min-width: 0; min-height: 100%; border-radius: 0; background: linear-gradient(180deg, #f4f4f6 0%, #eeeeF1 70%, #dedee2 100%); box-shadow: none; }
+  .phone-header { padding: 13px clamp(18px, 4vw, 28px) 11px; border-bottom: 1px solid rgba(218, 215, 224, .7); }
+  .phone-content { padding: 9px clamp(18px, 4vw, 28px) 92px; }
+  .phone-tabs { right: clamp(14px, 3vw, 28px); bottom: max(12px, env(safe-area-inset-bottom)); left: clamp(14px, 3vw, 28px); }
   .phone-heading { font-size: clamp(28px, 7.4vw, 34px); }
-  .mobile-panel-switcher { display: flex; width: calc(100% - 32px); gap: 4px; margin: 0 auto 13px; padding: 3px; border: 1px solid rgba(213, 209, 221, .75); border-radius: 13px; background: rgba(255,255,255,.56); }
-  .mobile-panel-switcher button { flex: 1; padding: 8px 4px; border: 0; border-radius: 10px; color: #8b8595; background: transparent; font-size: 9px; font-weight: 600; }
-  .mobile-panel-switcher button.selected { color: #8f4db9; background: #fff; box-shadow: 0 3px 8px rgba(95, 78, 116, .08); }
+  .mobile-panel-switcher { display: none; }
   .stage-note { width: calc(100% - 32px); margin: 0 auto; }
 }
 
@@ -570,7 +572,7 @@
   .auth-form-panel { min-height: calc(100dvh - 142px); padding: 22px 14px 30px; }
   .auth-card { padding: 24px 18px; border-radius: 21px; }
   .auth-card h2 { font-size: 25px; }
-  .phone { height: max(0px, calc(100dvh - 132px)); border-radius: 27px; }
+  .phone { height: max(0px, calc(100dvh - 120px)); border-radius: 0; }
   .stage-note { display: none; }
 }
 
@@ -579,8 +581,7 @@
   .auth-form-panel { min-height: calc(100dvh - 132px); padding-right: 10px; padding-left: 10px; }
   .auth-card { padding: 22px 16px; }
   .auth-card h2 { font-size: 23px; }
-  .phone-stage { padding-right: 8px; padding-left: 8px; }
-  .phone { padding: 5px; border-radius: 23px; }
+  .phone { padding: 0; border-radius: 0; }
 }
 
 /* ─── Loading & Error states ─────────────────────────────────────────────── */
@@ -736,7 +737,7 @@
 
 .panel-dot { width: 8px !important; height: 8px; flex: none !important; padding: 0 !important; border-radius: 50% !important; background: #d4c8e0; border: 0; cursor: pointer; transition: background .2s ease, transform .2s ease; }
 .panel-dot.dot-active { background: #a453d1; transform: scale(1.25); }
-.mobile-panel-switcher { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; }
+.mobile-panel-switcher { display: none; align-items: center; justify-content: center; gap: 8px; padding: 10px; }
 
 /* ─── Feedback link ──────────────────────────────────────────────────────── */
 

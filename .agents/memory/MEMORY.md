@@ -1,2 +1,3 @@
 - [Database startup migrations](database-startup-migrations.md) — apply schema changes outside API startup so a migration-history mismatch cannot take down authentication.
 - [Password recovery security](password-recovery-security.md) — reset links use a canonical app origin and invalidate every prior session after use.
+- [Responsive workspace shell](responsive-workspace-shell.md) — tablet and mobile use a full-width web shell, not a decorative phone frame.
