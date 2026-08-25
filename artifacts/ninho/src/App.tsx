@@ -1186,6 +1186,12 @@ function getAuthErrorMessage(error: unknown): string {
 function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="auth-page">
+      <div className="auth-mobile-visual">
+        <img src={loginHeroImage} alt="" aria-hidden />
+        <div className="auth-mobile-overlay" aria-hidden />
+        <Brand />
+        <p className="auth-mobile-tagline">Prepare a chegada<br /><strong>com leveza.</strong></p>
+      </div>
       <div className="auth-panel">
         <Brand />
         <img src={loginHeroImage} alt="" className="auth-hero-image" aria-hidden />
