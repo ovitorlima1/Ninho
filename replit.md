@@ -11,13 +11,13 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - `pnpm run typecheck` — typecheck completo em todos os pacotes
 - `pnpm run build` — typecheck + build de todos os pacotes
 - `pnpm --filter @workspace/api-spec run codegen` — regenerar hooks e schemas Zod do spec OpenAPI
-- Required env: `DATABASE_URL`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`
+- Required env: `DATABASE_URL`, `SESSION_SECRET` (mínimo de 32 caracteres)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - Frontend: React 19, Vite, Tailwind CSS v4, Wouter (roteamento), @tanstack/react-query
-- Auth: Clerk v6 (@clerk/react no frontend, @clerk/express no backend)
+- Auth: contas próprias com senha protegida por scrypt e sessão JWT em cookie HttpOnly
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM (`lib/db`)
 - Validação: Zod (`zod/v4`), `drizzle-zod`
@@ -32,21 +32,22 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - `artifacts/api-server/src/routes/me.ts` — todas as rotas autenticadas `/api/me/*`
 - `artifacts/api-server/src/routes/health.ts` — health check `/api/healthz`
 - `artifacts/api-server/src/lib/seed.ts` — seed de dados padrão para novos usuários
-- `artifacts/api-server/src/middlewares/requireAuth.ts` — middleware Clerk para rotas protegidas
-- `lib/db/src/schema/` — tabelas Drizzle: profiles, checklistItems, milestones, budgetCategories
+- `artifacts/api-server/src/routes/auth.ts` — cadastro, login, sessão atual e logout
+- `artifacts/api-server/src/middlewares/requireAuth.ts` — valida a sessão JWT para rotas protegidas
+- `lib/db/src/schema/` — tabelas Drizzle: authUsers, profiles, checklistItems, milestones, budgetCategories
 - `lib/db/drizzle.config.ts` — configuração do Drizzle Kit
 - `lib/api-spec/openapi.yaml` — spec OpenAPI (source of truth para codegen)
 - `lib/api-client-react/src/` — hooks React Query gerados pelo Orval
 
 ## Architecture decisions
 
-- **userId do Clerk como ownership key**: todas as tabelas de dados do usuário usam `userId` (string do Clerk) para isolamento. Nenhum dado é compartilhado entre contas.
+- **ID próprio como chave de ownership**: contas novas recebem UUIDs próprios, usados em todas as tabelas do workspace. Dados legados de outras identidades não são reutilizados.
 - **Seed automático na primeira entrada**: `seedNewUser()` insere itens de checklist padrão, marcos e orçamento para novos usuários (idempotente — verifica se já existem itens antes de inserir).
 - **Workspace endpoint único**: `GET /api/me/workspace` retorna todo o estado do usuário (profile + items + milestones + budget) em uma só chamada para reduzir round-trips.
 - **Otimismo no cliente**: mutações de checklist e marcos usam `onMutate` do React Query para atualização otimista imediata, com rollback automático em caso de erro.
 - **Onboarding na primeira entrada**: quando `profile.onboardingComplete === false`, o app exibe um modal de onboarding para capturar nome e data prevista antes de entrar no dashboard.
 - **Shower/chá de bebê**: funcionalidade removida do MVP — não há backend. O link foi removido de todos os painéis.
-- **Auth token para API**: `setAuthTokenGetter` do `@workspace/api-client-react` é configurado com `getToken()` do Clerk no componente `Workspace`, garantindo que todas as chamadas à API incluam o bearer token.
+- **Sessão em cookie HttpOnly**: o navegador envia a sessão JWT automaticamente nas chamadas para `/api`; tokens nunca ficam acessíveis ao JavaScript do cliente.
 
 ## Product
 
@@ -62,11 +63,8 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - O pacote `lib/api-client-react` usa `composite: true` no TypeScript — após editar `src/index.ts`, rodar `tsc --build lib/api-client-react/tsconfig.json` para regenerar os arquivos `.d.ts` antes do typecheck do frontend.
 - A API usa `numeric` do Postgres para o campo `price` — chega ao frontend como string e precisa de `parseFloat()` para converter.
 - O `drizzle-kit push` pode ser interativo — usar `push-force` em scripts de build para evitar prompts.
-- O Clerk v6 usa `"signed-in"/"signed-out"` no componente `<Show when="...">` (não `"authenticated"/"unauthenticated"` como em versões anteriores).
-- Para autenticar chamadas à API: `setAuthTokenGetter` deve ser chamado com `getToken()` do `useAuth()` do Clerk dentro do contexto autenticado. Cookies de sessão do Clerk não são suficientes em todos os ambientes.
 
 ## Pointers
 
 - Ver skill `pnpm-workspace` para estrutura do workspace, setup TypeScript e detalhes de pacotes
-- Ver skill `clerk-auth` para configuração do Clerk no Replit
 - Produção: `https://ninho-mother.replit.app`

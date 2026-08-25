@@ -1,7 +1,6 @@
-@layer theme, base, clerk, components, utilities;
+@layer theme, base, components, utilities;
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap");
 @import "tailwindcss";
-@import "@clerk/themes/shadcn.css";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -223,7 +222,20 @@
 .auth-copy .auth-tagline { max-width: 460px; font-size: clamp(40px, 3.4vw, 48px); }
 .auth-copy h1 strong, .auth-mobile-tagline strong { color: #e0a4fb; }
 .auth-copy p { margin: 0; color: #e3d6e9; font-size: 13px; line-height: 1.55; }
-.auth-clerk { display: grid; min-height: 100%; place-items: center; padding: 36px 24px; background: radial-gradient(circle at 82% 20%, rgba(229,212,245,.75), transparent 25rem), #f8f6fa; }
+.auth-form-panel { display: grid; min-height: 100%; place-items: center; padding: 36px 24px; background: radial-gradient(circle at 82% 20%, rgba(229,212,245,.75), transparent 25rem), #f8f6fa; }
+.auth-card { width: min(100%, 440px); padding: 34px; border: 1px solid #e4d9ec; border-radius: 24px; background: #fff; box-shadow: 0 24px 60px rgba(81, 57, 99, .16); }
+.auth-card-header { margin-bottom: 24px; }
+.auth-card-header .card-kicker { color: #9b50c7; }
+.auth-card h2 { margin: 8px 0 6px; color: #24202a; font-size: 27px; letter-spacing: -.06em; line-height: 1; }
+.auth-card-header p { margin: 0; color: #766f7d; font-size: 12px; line-height: 1.45; }
+.auth-fields { display: grid; gap: 14px; }
+.auth-field { display: grid; gap: 6px; color: #51495a; font-size: 10px; font-weight: 700; }
+.auth-field input { width: 100%; padding: 12px 13px; border: 1px solid #e3dce8; border-radius: 12px; color: #24202a; background: #f8f5fa; font-size: 14px; font-weight: 500; }
+.auth-field input:focus { outline: 2px solid #a453d1; outline-offset: -1px; }
+.auth-error { margin: 0; padding: 10px 12px; border-radius: 12px; color: #a2475a; background: #f9edf2; font-size: 11px; line-height: 1.4; }
+.auth-submit { margin-top: 20px; }
+.auth-switch { margin: 18px 0 0; color: #766f7d; font-size: 11px; text-align: center; }
+.auth-switch button { padding: 0; border: 0; color: #9b50c7; background: transparent; font-weight: 700; }
 .auth-mobile-visual { display: none; }
 
 .stage-toolbar, .phone-stage, .stage-note, .mobile-panel-switcher { position: relative; z-index: 1; }
@@ -512,7 +524,8 @@
   .auth-mobile-visual .brand { position: relative; z-index: 1; color: #fff; }
   .auth-mobile-visual .brand-word { color: #fff; }
   .auth-mobile-tagline { position: absolute; z-index: 1; bottom: 18px; left: 24px; max-width: 250px; margin: 0; color: #fff; font-size: 21px; font-weight: 600; letter-spacing: -.07em; line-height: .95; text-shadow: 0 2px 12px rgba(39, 21, 47, .36); }
-  .auth-clerk { min-height: calc(100dvh - 158px); padding: 24px 16px 34px; background: radial-gradient(circle at 85% 0%, rgba(229,212,245,.63), transparent 22rem), #f8f6fa; }
+  .auth-form-panel { min-height: calc(100dvh - 158px); padding: 24px 16px 34px; background: radial-gradient(circle at 85% 0%, rgba(229,212,245,.63), transparent 22rem), #f8f6fa; }
+  .auth-card { padding: 26px 22px; }
   .stage-toolbar { width: calc(100% - 32px); padding: 18px 0 13px; }
   .toolbar-caption, .toolbar-divider, .toolbar-link { display: none; }
   .toolbar-actions { gap: 4px; }

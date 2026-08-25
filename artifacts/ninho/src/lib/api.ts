@@ -6,6 +6,7 @@ import { customFetch } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = `${BASE}/api/me`;
+const AUTH_API = `${BASE}/api/auth`;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,6 +68,37 @@ export interface Workspace {
   items: ServerChecklistItem[];
   milestones: ServerMilestone[];
   budget: ServerBudgetCategory[];
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+}
+
+export interface AuthSession {
+  user: AuthUser | null;
+}
+
+export async function getSession(): Promise<AuthSession> {
+  return customFetch<AuthSession>(`${AUTH_API}/session`);
+}
+
+export async function login(data: { email: string; password: string }): Promise<AuthSession> {
+  return customFetch<AuthSession>(`${AUTH_API}/login`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function register(data: { email: string; password: string }): Promise<AuthSession> {
+  return customFetch<AuthSession>(`${AUTH_API}/register`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function logout(): Promise<void> {
+  return customFetch<void>(`${AUTH_API}/logout`, { method: "POST" });
 }
 
 // ─── Workspace ────────────────────────────────────────────────────────────────

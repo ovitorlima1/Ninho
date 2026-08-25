@@ -1,9 +1,5 @@
-import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
 import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from "wouter";
-import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useUser } from "@clerk/react";
-import { publishableKeyFromHost } from "@clerk/react/internal";
-import { shadcn } from "@clerk/themes";
-import { ptBR } from "@clerk/localizations";
 import {
   Activity,
   ArrowUpRight,
@@ -37,7 +33,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -58,6 +53,11 @@ import {
   type ItemStatus,
   type CategoryKey,
   type UpdateProfileInput,
+  getSession,
+  login,
+  register,
+  logout,
+  type AuthSession,
 } from "@/lib/api";
 import { calcGestationalWeek } from "@/lib/gestation";
 
@@ -91,20 +91,7 @@ function adaptItem(s: ServerChecklistItem): ChecklistItem {
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const loginHeroImage = `${basePath}/login-pregnancy.png`;
-
-// Clerk emits full browser paths, while Wouter routes are relative to the
-// artifact base path. Keep auth navigation client-side and avoid a full reload.
-function stripBase(path: string): string {
-  return basePath && path.startsWith(basePath)
-    ? path.slice(basePath.length) || "/"
-    : path;
-}
 
 const CATEGORIES: CategoryKey[] = ["Roupas", "Higiene", "Alimentação", "Acessórios"];
 
@@ -121,22 +108,6 @@ function todayLabel(): string {
   return new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
 }
 
-// ─── Clerk appearance & localization ─────────────────────────────────────────
-
-const clerkLocalization = {
-  ...ptBR,
-  signIn: { ...ptBR.signIn, start: { ...(ptBR.signIn?.start ?? {}), title: "Que bom ter você de volta", subtitle: "Entre para continuar preparando com calma." } },
-  signUp: { ...ptBR.signUp, start: { ...(ptBR.signUp?.start ?? {}), title: "Crie seu espaço", subtitle: "Comece a organizar a chegada com leveza." } },
-};
-
-const clerkAppearance = {
-  theme: shadcn,
-  cssLayerName: "clerk",
-  options: { logoPlacement: "inside" as const, logoLinkUrl: basePath || "/", logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
-  variables: { colorPrimary: "#a453d1", colorForeground: "#24202a", colorMutedForeground: "#766f7d", colorDanger: "#c44c5c", colorBackground: "#ffffff", colorInput: "#f8f5fa", colorInputForeground: "#24202a", colorNeutral: "#e3dce8", fontFamily: "DM Sans, ui-sans-serif, sans-serif", borderRadius: "14px" },
-  elements: { rootBox: "w-full max-w-[440px] flex justify-center", cardBox: "bg-white rounded-[24px] w-full overflow-hidden border border-[#e4d9ec] shadow-[0_24px_60px_rgba(81,57,99,0.16)]", card: "!shadow-none !border-0 !bg-transparent !rounded-none", footer: "!shadow-none !border-0 !bg-transparent !rounded-none", headerTitle: "text-[#24202a]", headerSubtitle: "text-[#766f7d]", socialButtonsBlockButtonText: "text-[#403847]", formFieldLabel: "text-[#51495a]", footerActionLink: "text-[#9b50c7]", footerActionText: "text-[#766f7d]", dividerText: "text-[#8c8493]", identityPreviewEditButton: "text-[#9b50c7]", formFieldSuccessText: "text-[#5e8e68]", alertText: "text-[#5c4351]", logoBox: "py-3", logoImage: "h-11 w-11 rounded-xl", socialButtonsBlockButton: "border-[#e3dce8] bg-[#fbf9fc] hover:bg-[#f5eef9]", formButtonPrimary: "bg-[#a453d1] hover:bg-[#9144bf] text-white", formFieldInput: "bg-[#f8f5fa] border-[#e3dce8] text-[#24202a]", footerAction: "bg-[#fbf9fc]", dividerLine: "bg-[#e5dfea]", alert: "bg-[#f9edf2]", otpCodeFieldInput: "bg-[#f8f5fa] border-[#e3dce8]", formFieldRow: "gap-2", main: "gap-4" },
-};
-
 // ─── Small UI primitives ──────────────────────────────────────────────────────
 
 function Brand() {
@@ -149,16 +120,20 @@ function Brand() {
 }
 
 function AccountControl() {
-  const { signOut } = useClerk();
-  const { user } = useUser();
   const qc = useQueryClient();
-  const name = user?.firstName || user?.username || "Você";
+  const [, setLocation] = useLocation();
+  const { data } = useQuery({ queryKey: ["auth-session"], queryFn: getSession, staleTime: Infinity });
+  const name = data?.user?.email.split("@")[0] || "Você";
   const initials = name.slice(0, 2).toUpperCase();
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     // Clear all cached workspace data before redirecting so the next user
     // that signs in on this device cannot see stale data from this session.
-    qc.clear();
-    signOut({ redirectUrl: basePath || "/" });
+    try {
+      await logout();
+    } finally {
+      qc.clear();
+      setLocation("/sign-in");
+    }
   };
   return (
     <div className="account-control">
@@ -631,8 +606,8 @@ function ProfilePanel({
   const [hospital, setHospital] = useState(profile.hospital || "");
   const [supportPerson, setSupportPerson] = useState(profile.supportPerson || "");
   const [personalNotes, setPersonalNotes] = useState(profile.personalNotes || "");
-  const { signOut } = useClerk();
   const qc = useQueryClient();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     setName(profile.displayName || "");
@@ -757,7 +732,14 @@ function ProfilePanel({
         type="button"
         className="soft-action"
         style={{ marginTop: 16, justifyContent: "center", gap: 8 }}
-        onClick={() => { qc.clear(); signOut({ redirectUrl: basePath || "/" }); }}
+        onClick={async () => {
+          try {
+            await logout();
+          } finally {
+            qc.clear();
+            setLocation("/sign-in");
+          }
+        }}
         data-testid="button-profile-sign-out"
       >
         <LogOut size={14} /> sair da conta
@@ -921,12 +903,7 @@ function DesktopWorkspace({ location, go, items, milestones: miles, profile, bud
 
 // ─── Workspace (authenticated shell) ─────────────────────────────────────────
 
-function Workspace() {
-  const { getToken, userId } = useAuth();
-  // userId is always a non-null string here because Workspace is only rendered
-  // when isSignedIn=true. We cast once so the rest of the component can use
-  // it safely without optional-chaining noise.
-  const uid = userId as string;
+function Workspace({ userId: uid }: { userId: string }) {
   const qc = useQueryClient();
 
   // When the signed-in user changes (e.g. same browser, different account),
@@ -936,12 +913,6 @@ function Workspace() {
       qc.removeQueries({ queryKey: ["workspace"] });
     };
   }, [uid, qc]);
-
-  // Initialize auth token getter for customFetch
-  useEffect(() => {
-    setAuthTokenGetter(() => getToken());
-    return () => setAuthTokenGetter(null);
-  }, [getToken]);
 
   // Scope every cache entry by userId so different accounts in the same
   // browser session can never share cached workspace data.
@@ -1196,31 +1167,54 @@ function Workspace() {
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
 
-function SignInPage() {
-  return (
-    <div className="auth-page">
-      <div className="auth-panel">
-        <Brand />
-        <img src={loginHeroImage} alt="" className="auth-hero-image" aria-hidden />
-        <div className="auth-copy">
-          <span className="desktop-eyebrow">ORGANIZAÇÃO DE ENXOVAL</span>
-          <h1>Prepare a chegada<br /><strong>com leveza.</strong></h1>
-          <p>Checklists, orçamento e linha do tempo — tudo no seu ritmo.</p>
-        </div>
-      </div>
-      <div className="auth-clerk">
-        <SignIn
-          routing="path"
-          path={`${basePath}/sign-in`}
-          signUpUrl={`${basePath}/sign-up`}
-          appearance={clerkAppearance}
-        />
-      </div>
-    </div>
-  );
+type AuthMode = "signin" | "signup";
+
+function getAuthErrorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "data" in error) {
+    const data = (error as { data?: unknown }).data;
+    if (data && typeof data === "object" && "error" in data && typeof data.error === "string") {
+      return data.error;
+    }
+  }
+  return "Não foi possível continuar agora. Tente novamente.";
 }
 
-function SignUpPage() {
+function AuthPage({ mode }: { mode: AuthMode }) {
+  const isSignup = mode === "signup";
+  const [, setLocation] = useLocation();
+  const qc = useQueryClient();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: () => isSignup ? register({ email, password }) : login({ email, password }),
+    onSuccess: (session) => {
+      qc.clear();
+      qc.setQueryData<AuthSession>(["auth-session"], session);
+      setLocation("/dashboard");
+    },
+  });
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      setValidationError("Digite seu e-mail para continuar.");
+      return;
+    }
+    if (password.length < 8) {
+      setValidationError("A senha precisa ter pelo menos 8 caracteres.");
+      return;
+    }
+    if (isSignup && password !== confirmation) {
+      setValidationError("A confirmação de senha não corresponde.");
+      return;
+    }
+    setValidationError(null);
+    mutation.mutate();
+  };
+
   return (
     <div className="auth-page">
       <div className="auth-panel">
@@ -1232,13 +1226,63 @@ function SignUpPage() {
           <p>Checklists, orçamento e linha do tempo — tudo no seu ritmo.</p>
         </div>
       </div>
-      <div className="auth-clerk">
-        <SignUp
-          routing="path"
-          path={`${basePath}/sign-up`}
-          signInUrl={`${basePath}/sign-in`}
-          appearance={clerkAppearance}
-        />
+      <div className="auth-form-panel">
+        <form className="auth-card" onSubmit={submit} noValidate>
+          <div className="auth-card-header">
+            <span className="card-kicker">{isSignup ? "SEU ESPAÇO" : "BEM-VINDA DE VOLTA"}</span>
+            <h2>{isSignup ? "Crie seu ninho" : "Que bom ter você de volta"}</h2>
+            <p>{isSignup ? "Comece a organizar a chegada com leveza." : "Entre para continuar preparando com calma."}</p>
+          </div>
+          <div className="auth-fields">
+            <label className="auth-field">
+              E-MAIL
+              <input
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="voce@email.com"
+                data-testid="input-auth-email"
+              />
+            </label>
+            <label className="auth-field">
+              SENHA
+              <input
+                type="password"
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Pelo menos 8 caracteres"
+                data-testid="input-auth-password"
+              />
+            </label>
+            {isSignup && (
+              <label className="auth-field">
+                CONFIRME A SENHA
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmation}
+                  onChange={(event) => setConfirmation(event.target.value)}
+                  placeholder="Repita sua senha"
+                  data-testid="input-auth-confirmation"
+                />
+              </label>
+            )}
+          </div>
+          {(validationError || mutation.isError) && (
+            <p className="auth-error" role="alert">{validationError || getAuthErrorMessage(mutation.error)}</p>
+          )}
+          <button type="submit" className="primary-button auth-submit" disabled={mutation.isPending} data-testid="button-auth-submit">
+            {mutation.isPending ? "Aguarde…" : isSignup ? "Criar minha conta" : "Entrar no meu ninho"}
+          </button>
+          <p className="auth-switch">
+            {isSignup ? "Já tem uma conta?" : "Ainda não tem uma conta?"}{" "}
+            <button type="button" onClick={() => setLocation(isSignup ? "/sign-in" : "/sign-up")}>
+              {isSignup ? "Entrar" : "Criar conta"}
+            </button>
+          </p>
+        </form>
       </div>
     </div>
   );
@@ -1246,16 +1290,22 @@ function SignUpPage() {
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 
-function AuthenticatedApp() {
+function AuthenticatedApp({ userId }: { userId: string }) {
   const [location] = useLocation();
   if (location === "/") return <Redirect to="/dashboard" />;
-  return <Workspace />;
+  return <Workspace userId={userId} />;
 }
 
 function AppRouter() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const [location] = useLocation();
+  const sessionQuery = useQuery({
+    queryKey: ["auth-session"],
+    queryFn: getSession,
+    staleTime: Infinity,
+    retry: false,
+  });
 
-  if (!isLoaded) {
+  if (sessionQuery.isPending) {
     return (
       <div className="ninho-app" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh" }}>
         <LoadingSpinner />
@@ -1263,15 +1313,25 @@ function AppRouter() {
     );
   }
 
+  if (sessionQuery.isError) {
+    return (
+      <div className="ninho-app" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh" }}>
+        <ErrorState message="Não foi possível verificar sua sessão." onRetry={() => sessionQuery.refetch()} />
+      </div>
+    );
+  }
+
+  const user = sessionQuery.data?.user;
+  const isAuthRoute = location === "/sign-in" || location === "/sign-up";
+  if (user && isAuthRoute) return <Redirect to="/dashboard" />;
+
   return (
     <Switch>
-      <Route path="/sign-in" component={SignInPage} />
-      <Route path="/sign-in/sso-callback" component={SignInPage} />
-      <Route path="/sign-up" component={SignUpPage} />
-      <Route path="/sign-up/sso-callback" component={SignUpPage} />
-      <Route path="/"><Redirect to={isSignedIn ? "/dashboard" : "/sign-in"} /></Route>
-      {isSignedIn ? (
-        <Route path="/:rest*" component={AuthenticatedApp} />
+      <Route path="/sign-in"><AuthPage mode="signin" /></Route>
+      <Route path="/sign-up"><AuthPage mode="signup" /></Route>
+      <Route path="/"><Redirect to={user ? "/dashboard" : "/sign-in"} /></Route>
+      {user ? (
+        <Route path="/:rest*"><AuthenticatedApp userId={user.id} /></Route>
       ) : (
         <Route path="/:rest*"><Redirect to="/sign-in" /></Route>
       )}
@@ -1279,38 +1339,23 @@ function AppRouter() {
   );
 }
 
-function ClerkApp() {
-  const [, setLocation] = useLocation();
-
+function NinhoApp() {
   return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      proxyUrl={clerkProxyUrl}
-      localization={clerkLocalization}
-      signInUrl={`${basePath}/sign-in`}
-      signUpUrl={`${basePath}/sign-up`}
-      signInFallbackRedirectUrl={`${basePath}/dashboard`}
-      signUpFallbackRedirectUrl={`${basePath}/dashboard`}
-      routerPush={(to) => setLocation(stripBase(to))}
-      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
-    >
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <ErrorBoundary>
-            <AppRouter />
-          </ErrorBoundary>
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <ErrorBoundary>
+          <AppRouter />
+        </ErrorBoundary>
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 
 export default function App() {
-  if (!clerkPubKey) throw new Error("VITE_CLERK_PUBLISHABLE_KEY is not set");
   return (
     <WouterRouter base={basePath}>
-      <ClerkApp />
+      <NinhoApp />
     </WouterRouter>
   );
 }

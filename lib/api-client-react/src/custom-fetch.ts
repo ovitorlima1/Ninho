@@ -360,7 +360,9 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  // Browser sessions are carried in an HttpOnly cookie. Explicitly include
+  // credentials so callers work both on the shared local proxy and production.
+  const response = await fetch(input, { ...init, method, headers, credentials: init.credentials ?? "include" });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
