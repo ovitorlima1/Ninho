@@ -65,7 +65,13 @@ import {
   type AuthSession,
 } from "@/lib/api";
 import { calcGestationalWeek } from "@/lib/gestation";
-import { RECOMMENDATIONS, type Recommendation } from "@/lib/recommendations";
+import {
+  getNextRecommendationRefreshDelay,
+  getRecommendationDisplayState,
+  getVisibleRecommendations,
+  isRecommendationVisible,
+  type Recommendation,
+} from "@/lib/recommendations";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,6 +125,20 @@ function formatDate(iso: string): string {
 
 function todayLabel(): string {
   return new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+}
+
+function useRecommendationClock(): Date {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setNow(new Date()),
+      getNextRecommendationRefreshDelay(now),
+    );
+    return () => window.clearTimeout(timer);
+  }, [now]);
+
+  return now;
 }
 
 // ─── Small UI primitives ──────────────────────────────────────────────────────
@@ -456,14 +476,18 @@ function ChecklistPanel({
               </button>
                 {item.recommendationId && (
                   <div className="check-recommendation-actions">
-                    <button
-                      type="button"
-                      className="check-recommendation-link"
-                      onClick={() => onOpenRecommendation(item.recommendationId!)}
-                      data-testid={`button-open-item-recommendation-${item.id}`}
-                    >
-                      <Sparkles size={10} /> ver recomendação
-                    </button>
+                    {isRecommendationVisible(item.recommendationId) ? (
+                      <button
+                        type="button"
+                        className="check-recommendation-link"
+                        onClick={() => onOpenRecommendation(item.recommendationId!)}
+                        data-testid={`button-open-item-recommendation-${item.id}`}
+                      >
+                        <Sparkles size={10} /> ver recomendação
+                      </button>
+                    ) : (
+                      <span className="check-recommendation-unavailable">recomendação indisponível</span>
+                    )}
                     <button
                       type="button"
                       className="check-recommendation-unlink"
@@ -803,7 +827,9 @@ function RecommendationCard({
   matchingItems,
   onAdd,
   onOpenLinkedItem,
+  onExpired,
   isPending,
+  now,
 }: {
   recommendation: Recommendation;
   isRelevant: boolean;
@@ -811,8 +837,13 @@ function RecommendationCard({
   matchingItems: ChecklistItem[];
   onAdd: () => void;
   onOpenLinkedItem: (item: ChecklistItem) => void;
+  onExpired: () => void;
   isPending: boolean;
+  now: Date;
 }) {
+  const displayState = getRecommendationDisplayState(recommendation, now);
+  if (!displayState.storeUrl) return null;
+
   return (
     <article className={`recommendation-card ${linkedItem ? "recommendation-card-linked" : ""}`} id={`recommendation-${recommendation.id}`}>
       <div className="recommendation-image-wrap">
@@ -831,8 +862,11 @@ function RecommendationCard({
         <p>{recommendation.summary}</p>
         <div className="recommendation-footer">
           <div>
-            <strong>{money(recommendation.price)}</strong>
-            <small>em {recommendation.store}</small>
+            <strong className={recommendation.price === null ? "recommendation-price-unavailable" : ""}>
+              {recommendation.price === null ? "Preço a confirmar" : money(recommendation.price)}
+            </strong>
+            <small>{recommendation.price === null ? `consulte na ${recommendation.store}` : `em ${recommendation.store}`}</small>
+            <time className="recommendation-review" dateTime={recommendation.reviewedAt}>revisado em {formatDate(recommendation.reviewedAt)}</time>
           </div>
           <div className="recommendation-actions">
             {linkedItem ? (
@@ -855,7 +889,18 @@ function RecommendationCard({
                 <Plus size={12} /> {matchingItems.length ? "adicionar ou vincular" : "adicionar à lista"}
               </button>
             )}
-            <a href={recommendation.url} target="_blank" rel="noopener noreferrer" data-testid={`link-recommendation-${recommendation.id}`}>
+            <a
+              href={displayState.storeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(event) => {
+                if (!getRecommendationDisplayState(recommendation).storeUrl) {
+                  event.preventDefault();
+                  onExpired();
+                }
+              }}
+              data-testid={`link-recommendation-${recommendation.id}`}
+            >
               ver na loja <ArrowUpRight size={13} />
             </a>
           </div>
@@ -972,12 +1017,15 @@ function RecommendationsPanel({
 }) {
   const [category, setCategory] = useState<"Para você" | CategoryKey>("Para você");
   const [linkingRecommendation, setLinkingRecommendation] = useState<Recommendation | null>(null);
+  const [availabilityNotice, setAvailabilityNotice] = useState<string | null>(null);
+  const now = useRecommendationClock();
+  const recommendations = getVisibleRecommendations(now);
   const pendingCategories = useMemo(
     () => new Set(items.filter((item) => item.status === "A comprar").map((item) => item.category)),
     [items],
   );
   const hasPersonalizedSuggestions = pendingCategories.size > 0;
-  const visible = RECOMMENDATIONS.filter((recommendation) => {
+  const visible = recommendations.filter((recommendation) => {
     if (category === "Para você") {
       return hasPersonalizedSuggestions
         ? pendingCategories.has(recommendation.category)
@@ -988,11 +1036,11 @@ function RecommendationsPanel({
 
   useEffect(() => {
     if (!focusId) return;
-    const recommendation = RECOMMENDATIONS.find((item) => item.id === focusId);
+    const recommendation = getVisibleRecommendations(now).find((item) => item.id === focusId);
     if (!recommendation) return;
     setCategory(recommendation.category);
     requestAnimationFrame(() => document.getElementById(`recommendation-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
-  }, [focusId]);
+  }, [focusId, now]);
 
   return (
     <div className="phone-content flow recommendations-content">
@@ -1012,6 +1060,7 @@ function RecommendationsPanel({
         ))}
       </div>
       {feedback && <div className={`recommendation-feedback recommendation-feedback-${feedback.tone}`} role="status">{feedback.tone === "success" ? <CheckCircle2 size={14} /> : <X size={14} />}{feedback.message}</div>}
+      {availabilityNotice && <div className="recommendation-feedback recommendation-feedback-error" role="status">{availabilityNotice}</div>}
       <div className="recommendation-grid">
         {visible.map((recommendation) => (
           (() => {
@@ -1026,7 +1075,9 @@ function RecommendationsPanel({
                 matchingItems={matchingItems}
                 onAdd={() => matchingItems.length ? setLinkingRecommendation(recommendation) : onAddRecommendation(recommendation)}
                 onOpenLinkedItem={onOpenLinkedItem}
+                onExpired={() => setAvailabilityNotice("Esta recomendação acabou de expirar. Atualize a página para ver sugestões revisadas.")}
                 isPending={isActionPending}
+                now={now}
               />
             );
           })()
@@ -1384,7 +1435,7 @@ function Workspace({ userId: uid }: { userId: string }) {
         name: recommendation.name,
         category: recommendation.category,
         group: "Recomendação Ninho",
-        price: recommendation.price,
+        price: recommendation.price ?? 0,
         recommendationId: recommendation.id,
       },
       {

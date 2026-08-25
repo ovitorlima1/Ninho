@@ -725,6 +725,7 @@
 .check-recommendation-link, .check-recommendation-unlink { display: inline-flex; min-height: 24px; align-items: center; gap: 4px; padding: 4px 0; border: 0; background: transparent; font-size: 8px; font-weight: 700; }
 .check-recommendation-link { color: #9854c3; }
 .check-recommendation-unlink { color: #a39ca8; font-weight: 600; }
+.check-recommendation-unavailable { color: #9a929e; font-size: 10px; font-weight: 600; }
 .check-recommendation-link:hover, .check-recommendation-unlink:hover { text-decoration: underline; }
 
 .empty-category {
@@ -924,6 +925,8 @@ body { font-size: var(--type-body); line-height: 1.45; }
 .recommendation-footer small { font-size: var(--type-label); }
 .recommendation-footer a,
 .recommendation-add-button { font-size: var(--type-label); }
+.recommendation-price-unavailable { color: #7c5a8c !important; }
+.recommendation-review { color: #9b93a0; font-size: var(--type-label); line-height: 1.35; }
 .recommendation-feedback { font-size: var(--type-meta); }
 .recommendation-existing-item strong { font-size: var(--type-control); }
 .recommendation-existing-item small,
