@@ -12,6 +12,7 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - `pnpm run build` — typecheck + build de todos os pacotes
 - `pnpm --filter @workspace/api-spec run codegen` — regenerar hooks e schemas Zod do spec OpenAPI
 - Required env: `DATABASE_URL`, `SESSION_SECRET` (mínimo de 32 caracteres)
+- Para recuperação de senha em produção: `PUBLIC_APP_URL` (URL HTTPS canônica do app) e `RESEND_FROM_EMAIL` (remetente verificado no Resend)
 
 ## Stack
 

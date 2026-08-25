@@ -1,4 +1,5 @@
 import {
+  createHash,
   createHmac,
   randomBytes,
   scrypt as nodeScrypt,
@@ -11,8 +12,14 @@ const SCRYPT_KEY_LENGTH = 64;
 
 type JwtPayload = {
   sub: string;
+  sv: number;
   iat: number;
   exp: number;
+};
+
+export type SessionClaims = {
+  userId: string;
+  sessionVersion: number;
 };
 
 function getSessionSecret(): string {
@@ -65,11 +72,12 @@ export async function verifyPassword(password: string, storedHash: string): Prom
   }
 }
 
-export function createSessionToken(userId: string): string {
+export function createSessionToken(userId: string, sessionVersion = 0): string {
   const now = Math.floor(Date.now() / 1000);
   const header = base64Url(JSON.stringify({ alg: JWT_ALGORITHM, typ: "JWT" }));
   const payload = base64Url(JSON.stringify({
     sub: userId,
+    sv: sessionVersion,
     iat: now,
     exp: now + SESSION_TTL_SECONDS,
   } satisfies JwtPayload));
@@ -77,7 +85,7 @@ export function createSessionToken(userId: string): string {
   return `${unsigned}.${sign(unsigned)}`;
 }
 
-export function verifySessionToken(token: string): string | null {
+export function verifySessionToken(token: string): SessionClaims | null {
   const [encodedHeader, encodedPayload, signature] = token.split(".");
   if (!encodedHeader || !encodedPayload || !signature) return null;
 
@@ -86,15 +94,26 @@ export function verifySessionToken(token: string): string | null {
     const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as Partial<JwtPayload>;
     if (header.alg !== JWT_ALGORITHM || header.typ !== "JWT") return null;
     if (!payload.sub || typeof payload.sub !== "string" || typeof payload.exp !== "number") return null;
+    const sessionVersion = typeof payload.sv === "number" && Number.isInteger(payload.sv) ? payload.sv : 0;
     if (payload.exp <= Math.floor(Date.now() / 1000)) return null;
 
     const expected = Buffer.from(sign(`${encodedHeader}.${encodedPayload}`));
     const received = Buffer.from(signature);
     if (expected.length !== received.length || !timingSafeEqual(expected, received)) return null;
-    return payload.sub;
+    return { userId: payload.sub, sessionVersion };
   } catch {
     return null;
   }
+}
+
+export function createPasswordResetToken(): { token: string; tokenHash: string } {
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  return { token, tokenHash };
+}
+
+export function hashPasswordResetToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 export const SESSION_COOKIE = "ninho_session";

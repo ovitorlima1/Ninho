@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type React
 import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from "wouter";
 import {
   Activity,
+  ArrowLeft,
   ArrowUpRight,
   CalendarDays,
   Check,
@@ -14,6 +15,7 @@ import {
   Home,
   ListChecks,
   LogOut,
+  Mail,
   MapPin,
   MoreHorizontal,
   Pencil,
@@ -57,6 +59,8 @@ import {
   login,
   register,
   logout,
+  requestPasswordReset,
+  resetPassword,
   type AuthSession,
 } from "@/lib/api";
 import { calcGestationalWeek } from "@/lib/gestation";
@@ -1179,6 +1183,23 @@ function getAuthErrorMessage(error: unknown): string {
   return "Não foi possível continuar agora. Tente novamente.";
 }
 
+function AuthLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="auth-page">
+      <div className="auth-panel">
+        <Brand />
+        <img src={loginHeroImage} alt="" className="auth-hero-image" aria-hidden />
+        <div className="auth-copy">
+          <span className="desktop-eyebrow">ORGANIZAÇÃO DE ENXOVAL</span>
+          <h1>Prepare a chegada<br /><strong>com leveza.</strong></h1>
+          <p>Checklists, orçamento e linha do tempo — tudo no seu ritmo.</p>
+        </div>
+      </div>
+      <div className="auth-form-panel">{children}</div>
+    </div>
+  );
+}
+
 function AuthPage({ mode }: { mode: AuthMode }) {
   const isSignup = mode === "signup";
   const [, setLocation] = useLocation();
@@ -1216,18 +1237,8 @@ function AuthPage({ mode }: { mode: AuthMode }) {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-panel">
-        <Brand />
-        <img src={loginHeroImage} alt="" className="auth-hero-image" aria-hidden />
-        <div className="auth-copy">
-          <span className="desktop-eyebrow">ORGANIZAÇÃO DE ENXOVAL</span>
-          <h1>Prepare a chegada<br /><strong>com leveza.</strong></h1>
-          <p>Checklists, orçamento e linha do tempo — tudo no seu ritmo.</p>
-        </div>
-      </div>
-      <div className="auth-form-panel">
-        <form className="auth-card" onSubmit={submit} noValidate>
+    <AuthLayout>
+      <form className="auth-card" onSubmit={submit} noValidate>
           <div className="auth-card-header">
             <span className="card-kicker">{isSignup ? "SEU ESPAÇO" : "BEM-VINDA DE VOLTA"}</span>
             <h2>{isSignup ? "Crie seu ninho" : "Que bom ter você de volta"}</h2>
@@ -1256,6 +1267,11 @@ function AuthPage({ mode }: { mode: AuthMode }) {
                 data-testid="input-auth-password"
               />
             </label>
+            {!isSignup && (
+              <button type="button" className="auth-forgot" onClick={() => setLocation("/forgot-password")} data-testid="button-forgot-password">
+                Esqueci minha senha
+              </button>
+            )}
             {isSignup && (
               <label className="auth-field">
                 CONFIRME A SENHA
@@ -1282,9 +1298,178 @@ function AuthPage({ mode }: { mode: AuthMode }) {
               {isSignup ? "Entrar" : "Criar conta"}
             </button>
           </p>
-        </form>
-      </div>
-    </div>
+      </form>
+    </AuthLayout>
+  );
+}
+
+function PasswordResetRequestPage() {
+  const [, setLocation] = useLocation();
+  const [email, setEmail] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const mutation = useMutation({ mutationFn: () => requestPasswordReset({ email: email.trim() }) });
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setValidationError("Digite um e-mail válido.");
+      return;
+    }
+    setValidationError(null);
+    mutation.mutate();
+  };
+
+  if (mutation.isSuccess) {
+    return (
+      <AuthLayout>
+        <div className="auth-card auth-result-card">
+          <Mail size={22} className="auth-result-icon" />
+          <div className="auth-card-header">
+            <span className="card-kicker">CONFIRA SEU E-MAIL</span>
+            <h2>Se houver uma conta, o link está a caminho.</h2>
+            <p>Enviamos instruções para redefinir sua senha. Se a mensagem não aparecer, confira o spam.</p>
+          </div>
+          <button type="button" className="primary-button auth-submit" onClick={() => setLocation("/sign-in")} data-testid="button-back-to-sign-in">
+            <ArrowLeft size={14} /> voltar para entrar
+          </button>
+        </div>
+      </AuthLayout>
+    );
+  }
+
+  return (
+    <AuthLayout>
+      <form className="auth-card" onSubmit={submit} noValidate>
+        <div className="auth-card-header">
+          <span className="card-kicker">RECUPERE SEU ESPAÇO</span>
+          <h2>Esqueceu sua senha?</h2>
+          <p>Digite seu e-mail e, se houver uma conta, enviaremos um link temporário para você voltar ao seu ninho.</p>
+        </div>
+        <div className="auth-fields">
+          <label className="auth-field">
+            E-MAIL
+            <input
+              type="email"
+              autoComplete="email"
+              autoFocus
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="voce@email.com"
+              data-testid="input-reset-email"
+            />
+          </label>
+        </div>
+        {(validationError || mutation.isError) && (
+          <p className="auth-error" role="alert">{validationError || getAuthErrorMessage(mutation.error)}</p>
+        )}
+        <button type="submit" className="primary-button auth-submit" disabled={mutation.isPending} data-testid="button-request-reset">
+          {mutation.isPending ? "Enviando…" : "Enviar link de recuperação"}
+        </button>
+        <p className="auth-switch">
+          <button type="button" onClick={() => setLocation("/sign-in")} data-testid="button-reset-back-to-sign-in">
+            <ArrowLeft size={12} /> voltar para entrar
+          </button>
+        </p>
+      </form>
+    </AuthLayout>
+  );
+}
+
+function PasswordResetPage() {
+  const [, setLocation] = useLocation();
+  const [token] = useState(() => new URLSearchParams(window.location.search).get("token") || "");
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [complete, setComplete] = useState(false);
+  const mutation = useMutation({
+    mutationFn: () => resetPassword({ token, password }),
+    onSuccess: () => setComplete(true),
+  });
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!token) {
+      setValidationError("Este link de recuperação é inválido ou expirou.");
+      return;
+    }
+    if (password.length < 8) {
+      setValidationError("A senha precisa ter pelo menos 8 caracteres.");
+      return;
+    }
+    if (password !== confirmation) {
+      setValidationError("A confirmação de senha não corresponde.");
+      return;
+    }
+    setValidationError(null);
+    mutation.mutate();
+  };
+
+  if (complete) {
+    return (
+      <AuthLayout>
+        <div className="auth-card auth-result-card">
+          <div className="auth-result-check">✓</div>
+          <div className="auth-card-header">
+            <span className="card-kicker">TUDO PRONTO</span>
+            <h2>Senha redefinida.</h2>
+            <p>Suas sessões antigas foram encerradas. Entre novamente com a nova senha.</p>
+          </div>
+          <button type="button" className="primary-button auth-submit" onClick={() => setLocation("/sign-in")} data-testid="button-reset-success-sign-in">
+            entrar no meu ninho
+          </button>
+        </div>
+      </AuthLayout>
+    );
+  }
+
+  return (
+    <AuthLayout>
+      <form className="auth-card" onSubmit={submit} noValidate>
+        <div className="auth-card-header">
+          <span className="card-kicker">NOVA SENHA</span>
+          <h2>Crie uma nova senha</h2>
+          <p>Escolha uma senha com pelo menos 8 caracteres para proteger seu ninho.</p>
+        </div>
+        <input className="auth-hidden-username" type="email" autoComplete="username" name="username" value="" readOnly tabIndex={-1} aria-hidden />
+        <div className="auth-fields">
+          <label className="auth-field">
+            NOVA SENHA
+            <input
+              type="password"
+              autoComplete="new-password"
+              autoFocus
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Pelo menos 8 caracteres"
+              data-testid="input-new-password"
+            />
+          </label>
+          <label className="auth-field">
+            CONFIRME A NOVA SENHA
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              placeholder="Repita sua senha"
+              data-testid="input-new-password-confirmation"
+            />
+          </label>
+        </div>
+        {(validationError || mutation.isError) && (
+          <p className="auth-error" role="alert">{validationError || getAuthErrorMessage(mutation.error)}</p>
+        )}
+        <button type="submit" className="primary-button auth-submit" disabled={mutation.isPending || !token} data-testid="button-complete-reset">
+          {mutation.isPending ? "Salvando…" : "Salvar nova senha"}
+        </button>
+        <p className="auth-switch">
+          <button type="button" onClick={() => setLocation("/sign-in")} data-testid="button-reset-cancel">
+            <ArrowLeft size={12} /> voltar para entrar
+          </button>
+        </p>
+      </form>
+    </AuthLayout>
   );
 }
 
@@ -1322,13 +1507,15 @@ function AppRouter() {
   }
 
   const user = sessionQuery.data?.user;
-  const isAuthRoute = location === "/sign-in" || location === "/sign-up";
+  const isAuthRoute = location === "/sign-in" || location === "/sign-up" || location === "/forgot-password";
   if (user && isAuthRoute) return <Redirect to="/dashboard" />;
 
   return (
     <Switch>
       <Route path="/sign-in"><AuthPage mode="signin" /></Route>
       <Route path="/sign-up"><AuthPage mode="signup" /></Route>
+      <Route path="/forgot-password"><PasswordResetRequestPage /></Route>
+      <Route path="/reset-password"><PasswordResetPage /></Route>
       <Route path="/"><Redirect to={user ? "/dashboard" : "/sign-in"} /></Route>
       {user ? (
         <Route path="/:rest*"><AuthenticatedApp userId={user.id} /></Route>

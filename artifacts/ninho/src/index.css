@@ -232,10 +232,16 @@
 .auth-field { display: grid; gap: 6px; color: #51495a; font-size: 10px; font-weight: 700; }
 .auth-field input { width: 100%; padding: 12px 13px; border: 1px solid #e3dce8; border-radius: 12px; color: #24202a; background: #f8f5fa; font-size: 14px; font-weight: 500; }
 .auth-field input:focus { outline: 2px solid #a453d1; outline-offset: -1px; }
+.auth-hidden-username { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.auth-forgot { justify-self: end; margin-top: -5px; padding: 0; border: 0; color: #9b50c7; background: transparent; font-size: 10px; font-weight: 700; text-align: right; }
 .auth-error { margin: 0; padding: 10px 12px; border-radius: 12px; color: #a2475a; background: #f9edf2; font-size: 11px; line-height: 1.4; }
 .auth-submit { margin-top: 20px; }
 .auth-switch { margin: 18px 0 0; color: #766f7d; font-size: 11px; text-align: center; }
-.auth-switch button { padding: 0; border: 0; color: #9b50c7; background: transparent; font-weight: 700; }
+.auth-switch button { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; color: #9b50c7; background: transparent; font-weight: 700; }
+.auth-result-card { text-align: center; }
+.auth-result-card .auth-card-header { margin-top: 14px; }
+.auth-result-icon { color: #9b50c7; }
+.auth-result-check { display: grid; width: 42px; height: 42px; margin: 0 auto; place-items: center; border-radius: 50%; color: #fff; background: #a85bd2; font-size: 22px; font-weight: 700; }
 .auth-mobile-visual { display: none; }
 
 .stage-toolbar, .phone-stage, .stage-note, .mobile-panel-switcher { position: relative; z-index: 1; }

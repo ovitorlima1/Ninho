@@ -101,6 +101,20 @@ export async function logout(): Promise<void> {
   return customFetch<void>(`${AUTH_API}/logout`, { method: "POST" });
 }
 
+export async function requestPasswordReset(data: { email: string }): Promise<{ message: string }> {
+  return customFetch<{ message: string }>(`${AUTH_API}/password-reset/request`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function resetPassword(data: { token: string; password: string }): Promise<{ message: string }> {
+  return customFetch<{ message: string }>(`${AUTH_API}/password-reset/complete`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // ─── Workspace ────────────────────────────────────────────────────────────────
 
 export async function fetchWorkspace(): Promise<Workspace> {
