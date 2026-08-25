@@ -64,13 +64,23 @@ export interface ServerBudgetCategory {
   updatedAt: string;
 }
 
+export type GiftReservationStatus = "vou presentear" | "presenteado";
 export interface Workspace {
   profile: ServerProfile;
   items: ServerChecklistItem[];
   milestones: ServerMilestone[];
   budget: ServerBudgetCategory[];
+  giftReservations: ServerGiftReservation[];
 }
 
+export interface PublicGiftItem {
+  id: number;
+  name: string;
+  category: string;
+  qty: number;
+  reserved: boolean;
+  reservation: { status: GiftReservationStatus; guestName: string | null } | null;
+}
 export interface AuthUser {
   id: string;
   email: string;
@@ -206,4 +216,69 @@ export async function updateBudget(data: BudgetInput): Promise<ServerBudgetCateg
     method: "PUT",
     body: JSON.stringify(data),
   });
+}
+
+export async function getGiftShare(): Promise<ServerGiftShare | null> {
+  return customFetch<ServerGiftShare | null>(`${API}/share`);
+}
+
+export async function deleteGiftReservation(id: number): Promise<void> {
+  return customFetch<void>(`${API}/gift-reservations/${id}`, { method: "DELETE" });
+}
+
+export async function fetchPublicGiftList(token: string): Promise<PublicGiftList> {
+  return customFetch<PublicGiftList>(`${BASE}/api/gift/${encodeURIComponent(token)}`);
+}
+
+export async function reservePublicGift(
+  token: string,
+  data: { itemId: number; guestName?: string | null; status: GiftReservationStatus },
+): Promise<{ item: PublicGiftItem }> {
+  return customFetch<{ item: PublicGiftItem }>(`${BASE}/api/gift/${encodeURIComponent(token)}/reservations`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateGiftReservation(
+  id: number,
+  data: { guestName?: string | null; status?: GiftReservationStatus },
+): Promise<ServerGiftReservation> {
+  return customFetch<ServerGiftReservation>(`${API}/gift-reservations/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function createGiftShare(): Promise<ServerGiftShare> {
+  return customFetch<ServerGiftShare>(`${API}/share`, { method: "POST" });
+}
+
+export async function revokeGiftShare(): Promise<void> {
+  return customFetch<void>(`${API}/share`, { method: "DELETE" });
+}
+
+export interface PublicGiftList {
+  ownerName: string | null;
+  babyName: string | null;
+  items: PublicGiftItem[];
+}
+
+export interface ServerGiftShare {
+  id: number;
+  userId: string;
+  token: string;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface ServerGiftReservation {
+  id: number;
+  userId: string;
+  checklistItemId: number;
+  shareLinkId: number;
+  guestName: string | null;
+  status: GiftReservationStatus;
+  createdAt: string;
+  updatedAt: string;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
-import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from "wouter";
+import { Redirect, Route, Router as WouterRouter, Switch, useLocation, useRoute } from "wouter";
 import {
   Activity,
   ArrowLeft,
@@ -9,10 +9,12 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
+  Copy,
   Gift,
   Heart,
   History,
   Home,
+  Link2,
   ListChecks,
   LogOut,
   Mail,
@@ -20,6 +22,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  RefreshCw,
   ShoppingBag,
   Sparkles,
   Star,
@@ -48,11 +51,22 @@ import {
   deleteChecklistItem,
   toggleMilestone,
   updateBudget,
+  createGiftShare,
+  deleteGiftReservation,
+  fetchPublicGiftList,
+  getGiftShare,
+  reservePublicGift,
+  revokeGiftShare,
+  updateGiftReservation,
   type Workspace,
   type ServerChecklistItem,
   type ServerProfile,
   type ServerMilestone,
   type ServerBudgetCategory,
+  type ServerGiftReservation,
+  type ServerGiftShare,
+  type PublicGiftItem,
+  type GiftReservationStatus,
   type ItemStatus,
   type CategoryKey,
   type UpdateProfileInput,
@@ -85,9 +99,10 @@ type ChecklistItem = {
   price: number;
   essential: boolean;
   recommendationId: string | null;
+  giftReservation: ServerGiftReservation | null;
 };
 
-function adaptItem(s: ServerChecklistItem): ChecklistItem {
+function adaptItem(s: ServerChecklistItem, giftReservation: ServerGiftReservation | null = null): ChecklistItem {
   return {
     id: s.id,
     name: s.name,
@@ -98,6 +113,7 @@ function adaptItem(s: ServerChecklistItem): ChecklistItem {
     price: parseFloat(s.price) || 0,
     essential: s.essential,
     recommendationId: s.recommendationId,
+    giftReservation,
   };
 }
 
@@ -419,6 +435,7 @@ function OverviewPanel({
 
 function ChecklistPanel({
   items, onToggle, onAdd, onDelete, onOpenRecommendation, onUnlinkRecommendation,
+  onReleaseGiftReservation, onUpdateGiftReservation,
 }: {
   items: ChecklistItem[];
   onToggle: (id: number, current: ItemStatus) => void;
@@ -426,6 +443,8 @@ function ChecklistPanel({
   onDelete: (id: number) => void;
   onOpenRecommendation: (id: string) => void;
   onUnlinkRecommendation: (id: number) => void;
+  onReleaseGiftReservation: (reservationId: number) => void;
+  onUpdateGiftReservation: (reservationId: number, status: GiftReservationStatus) => void;
 }) {
   const [category, setCategory] = useState<CategoryKey>("Roupas");
   const visible = items.filter((i) => i.category === category);
@@ -472,6 +491,12 @@ function ChecklistPanel({
                 <span className="check-name">
                   <strong>{item.name}</strong>
                   <small>{item.qty} un. · {item.status} {item.price > 0 ? `· ${money(item.price)}` : ""}</small>
+                  {item.giftReservation && (
+                    <span className="gift-reservation-owner">
+                      <Gift size={11} />
+                      {item.giftReservation.guestName || "Alguém"} {item.giftReservation.status}
+                    </span>
+                  )}
                 </span>
               </button>
                 {item.recommendationId && (
@@ -498,6 +523,29 @@ function ChecklistPanel({
                     </button>
                   </div>
                 )}
+              {item.giftReservation && (
+                <span className="gift-reservation-actions">
+                  <button
+                    type="button"
+                    className="gift-reservation-status"
+                    onClick={() => onUpdateGiftReservation(
+                      item.giftReservation!.id,
+                      item.giftReservation!.status === "vou presentear" ? "presenteado" : "vou presentear",
+                    )}
+                    data-testid={`button-gift-reservation-status-${item.id}`}
+                  >
+                    {item.giftReservation.status === "vou presentear" ? "marcar presenteado" : "marcar reservado"}
+                  </button>
+                  <button
+                    type="button"
+                    className="gift-reservation-release"
+                    onClick={() => onReleaseGiftReservation(item.giftReservation!.id)}
+                    data-testid={`button-gift-reservation-release-${item.id}`}
+                  >
+                    desfazer
+                  </button>
+                </span>
+              )}
               <button type="button" className="delete-item-btn" onClick={() => onDelete(item.id)} aria-label="Remover item" data-testid={`button-phone-delete-${item.id}`}>
                 <Trash2 size={13} />
               </button>
@@ -655,13 +703,74 @@ function BudgetPanel({
   );
 }
 
+function GiftShareCard({
+  share, onCreate, onRevoke, isLoading, error,
+}: {
+  share: ServerGiftShare | null | undefined;
+  onCreate: () => void;
+  onRevoke: () => void;
+  isLoading: boolean;
+  error: string | null;
+}) {
+  const [copied, setCopied] = useState(false);
+  const link = share ? `${window.location.origin}${basePath}/gift/${share.token}` : "";
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2200);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <section className="gift-share-card" aria-labelledby="gift-share-title">
+      <div className="gift-share-icon"><Gift size={18} /></div>
+      <div className="gift-share-copy">
+        <span className="card-kicker">LISTA PARA PRESENTES</span>
+        <h2 id="gift-share-title">Deixe quem ama vocês participar.</h2>
+        <p>Compartilhe só os itens do enxoval. Seus dados pessoais e orçamento ficam no seu ninho.</p>
+      </div>
+      {share ? (
+        <>
+          <div className="gift-share-link" aria-label="Link público da sua lista">
+            <Link2 size={14} /><span>{link}</span>
+          </div>
+          <div className="gift-share-actions">
+            <button type="button" className="primary-button gift-share-primary" onClick={copyLink} disabled={isLoading} data-testid="button-copy-gift-link">
+              {copied ? <><Check size={15} /> link copiado</> : <><Copy size={15} /> copiar link</>}
+            </button>
+            <button type="button" className="gift-share-secondary" onClick={onCreate} disabled={isLoading} data-testid="button-regenerate-gift-link">
+              <RefreshCw size={14} /> gerar novo
+            </button>
+            <button type="button" className="gift-share-revoke" onClick={onRevoke} disabled={isLoading} data-testid="button-revoke-gift-link">
+              revogar link
+            </button>
+          </div>
+        </>
+      ) : (
+        <button type="button" className="primary-button gift-share-primary" onClick={onCreate} disabled={isLoading} data-testid="button-create-gift-link">
+          <Gift size={15} /> {isLoading ? "criando link…" : "criar link para presentes"}
+        </button>
+      )}
+      {error && <p className="gift-share-error" role="alert">{error}</p>}
+    </section>
+  );
+}
 function ProfilePanel({
-  profile, onSave, saveState, saveError,
+  profile, onSave, saveState, saveError, share, onCreateShare, onRevokeShare, shareLoading, shareError,
 }: {
   profile: ServerProfile;
   onSave: (data: UpdateProfileInput) => void;
   saveState: "idle" | "saving" | "error" | "success";
   saveError: string | null;
+  share: ServerGiftShare | null | undefined;
+  onCreateShare: () => void;
+  onRevokeShare: () => void;
+  shareLoading: boolean;
+  shareError: string | null;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile.displayName || "");
@@ -793,6 +902,13 @@ function ProfilePanel({
           </button>
         )}
       </div>
+      <GiftShareCard
+        share={share}
+        onCreate={onCreateShare}
+        onRevoke={onRevokeShare}
+        isLoading={shareLoading}
+        error={shareError}
+      />
       <button
         type="button"
         className="soft-action"
@@ -1130,8 +1246,57 @@ function AddItemModal({ onClose, onAdd, category }: { onClose: () => void; onAdd
   );
 }
 
-// ─── Desktop layout ───────────────────────────────────────────────────────────
+function GiftReservationModal({
+  item, token, onClose, onReserved,
+}: {
+  item: PublicGiftItem;
+  token: string;
+  onClose: () => void;
+  onReserved: () => void;
+}) {
+  const [guestName, setGuestName] = useState("");
+  const [status, setStatus] = useState<GiftReservationStatus>("vou presentear");
+  const mutation = useMutation({
+    mutationFn: () => reservePublicGift(token, {
+      itemId: item.id,
+      guestName: guestName.trim() || null,
+      status,
+    }),
+    onSuccess: () => {
+      onReserved();
+      onClose();
+    },
+  });
 
+  return (
+    <div className="modal-backdrop" onClick={onClose} role="presentation">
+      <div className="modal-card gift-reservation-modal" role="dialog" aria-modal="true" aria-labelledby="reserve-gift-title" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-top">
+          <div><span className="card-kicker">UM PRESENTE COM CARINHO</span><h2 id="reserve-gift-title">{item.name}</h2></div>
+          <TinyButton onClick={onClose} label="Fechar" testId="button-close-gift-reservation"><X size={17} /></TinyButton>
+        </div>
+        <p>Você está reservando {item.qty > 1 ? `${item.qty} unidades` : "este item"} para que ele não se repita.</p>
+        <label className="modal-label">
+          SEU NOME <small>(opcional)</small>
+          <input autoFocus value={guestName} maxLength={120} onChange={(event) => setGuestName(event.target.value)} placeholder="Como a família vai reconhecer você?" data-testid="input-gift-guest-name" />
+        </label>
+        <fieldset className="gift-status-picker">
+          <legend>COMO VOCÊ QUER MARCAR?</legend>
+          <button type="button" className={status === "vou presentear" ? "selected" : ""} onClick={() => setStatus("vou presentear")} data-testid="button-gift-status-intend">
+            vou presentear
+          </button>
+          <button type="button" className={status === "presenteado" ? "selected" : ""} onClick={() => setStatus("presenteado")} data-testid="button-gift-status-gifted">
+            já presenteei
+          </button>
+        </fieldset>
+        {mutation.isError && <p className="gift-share-error" role="alert">{getAuthErrorMessage(mutation.error)}</p>}
+        <button type="button" className="primary-button" onClick={() => mutation.mutate()} disabled={mutation.isPending} data-testid="button-confirm-gift-reservation">
+          <Gift size={15} /> {mutation.isPending ? "reservando…" : "confirmar reserva"}
+        </button>
+      </div>
+    </div>
+  );
+}
 function DesktopSidebar({ location, go }: { location: string; go: (path: string, panel?: number) => void }) {
   const links = [
     { path: "/dashboard", label: "Visão geral", icon: Home, panel: 0 },
@@ -1274,6 +1439,11 @@ function Workspace({ userId: uid }: { userId: string }) {
     queryFn: fetchWorkspace,
     staleTime: 60_000,
   });
+  const shareQuery = useQuery({
+    queryKey: ["gift-share", uid],
+    queryFn: getGiftShare,
+    staleTime: Infinity,
+  });
 
   const [location, setLocation] = useLocation();
   const [desktopView, setDesktopView] = useState(() => window.matchMedia("(min-width: 901px)").matches);
@@ -1342,6 +1512,35 @@ function Workspace({ userId: uid }: { userId: string }) {
     onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
   });
 
+  const createShareMutation = useMutation({
+    mutationFn: createGiftShare,
+    onSuccess: (share) => qc.setQueryData(["gift-share", uid], share),
+  });
+
+  const revokeShareMutation = useMutation({
+    mutationFn: revokeGiftShare,
+    onSuccess: () => qc.setQueryData(["gift-share", uid], null),
+  });
+
+  const updateGiftReservationMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: GiftReservationStatus }) =>
+      updateGiftReservation(id, { status }),
+    onSuccess: (reservation) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old
+        ? { ...old, giftReservations: old.giftReservations.map((current) => current.id === reservation.id ? reservation : current) }
+        : old);
+    },
+  });
+
+  const deleteGiftReservationMutation = useMutation({
+    mutationFn: deleteGiftReservation,
+    onSuccess: (_result, id) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old
+        ? { ...old, giftReservations: old.giftReservations.filter((reservation) => reservation.id !== id) }
+        : old);
+    },
+  });
+
   const milestoneMutation = useMutation({
     mutationFn: ({ id, completed }: { id: number; completed: boolean }) => toggleMilestone(id, completed),
     onMutate: async ({ id, completed }) => {
@@ -1393,8 +1592,9 @@ function Workspace({ userId: uid }: { userId: string }) {
     );
   }
 
-  const { profile, items: rawItems, milestones: miles, budget } = workspaceQuery.data;
-  const items = rawItems.map(adaptItem);
+  const { profile, items: rawItems, milestones: miles, budget, giftReservations } = workspaceQuery.data;
+  const reservationsByItem = new Map(giftReservations.map((reservation) => [reservation.checklistItemId, reservation]));
+  const items = rawItems.map((item) => adaptItem(item, reservationsByItem.get(item.id) ?? null));
 
   // ── Onboarding ──────────────────────────────────────────────────────────
 
@@ -1488,6 +1688,14 @@ function Workspace({ userId: uid }: { userId: string }) {
     budgetMutation.mutate(cats);
   };
 
+  const handleReleaseGiftReservation = (reservationId: number) => {
+    deleteGiftReservationMutation.mutate(reservationId);
+  };
+
+  const handleUpdateGiftReservation = (reservationId: number, status: GiftReservationStatus) => {
+    updateGiftReservationMutation.mutate({ id: reservationId, status });
+  };
+
   // ── Panel content ────────────────────────────────────────────────────────
 
   const overviewPanel = (
@@ -1503,6 +1711,8 @@ function Workspace({ userId: uid }: { userId: string }) {
       onDelete={handleDelete}
       onOpenRecommendation={(id) => { setRecommendationFocusId(id); go("/recommendations", 0); }}
       onUnlinkRecommendation={handleUnlinkRecommendation}
+      onReleaseGiftReservation={handleReleaseGiftReservation}
+      onUpdateGiftReservation={handleUpdateGiftReservation}
     />
   );
   const milestonePanel = (
@@ -1515,6 +1725,21 @@ function Workspace({ userId: uid }: { userId: string }) {
       onSave={handleProfileSave}
       saveState={profileSaveState}
       saveError={profileSaveError}
+      share={shareQuery.data}
+      onCreateShare={() => {
+        createShareMutation.reset();
+        createShareMutation.mutate();
+      }}
+      onRevokeShare={() => {
+        revokeShareMutation.reset();
+        revokeShareMutation.mutate();
+      }}
+      shareLoading={createShareMutation.isPending || revokeShareMutation.isPending}
+      shareError={
+        createShareMutation.isError ? getAuthErrorMessage(createShareMutation.error)
+          : revokeShareMutation.isError ? getAuthErrorMessage(revokeShareMutation.error)
+            : null
+      }
     />
   );
   const recommendationsPanel = (
@@ -1578,6 +1803,341 @@ function Workspace({ userId: uid }: { userId: string }) {
     </div>
   );
 }
+
+/*
+function Workspace({ userId: uid }: { userId: string }) {
+  const qc = useQueryClient();
+
+  // When the signed-in user changes (e.g. same browser, different account),
+  // remove all workspace cache entries so the new user starts fresh.
+  useEffect(() => {
+    return () => {
+      qc.removeQueries({ queryKey: ["workspace"] });
+    };
+  }, [uid, qc]);
+
+  // Scope every cache entry by userId so different accounts in the same
+  // browser session can never share cached workspace data.
+  const wqKey = ["workspace", uid] as const;
+
+  const workspaceQuery = useQuery({
+    queryKey: wqKey,
+    queryFn: fetchWorkspace,
+    staleTime: 60_000,
+  });
+  const shareQuery = useQuery({
+    queryKey: ["gift-share", uid],
+    queryFn: getGiftShare,
+    staleTime: Infinity,
+  });
+
+  const [location, setLocation] = useLocation();
+  const [desktopView, setDesktopView] = useState(() => window.matchMedia("(min-width: 901px)").matches);
+  const [activePanel, setActivePanel] = useState(location === "/checklist" ? 1 : location === "/milestones" ? 2 : 0);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addCategory, setAddCategory] = useState<CategoryKey>("Roupas");
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 901px)");
+    const sync = () => setDesktopView(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  // ── Mutations ────────────────────────────────────────────────────────────
+
+  const profileMutation = useMutation({
+    mutationFn: updateProfile,
+    onSuccess: (profile) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, profile } : old);
+    },
+  });
+
+  const addItemMutation = useMutation({
+    mutationFn: createChecklistItem,
+    onSuccess: (item) => {
+      qc.setQueryData<Workspace>(wqKey, (old) =>
+        old ? { ...old, items: [...old.items, item] } : old,
+      );
+    },
+  });
+
+  const updateItemMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { status?: ItemStatus; qty?: number } }) =>
+      updateChecklistItem(id, data),
+    onMutate: async ({ id, data }) => {
+      await qc.cancelQueries({ queryKey: wqKey });
+      const prev = qc.getQueryData<Workspace>(wqKey);
+      qc.setQueryData<Workspace>(wqKey, (old) =>
+        old ? { ...old, items: old.items.map((i) => i.id === id ? { ...i, ...data } : i) } : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
+  });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: deleteChecklistItem,
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: wqKey });
+      const prev = qc.getQueryData<Workspace>(wqKey);
+      qc.setQueryData<Workspace>(wqKey, (old) =>
+        old ? { ...old, items: old.items.filter((i) => i.id !== id) } : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
+  });
+
+  const createShareMutation = useMutation({
+    mutationFn: createGiftShare,
+    onSuccess: (share) => {
+      qc.setQueryData(["gift-share", uid], share);
+    },
+  });
+
+  const revokeShareMutation = useMutation({
+    mutationFn: revokeGiftShare,
+    onSuccess: () => {
+      qc.setQueryData(["gift-share", uid], null);
+    },
+  });
+
+  const updateGiftReservationMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: GiftReservationStatus }) =>
+      updateGiftReservation(id, { status }),
+    onSuccess: (reservation) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old
+        ? {
+          ...old,
+          giftReservations: old.giftReservations.map((current) =>
+            current.id === reservation.id ? reservation : current,
+          ),
+        }
+        : old);
+    },
+  });
+
+  const deleteGiftReservationMutation = useMutation({
+    mutationFn: deleteGiftReservation,
+    onSuccess: (_result, id) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old
+        ? { ...old, giftReservations: old.giftReservations.filter((reservation) => reservation.id !== id) }
+        : old);
+    },
+  });
+
+  const milestoneMutation = useMutation({
+    mutationFn: ({ id, completed }: { id: number; completed: boolean }) => toggleMilestone(id, completed),
+    onMutate: async ({ id, completed }) => {
+      await qc.cancelQueries({ queryKey: wqKey });
+      const prev = qc.getQueryData<Workspace>(wqKey);
+      qc.setQueryData<Workspace>(wqKey, (old) =>
+        old ? { ...old, milestones: old.milestones.map((m) => m.id === id ? { ...m, completed } : m) } : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
+  });
+
+  const budgetMutation = useMutation({
+    mutationFn: (categories: Array<{ category: string; planned: number }>) =>
+      updateBudget({ categories }),
+    onSuccess: (budget) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, budget } : old);
+    },
+  });
+
+  const profileSaveState: "idle" | "saving" | "error" | "success" = profileMutation.isPending
+    ? "saving"
+    : profileMutation.isError
+      ? "error"
+      : profileMutation.isSuccess
+        ? "success"
+        : "idle";
+  const profileSaveError = profileMutation.error instanceof Error ? profileMutation.error.message : null;
+
+  // ── Loading / Error states ───────────────────────────────────────────────
+
+  if (workspaceQuery.isLoading) {
+    return (
+      <div className="ninho-app" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (workspaceQuery.isError || !workspaceQuery.data) {
+    return (
+      <div className="ninho-app" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <ErrorState message="Não foi possível carregar seus dados. Verifique sua conexão." onRetry={() => workspaceQuery.refetch()} />
+      </div>
+    );
+  }
+
+  const { profile, items: rawItems, milestones: miles, budget, giftReservations } = workspaceQuery.data;
+  const reservationsByItem = new Map(giftReservations.map((reservation) => [reservation.checklistItemId, reservation]));
+  const items = rawItems.map((item) => adaptItem(item, reservationsByItem.get(item.id) ?? null));
+
+  // ── Onboarding ──────────────────────────────────────────────────────────
+
+  if (!profile.onboardingComplete) {
+    return (
+      <div className="ninho-app">
+        <OnboardingModal userId={uid} onComplete={() => qc.invalidateQueries({ queryKey: wqKey })} />
+      </div>
+    );
+  }
+
+  // ── Navigation helpers ───────────────────────────────────────────────────
+
+  const go = (path: string, panel?: number) => {
+    if (panel !== undefined) setActivePanel(panel);
+    setLocation(path);
+  };
+
+  const openAdd = (cat: CategoryKey) => { setAddCategory(cat); setAddOpen(true); };
+
+  const handleAddItem = (name: string, cat: CategoryKey) => {
+    addItemMutation.mutate({ name, category: cat });
+    setAddOpen(false);
+  };
+
+  const handleToggle = (id: number, status: ItemStatus) => {
+    updateItemMutation.mutate({ id, data: { status } });
+  };
+
+  const handleDelete = (id: number) => {
+    deleteItemMutation.mutate(id);
+  };
+
+  const handleMilestoneToggle = (id: number, completed: boolean) => {
+    milestoneMutation.mutate({ id, completed });
+  };
+
+  const handleProfileSave = (data: UpdateProfileInput) => {
+    profileMutation.reset();
+    profileMutation.mutate(data);
+  };
+
+  const handleBudgetSave = (cats: Array<{ category: string; planned: number }>) => {
+    budgetMutation.mutate(cats);
+  };
+
+  const handleReleaseGiftReservation = (reservationId: number) => {
+    deleteGiftReservationMutation.mutate(reservationId);
+  };
+
+  const handleUpdateGiftReservation = (reservationId: number, status: GiftReservationStatus) => {
+    updateGiftReservationMutation.mutate({ id: reservationId, status });
+  };
+
+  // ── Panel content ────────────────────────────────────────────────────────
+
+  const overviewPanel = (
+    <OverviewPanel items={items} profile={profile} milestones={miles} budget={budget}
+      setLocation={(p) => go(p, p === "/checklist" ? 1 : p === "/milestones" ? 2 : 0)}
+    />
+  );
+  const checklistPanel = (
+    <ChecklistPanel
+      items={items}
+      onToggle={handleToggle}
+      onAdd={openAdd}
+      onDelete={handleDelete}
+      onReleaseGiftReservation={handleReleaseGiftReservation}
+      onUpdateGiftReservation={handleUpdateGiftReservation}
+    />
+  );
+  const milestonePanel = (
+    <TimelinePanel milestones={miles} profile={profile} onToggle={handleMilestoneToggle} />
+  );
+  const budgetPanel = <BudgetPanel items={items} budget={budget} onSave={handleBudgetSave} />;
+  const profilePanel = (
+    <ProfilePanel
+      profile={profile}
+      onSave={handleProfileSave}
+      saveState={profileSaveState}
+      saveError={profileSaveError}
+      share={shareQuery.data}
+      onCreateShare={() => {
+        createShareMutation.reset();
+        createShareMutation.mutate();
+      }}
+      onRevokeShare={() => {
+        revokeShareMutation.reset();
+        revokeShareMutation.mutate();
+      }}
+      shareLoading={createShareMutation.isPending || revokeShareMutation.isPending}
+      shareError={
+        createShareMutation.isError ? getAuthErrorMessage(createShareMutation.error)
+          : revokeShareMutation.isError ? getAuthErrorMessage(revokeShareMutation.error)
+            : null
+      }
+    />
+  );
+  const recommendationsPanel = <RecommendationsPanel items={items} />;
+
+  const desktopContent = location === "/checklist" ? checklistPanel
+    : location === "/milestones" ? milestonePanel
+    : location === "/recommendations" ? recommendationsPanel
+    : location === "/budget" ? budgetPanel
+    : location === "/profile" ? profilePanel
+    : overviewPanel;
+
+  // ── Desktop layout ───────────────────────────────────────────────────────
+
+  if (desktopView) {
+    return (
+      <div className="ninho-app">
+        <DesktopWorkspace location={location} go={go} items={items} milestones={miles} profile={profile} budget={budget} content={desktopContent} />
+        {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} />}
+      </div>
+    );
+  }
+
+  // ── Mobile layout ────────────────────────────────────────────────────────
+
+  const panelOne = location === "/budget" ? budgetPanel : location === "/profile" ? profilePanel : location === "/recommendations" ? recommendationsPanel : overviewPanel;
+  const panelTwo = checklistPanel;
+  const panelThree = milestonePanel;
+
+  return (
+    <div className="ninho-app">
+      <div className="stage-toolbar">
+        <div className="toolbar-left">
+          <Brand />
+          <span className="toolbar-divider" />
+          <span className="toolbar-caption">gestão de enxoval</span>
+        </div>
+        <div className="toolbar-actions"><AccountControl /></div>
+      </div>
+      <div className="phone-stage">
+        <Phone title="Ninho" activeRoute={location} setLocation={go} activePanel={activePanel} onPanel={setActivePanel}>
+          {panelOne}
+        </Phone>
+        <Phone title="Registro rápido" activeRoute={location} setLocation={go} activePanel={activePanel} onPanel={setActivePanel}>
+          {panelTwo}
+        </Phone>
+        <Phone title="Sua jornada" activeRoute={location} setLocation={go} activePanel={activePanel} onPanel={setActivePanel}>
+          {panelThree}
+        </Phone>
+      </div>
+      {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} />}
+    </div>
+  );
+}
+*/
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
 
@@ -1899,6 +2459,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
 
 function AppRouter() {
   const [location] = useLocation();
+  const isPublicGiftRoute = location.startsWith("/gift/");
   const sessionQuery = useQuery({
     queryKey: ["auth-session"],
     queryFn: getSession,
@@ -1906,7 +2467,7 @@ function AppRouter() {
     retry: false,
   });
 
-  if (sessionQuery.isPending) {
+  if (!isPublicGiftRoute && sessionQuery.isPending) {
     return (
       <div className="ninho-app" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh" }}>
         <LoadingSpinner />
@@ -1914,11 +2475,20 @@ function AppRouter() {
     );
   }
 
-  if (sessionQuery.isError) {
+  if (!isPublicGiftRoute && sessionQuery.isError) {
     return (
       <div className="ninho-app" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh" }}>
         <ErrorState message="Não foi possível verificar sua sessão." onRetry={() => sessionQuery.refetch()} />
       </div>
+    );
+  }
+
+  if (isPublicGiftRoute) {
+    return (
+      <Switch>
+        <Route path="/gift/:token"><PublicGiftPage /></Route>
+        <Route><NotFound /></Route>
+      </Switch>
     );
   }
 
@@ -1960,5 +2530,89 @@ export default function App() {
     <WouterRouter base={basePath}>
       <NinhoApp />
     </WouterRouter>
+  );
+}
+
+function PublicGiftPage() {
+  const [, params] = useRoute("/gift/:token");
+  const token = params?.token || "";
+  const [selectedItem, setSelectedItem] = useState<PublicGiftItem | null>(null);
+  const listQuery = useQuery({
+    queryKey: ["public-gift-list", token],
+    queryFn: () => fetchPublicGiftList(token),
+    enabled: Boolean(token),
+    staleTime: 0,
+    refetchInterval: 15_000,
+    retry: false,
+  });
+  const qc = useQueryClient();
+  const title = listQuery.data?.ownerName ? `Lista de presentes de ${listQuery.data.ownerName}` : "Lista de presentes";
+
+  if (listQuery.isPending) {
+    return <div className="public-gift-page"><LoadingSpinner /></div>;
+  }
+
+  if (listQuery.isError || !listQuery.data) {
+    return (
+      <main className="public-gift-page public-gift-state">
+        <Brand />
+        <div className="public-gift-invalid">
+          <Link2 size={30} />
+          <span className="card-kicker">LINK INDISPONÍVEL</span>
+          <h1>Esta lista não está mais disponível.</h1>
+          <p>Ela pode ter sido revogada ou o endereço não está completo. Peça um novo link para quem compartilhou.</p>
+        </div>
+      </main>
+    );
+  }
+
+  const { items, babyName } = listQuery.data;
+  const available = items.filter((item) => !item.reserved).length;
+  return (
+    <main className="public-gift-page">
+      <header className="public-gift-header">
+        <Brand />
+        <span>LISTA COMPARTILHADA COM CARINHO</span>
+      </header>
+      <section className="public-gift-hero">
+        <span className="card-kicker">CHEGADA EM PREPARO</span>
+        <h1>{title}</h1>
+        <p>{babyName ? `Para celebrar a chegada de ${babyName}.` : "Uma seleção de itens para cuidar da nova chegada."}</p>
+        <div className="public-gift-summary"><Gift size={15} /><span>{available} {available === 1 ? "item disponível" : "itens disponíveis"} para presentear</span></div>
+      </section>
+      <section className="public-gift-list" aria-label="Itens para presentear">
+        {items.length === 0 ? (
+          <div className="public-gift-empty"><CheckCircle2 size={27} /><h2>Todos os itens já foram resolvidos.</h2><p>Que bonito ver tanta gente cuidando desta chegada.</p></div>
+        ) : items.map((item) => {
+          const Icon = iconForCategory(item.category as CategoryKey);
+          return (
+            <article className={`public-gift-item ${item.reserved ? "is-reserved" : ""}`} key={item.id}>
+              <span className="public-gift-item-icon"><Icon size={17} /></span>
+              <div className="public-gift-item-copy">
+                <small>{item.category} · {item.qty} {item.qty === 1 ? "unidade" : "unidades"}</small>
+                <h2>{item.name}</h2>
+                {item.reserved && <p><CheckCircle2 size={13} /> {item.reservation?.guestName ? `${item.reservation.guestName} ${item.reservation.status}` : `Item ${item.reservation?.status || "reservado"}`}</p>}
+              </div>
+              {item.reserved ? (
+                <span className="public-gift-reserved">reservado</span>
+              ) : (
+                <button type="button" onClick={() => setSelectedItem(item)} data-testid={`button-reserve-gift-${item.id}`}>
+                  <Gift size={14} /> vou presentear
+                </button>
+              )}
+            </article>
+          );
+        })}
+      </section>
+      <p className="public-gift-note">Os valores, o orçamento e os dados pessoais desta família não aparecem aqui.</p>
+      {selectedItem && (
+        <GiftReservationModal
+          item={selectedItem}
+          token={token}
+          onClose={() => setSelectedItem(null)}
+          onReserved={() => qc.invalidateQueries({ queryKey: ["public-gift-list", token] })}
+        />
+      )}
+    </main>
   );
 }

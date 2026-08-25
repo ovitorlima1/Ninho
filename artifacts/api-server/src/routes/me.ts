@@ -1,5 +1,6 @@
+import { randomBytes } from "node:crypto";
 import { Router } from "express";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, desc, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   profiles,
@@ -12,6 +13,9 @@ import {
   RECOMMENDATION_CATEGORY_BY_ID,
   upsertBudgetSchema,
   toggleMilestoneSchema,
+  giftReservations,
+  giftShareLinks,
+  updateGiftReservationSchema,
 } from "@workspace/db/schema";
 import { requireAuth } from "../middlewares/requireAuth";
 import { initializeUser, getOrCreateProfile } from "../lib/seed";
@@ -37,16 +41,127 @@ router.get("/workspace", async (req, res) => {
     // empty checklist stays empty.
     const { profile } = await initializeUser(userId);
 
-    const [items, userMilestones, budget] = await Promise.all([
+    const [items, userMilestones, budget, reservations] = await Promise.all([
       db.select().from(checklistItems).where(eq(checklistItems.userId, userId)).orderBy(checklistItems.sortOrder, checklistItems.createdAt),
       db.select().from(milestones).where(eq(milestones.userId, userId)).orderBy(milestones.week),
       db.select().from(budgetCategories).where(eq(budgetCategories.userId, userId)),
+      db.select().from(giftReservations).where(eq(giftReservations.userId, userId)),
     ]);
 
-    res.json({ profile, items, milestones: userMilestones, budget });
+    res.json({ profile, items, milestones: userMilestones, budget, giftReservations: reservations });
   } catch (err) {
     console.error("workspace error", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── Gift sharing ─────────────────────────────────────────────────────────────
+
+function createGiftToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+/** GET /api/me/share — current public link metadata, if one exists */
+router.get("/share", async (req, res): Promise<void> => {
+  const userId = res.locals.userId as string;
+  const [share] = await db.select().from(giftShareLinks).where(and(
+    eq(giftShareLinks.userId, userId),
+    isNull(giftShareLinks.revokedAt),
+  )).orderBy(desc(giftShareLinks.createdAt)).limit(1);
+  res.json(share ?? null);
+});
+
+/** POST /api/me/share — revoke any current link and create a fresh one */
+router.post("/share", async (req, res): Promise<void> => {
+  const userId = res.locals.userId as string;
+  try {
+    const share = await db.transaction(async (tx) => {
+      // This lock exists even before a share row does, serializing concurrent
+      // generations for one owner. The partial unique index is the durable
+      // database backstop if another writer ever bypasses this route.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}))`);
+      const [activeShare] = await tx.select().from(giftShareLinks).where(and(
+        eq(giftShareLinks.userId, userId),
+        isNull(giftShareLinks.revokedAt),
+      )).for("update").limit(1);
+      if (activeShare) {
+        await tx.update(giftShareLinks)
+          .set({ revokedAt: new Date() })
+          .where(eq(giftShareLinks.id, activeShare.id));
+      }
+      const [created] = await tx.insert(giftShareLinks).values({
+        userId,
+        token: createGiftToken(),
+      }).returning();
+      return created;
+    });
+    res.status(201).json(share);
+  } catch (err) {
+    req.log.error({ err }, "share link create error");
+    res.status(500).json({ error: "Não foi possível criar o link agora." });
+  }
+});
+
+/** DELETE /api/me/share — revoke the current public link */
+router.delete("/share", async (req, res): Promise<void> => {
+  const userId = res.locals.userId as string;
+  try {
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}))`);
+      const [activeShare] = await tx.select().from(giftShareLinks).where(and(
+        eq(giftShareLinks.userId, userId),
+        isNull(giftShareLinks.revokedAt),
+      )).for("update").limit(1);
+      if (activeShare) {
+        await tx.update(giftShareLinks)
+          .set({ revokedAt: new Date() })
+          .where(eq(giftShareLinks.id, activeShare.id));
+      }
+    });
+    res.status(204).send();
+  } catch (err) {
+    req.log.error({ err }, "share link revoke error");
+    res.status(500).json({ error: "Não foi possível revogar o link agora." });
+  }
+});
+
+/** PATCH /api/me/gift-reservations/:id — owner correction */
+router.patch("/gift-reservations/:id", async (req, res): Promise<void> => {
+  const userId = res.locals.userId as string;
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const parsed = updateGiftReservationSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Dados de reserva inválidos." });
+    return;
+  }
+  try {
+    const [updated] = await db.update(giftReservations)
+      .set({ ...parsed.data, updatedAt: new Date() })
+      .where(and(eq(giftReservations.id, id), eq(giftReservations.userId, userId)))
+      .returning();
+    if (!updated) { res.status(404).json({ error: "Reserva não encontrada." }); return; }
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, "gift reservation update error");
+    res.status(500).json({ error: "Não foi possível corrigir a reserva agora." });
+  }
+});
+
+/** DELETE /api/me/gift-reservations/:id — owner releases an item */
+router.delete("/gift-reservations/:id", async (req, res): Promise<void> => {
+  const userId = res.locals.userId as string;
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    const [deleted] = await db.delete(giftReservations)
+      .where(and(eq(giftReservations.id, id), eq(giftReservations.userId, userId)))
+      .returning();
+    if (!deleted) { res.status(404).json({ error: "Reserva não encontrada." }); return; }
+    res.status(204).send();
+  } catch (err) {
+    req.log.error({ err }, "gift reservation delete error");
+    res.status(500).json({ error: "Não foi possível desfazer a reserva agora." });
   }
 });
 
@@ -186,10 +301,19 @@ router.delete("/checklist/:id", async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   try {
-    const [deleted] = await db
-      .delete(checklistItems)
-      .where(and(eq(checklistItems.id, id), eq(checklistItems.userId, userId)))
-      .returning();
+    const deleted = await db.transaction(async (tx) => {
+      const [item] = await tx
+        .delete(checklistItems)
+        .where(and(eq(checklistItems.id, id), eq(checklistItems.userId, userId)))
+        .returning();
+      if (item) {
+        await tx.delete(giftReservations).where(and(
+          eq(giftReservations.checklistItemId, id),
+          eq(giftReservations.userId, userId),
+        ));
+      }
+      return item;
+    });
     if (!deleted) { res.status(404).json({ error: "Item not found" }); return; }
     res.status(204).send();
   } catch (err) {
