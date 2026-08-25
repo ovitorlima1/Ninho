@@ -20,6 +20,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  ShoppingBag,
   Sparkles,
   Star,
   Trash2,
@@ -64,6 +65,7 @@ import {
   type AuthSession,
 } from "@/lib/api";
 import { calcGestationalWeek } from "@/lib/gestation";
+import { RECOMMENDATIONS, type Recommendation } from "@/lib/recommendations";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -288,6 +290,7 @@ function Phone({ children, title, activeRoute, setLocation, activePanel, onPanel
     { path: "/dashboard", label: "Início", icon: Home, panel: 0 },
     { path: "/checklist", label: "Lista", icon: ListChecks, panel: 1 },
     { path: "/milestones", label: "Marcos", icon: History, panel: 2 },
+    { path: "/recommendations", label: "Ideias", icon: ShoppingBag, panel: 0 },
     { path: "/profile", label: "Perfil", icon: UserRound, panel: 0 },
   ];
   const panelIdx = title === "Ninho" ? 0 : title === "Registro rápido" ? 1 : 2;
@@ -378,6 +381,11 @@ function OverviewPanel({
           <ChevronRight size={14} />
         </button>
       </div>
+      <button type="button" className="soft-action recommendation-prompt" onClick={() => setLocation("/recommendations")} data-testid="button-open-recommendations">
+        <ShoppingBag size={15} />
+        <span><strong>ideias para o seu momento</strong><small>uma curadoria leve para complementar sua lista</small></span>
+        <ArrowUpRight size={14} />
+      </button>
     </div>
   );
 }
@@ -759,6 +767,90 @@ function ProfilePanel({
   );
 }
 
+function RecommendationCard({ recommendation, isRelevant }: { recommendation: Recommendation; isRelevant: boolean }) {
+  return (
+    <article className="recommendation-card">
+      <div className="recommendation-image-wrap">
+        <img
+          src={`${basePath}${recommendation.image}`}
+          alt=""
+          className="recommendation-image"
+          style={{ objectPosition: recommendation.imagePosition }}
+        />
+        <span className="recommendation-category">{recommendation.category}</span>
+        {isRelevant && <span className="recommendation-match"><Sparkles size={11} /> combina com sua lista</span>}
+      </div>
+      <div className="recommendation-copy">
+        <span className="card-kicker">{recommendation.use}</span>
+        <h2>{recommendation.name}</h2>
+        <p>{recommendation.summary}</p>
+        <div className="recommendation-footer">
+          <div>
+            <strong>{money(recommendation.price)}</strong>
+            <small>em {recommendation.store}</small>
+          </div>
+          <a href={recommendation.url} target="_blank" rel="noopener noreferrer" data-testid={`link-recommendation-${recommendation.id}`}>
+            ver na loja <ArrowUpRight size={13} />
+          </a>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function RecommendationsPanel({ items }: { items: ChecklistItem[] }) {
+  const [category, setCategory] = useState<"Para você" | CategoryKey>("Para você");
+  const pendingCategories = useMemo(
+    () => new Set(items.filter((item) => item.status === "A comprar").map((item) => item.category)),
+    [items],
+  );
+  const hasPersonalizedSuggestions = pendingCategories.size > 0;
+  const visible = RECOMMENDATIONS.filter((recommendation) => {
+    if (category === "Para você") {
+      return hasPersonalizedSuggestions
+        ? pendingCategories.has(recommendation.category)
+        : recommendation.featured;
+    }
+    return recommendation.category === category;
+  });
+
+  return (
+    <div className="phone-content flow recommendations-content">
+      <div className="eyebrow-row"><span>CURADORIA NINHO</span><ShoppingBag size={14} /></div>
+      <h1 className="phone-heading">Escolhas que deixam<br /><strong>tudo mais leve.</strong></h1>
+      <div className="recommendation-intro">
+        <div className="recommendation-intro-icon"><Sparkles size={17} /></div>
+        <div>
+          <span className="card-kicker">SEM PRESSA, SEM EXCESSO</span>
+          <p>{hasPersonalizedSuggestions ? "Selecionamos ideias para categorias que ainda estão esperando por você." : "Uma seleção de essenciais para inspirar os próximos passos do seu enxoval."}</p>
+        </div>
+      </div>
+      <div className="filter-row recommendation-filters" aria-label="Filtrar recomendações">
+        <Pill active={category === "Para você"} onClick={() => setCategory("Para você")} testId="button-recommendation-for-you">Para você</Pill>
+        {CATEGORIES.map((key) => (
+          <Pill key={key} active={category === key} onClick={() => setCategory(key)} testId={`button-recommendation-category-${key.toLowerCase()}`}>{key}</Pill>
+        ))}
+      </div>
+      <div className="recommendation-grid">
+        {visible.map((recommendation) => (
+          <RecommendationCard
+            key={recommendation.id}
+            recommendation={recommendation}
+            isRelevant={pendingCategories.has(recommendation.category)}
+          />
+        ))}
+      </div>
+      {visible.length === 0 && (
+        <div className="empty-recommendations">
+          <ShoppingBag size={24} />
+          <p>Nenhuma recomendação encontrada nessa categoria.</p>
+        </div>
+      )}
+      <p className="recommendation-disclaimer">As recomendações são uma curadoria editorial. O Ninho não vende os produtos; ao escolher um item, você será direcionada para a loja.</p>
+    </div>
+  );
+}
+
 function AddItemModal({ onClose, onAdd, category }: { onClose: () => void; onAdd: (name: string, category: CategoryKey) => void; category: CategoryKey }) {
   const [name, setName] = useState("");
   const [cat, setCat] = useState<CategoryKey>(category);
@@ -809,6 +901,7 @@ function DesktopSidebar({ location, go }: { location: string; go: (path: string,
       </nav>
       <div className="desktop-nav-label desktop-secondary-label">ORGANIZAÇÃO</div>
       <nav className="desktop-nav">
+        <button type="button" className={`desktop-nav-item ${location === "/recommendations" ? "selected" : ""}`} onClick={() => go("/recommendations", 0)} data-testid="button-desktop-nav-recomendacoes"><ShoppingBag size={17} /><span>Recomendações</span>{location === "/recommendations" && <span className="desktop-nav-indicator" />}</button>
         <button type="button" className={`desktop-nav-item ${location === "/budget" ? "selected" : ""}`} onClick={() => go("/budget", 0)} data-testid="button-desktop-nav-orcamento"><WalletCards size={17} /><span>Orçamento</span></button>
         <button type="button" className={`desktop-nav-item ${location === "/profile" ? "selected" : ""}`} onClick={() => go("/profile", 0)} data-testid="button-desktop-nav-perfil"><UserRound size={17} /><span>Meu perfil</span></button>
       </nav>
@@ -866,7 +959,7 @@ function DesktopWorkspace({ location, go, items, milestones: miles, profile, bud
   profile: ServerProfile; budget: ServerBudgetCategory[];
   content: ReactNode;
 }) {
-  const titles: Record<string, string> = { "/dashboard": "Visão geral", "/checklist": "Minha lista", "/milestones": "Linha do tempo", "/budget": "Orçamento", "/profile": "Meu perfil" };
+  const titles: Record<string, string> = { "/dashboard": "Visão geral", "/checklist": "Minha lista", "/milestones": "Linha do tempo", "/recommendations": "Recomendações", "/budget": "Orçamento", "/profile": "Meu perfil" };
   const title = titles[location] ?? "Ninho";
   const isOverview = location === "/dashboard";
   const routeClass = `desktop-route-${location.slice(1) || "dashboard"}`;
@@ -1115,9 +1208,11 @@ function Workspace({ userId: uid }: { userId: string }) {
       saveError={profileSaveError}
     />
   );
+  const recommendationsPanel = <RecommendationsPanel items={items} />;
 
   const desktopContent = location === "/checklist" ? checklistPanel
     : location === "/milestones" ? milestonePanel
+    : location === "/recommendations" ? recommendationsPanel
     : location === "/budget" ? budgetPanel
     : location === "/profile" ? profilePanel
     : overviewPanel;
@@ -1135,7 +1230,7 @@ function Workspace({ userId: uid }: { userId: string }) {
 
   // ── Mobile layout ────────────────────────────────────────────────────────
 
-  const panelOne = location === "/budget" ? budgetPanel : location === "/profile" ? profilePanel : overviewPanel;
+  const panelOne = location === "/budget" ? budgetPanel : location === "/profile" ? profilePanel : location === "/recommendations" ? recommendationsPanel : overviewPanel;
   const panelTwo = checklistPanel;
   const panelThree = milestonePanel;
 
