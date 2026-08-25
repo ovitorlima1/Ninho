@@ -1,0 +1,58 @@
+# Plano de ação — correções no app Ninho (ninho-mother.replit.app)
+
+Ordem sugerida: do que mais quebra a experiência pro que é mais cosmético. Cada bloco abaixo é um prompt pronto para colar direto no Replit Agent, um de cada vez — deixe ele terminar e teste antes de mandar o próximo.
+
+---
+
+## 1. Header duplicado no mobile (prioridade máxima)
+
+**O problema:** no viewport de celular, aparecem dois cabeçalhos empilhados — a barra desktop ("ninho" + botão "sair") e, logo abaixo, um mockup de status bar de telefone ("9:41", ícone de bateria/sinal, "Ninho" com "•••"). Parece que um componente de frame/mockup de celular foi implementado como parte real da UI, em vez de existir só como decoração de protótipo.
+
+**Prompt para o Replit Agent:**
+> No layout mobile do app, existem dois cabeçalhos aparecendo empilhados: a barra de navegação padrão (logo "ninho" + botão "sair") e, logo abaixo dela, um elemento extra que simula uma status bar de celular (mostrando "9:41", ícones de bateria/sinal, e um título "Ninho" repetido com um menu "•••"). Encontre esse componente de "status bar simulada" ou "phone frame" no código e remova-o completamente da renderização real do app — ele deve existir no máximo como referência visual em algum arquivo de design/mockup, nunca renderizado para o usuário. Depois de remover, o app deve mostrar apenas um cabeçalho único e funcional no mobile.
+
+**Como validar:** abra o app no celular (ou reduza a largura da janela do navegador para ~390px), veja se existe apenas UM cabeçalho no topo.
+
+---
+
+## 2. Barra de navegação inferior sobrepõe conteúdo
+
+**O problema:** no mobile, a tab bar fixa (Início/Lista/Marcos/Ideias/Perfil) cobre os últimos itens de listas longas — por exemplo, na aba Lista > Roupas, o item "Macacão de algodão" fica parcialmente escondido atrás da barra.
+
+**Prompt para o Replit Agent:**
+> A barra de navegação inferior fixa (com os itens Início, Lista, Marcos, Ideias, Perfil) está sobrepondo o conteúdo das páginas no mobile — por exemplo, os últimos itens de uma lista longa ficam parcialmente escondidos atrás dela. Adicione um padding-bottom (ou margin-bottom) na área de conteúdo scrollável de cada página, equivalente à altura real da tab bar, para que o último item de qualquer lista fique sempre totalmente visível e clicável acima da barra.
+
+**Como validar:** na aba Lista, escolha uma categoria com vários itens e role até o final — o último item precisa estar 100% visível e clicável, não cortado pela barra.
+
+---
+
+## 3. "Próximo marco" dessincronizado da Linha do tempo
+
+**O problema:** no painel (Visão Geral / dashboard), o card "Próximo marco" mostra "—" e "todos concluídos", mas a aba Linha do tempo mostra corretamente que a semana 32 tem um marco pendente ("Organize o chá de bebê"). As duas telas usam fontes de dados diferentes ou o cálculo do card está quebrado.
+
+**Prompt para o Replit Agent:**
+> No painel principal (dashboard), o card "Próximo marco" está mostrando "—" e "todos concluídos" incorretamente, mesmo quando existem marcos pendentes — a página Linha do tempo mostra corretamente o próximo marco pendente com base na semana gestacional atual. Investigue por que o card do dashboard não está lendo o mesmo estado de marcos que a página Linha do tempo, e corrija para que ambos usem a mesma fonte de dados/lógica. O card deve sempre exibir o próximo marco não concluído mais próximo da semana gestacional atual, com o mesmo texto e semana que aparecem na Linha do tempo.
+
+**Como validar:** compare o "Próximo marco" do dashboard com o primeiro marco marcado como "a seguir" na Linha do tempo — devem bater.
+
+---
+
+## 4. Cidade não é salva no perfil
+
+**O problema:** mesmo com nome e data prevista preenchidos, o campo "Cidade" no perfil fica em branco. Isso provavelmente quebra qualquer recomendação que dependa de clima/estação regional.
+
+**Prompt para o Replit Agent:**
+> No formulário de perfil, o campo "Cidade" não está sendo salvo — mesmo depois de preenchido, ele aparece vazio ao recarregar a página, diferente dos campos "Nome" e "Data prevista do parto" que persistem corretamente. Verifique se o campo Cidade está sendo incluído corretamente na chamada de salvar/atualizar perfil (pode ser um campo faltando no payload enviado ao backend, ou um problema na leitura de volta do banco) e corrija para que o valor digitado persista como os outros campos do mesmo formulário.
+
+**Como validar:** preencha a cidade, salve, dê refresh na página (F5) — o valor deve continuar lá.
+
+---
+
+## Depois dos 4 bugs — lacunas de conteúdo (não bloqueiam teste, mas limitam)
+
+Não são bugs, mas vão aparecer rápido se alguém testar de verdade:
+
+- **Poucos itens por categoria** (hoje ~3 por categoria, ~10 no total) — a planilha original tinha ~179 itens só em Roupas. Vale popular a base com mais itens antes de mandar pra uma mãe de verdade testar, ou ela vai notar rápido que "faltam" coisas óbvias.
+- **Links de afiliado não funcionais** — a aba Recomendações mostra "Preço a confirmar" e "consulte na Amazon" sem link de fato. Se a ideia é medir cliques/conversão, isso precisa de link real antes de valer como teste.
+
+Esses dois ficam pra depois dos 4 bugs — não valem a pena resolver antes, porque não afetam se o app "funciona", só o quão completo ele parece.
