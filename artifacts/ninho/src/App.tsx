@@ -666,6 +666,7 @@ function TimelinePanel({
   const week = calcGestationalWeek(profile.dueDate);
   const name = profile.displayName || "você";
   const progress = week ? Math.round((week / 40) * 100) : 0;
+  const trackProgress = Math.min(100, Math.max(0, progress));
 
   return (
     <div className="phone-content flow">
@@ -683,15 +684,26 @@ function TimelinePanel({
       ) : (
         <div className="timeline-chart">
           <div className="chart-top"><span>PROGRESSO DA GESTAÇÃO</span><strong>{progress}%</strong></div>
-          <div className="chart-bars">
-            {[38, 56, 48, 76, 64, 92, 72].map((h, i) => (
-              <i key={i} style={{ height: `${h}%` }} className={i === 5 ? "bar-current" : ""} />
-            ))}
+          <div className="gestation-visual" role="img" aria-label={`Semana ${week} de 40, ${progress}% da gestação concluída`}>
+            <div className="gestation-scale">
+              <div className="gestation-rail">
+                <span className="gestation-rail-fill" style={{ width: `${trackProgress}%` }} />
+                <span className="gestation-current" style={{ left: `${trackProgress}%` }}>
+                  <b>{week}</b>
+                </span>
+              </div>
+              <div className="gestation-ticks" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
+              </div>
+            </div>
           </div>
           <div className="chart-foot">
-            <span>sem {Math.max(1, (week ?? 24) - 4)}</span>
-            <span>agora · sem {week ?? "—"}</span>
-            <span>sem {(week ?? 24) + 4}</span>
+            <span>sem 1</span>
+            <span>agora · sem {week}</span>
+            <span>sem 40 · parto</span>
           </div>
         </div>
       )}

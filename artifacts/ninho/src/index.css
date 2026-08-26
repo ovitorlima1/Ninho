@@ -446,9 +446,15 @@
 .timeline-chart { padding: 13px 12px 9px; border-radius: 19px; background: linear-gradient(145deg, #eee3f8, #e3d1f2); }
 .chart-top, .chart-foot { display: flex; justify-content: space-between; color: #8d6a9f; font-family: var(--app-font-mono); font-size: 7px; }
 .chart-top strong { color: #a050d0; font-size: 9px; }
-.chart-bars { display: flex; height: 105px; align-items: end; justify-content: space-around; gap: 7px; margin: 10px 1px 5px; padding: 0 5px; border-bottom: 1px solid rgba(155, 98, 190, .18); }
-.chart-bars i { display: block; width: 17px; border-radius: 11px 11px 1px 1px; background: rgba(180, 117, 218, .35); }
-.chart-bars i.bar-current { width: 20px; background: linear-gradient(#d08af4, #a950da); box-shadow: 0 3px 11px rgba(165, 74, 216, .24); }
+.gestation-visual { padding: 26px 4px 19px; }
+.gestation-scale { position: relative; }
+.gestation-rail { position: relative; height: 9px; overflow: visible; border-radius: 99px; background: rgba(255, 255, 255, .62); box-shadow: inset 0 1px 2px rgba(102, 65, 124, .08); }
+.gestation-rail-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #c99be3, #a44fd2); box-shadow: 0 3px 9px rgba(164, 79, 210, .22); }
+.gestation-current { position: absolute; top: 50%; display: grid; width: 27px; height: 27px; place-items: center; border: 3px solid #fff; border-radius: 50%; color: #fff; background: #a44fd2; box-shadow: 0 4px 10px rgba(133, 61, 174, .28); transform: translate(-50%, -50%); }
+.gestation-current::after { position: absolute; top: 25px; width: 1px; height: 12px; background: rgba(139, 77, 172, .45); content: ""; }
+.gestation-current b { font-family: var(--app-font-mono); font-size: 7px; font-weight: 700; }
+.gestation-ticks { position: absolute; right: 0; bottom: -8px; left: 0; display: flex; justify-content: space-between; }
+.gestation-ticks i { width: 1px; height: 5px; background: rgba(141, 106, 159, .3); }
 .chart-foot { font-family: var(--app-font-sans); font-size: 7px; }
 .milestone-list { display: flex; flex-direction: column; gap: 6px; }
 .milestone-item {
