@@ -30,6 +30,8 @@ import {
   Utensils,
   WalletCards,
   X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   QueryClient,
@@ -213,6 +215,68 @@ function TinyButton({ children, onClick, label, testId }: { children: ReactNode;
   return <button type="button" className="icon-button" onClick={onClick} aria-label={label} data-testid={testId}>{children}</button>;
 }
 
+function PasswordField({
+  value,
+  onChange,
+  autoComplete,
+  autoFocus,
+  placeholder,
+  testId,
+  toggleTestId,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: "current-password" | "new-password";
+  autoFocus?: boolean;
+  placeholder: string;
+  testId: string;
+  toggleTestId: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  const toggleVisibility = () => {
+    const input = inputRef.current;
+    const selectionStart = input?.selectionStart;
+    setVisible((current) => !current);
+    requestAnimationFrame(() => {
+      const nextInput = inputRef.current;
+      if (!nextInput) return;
+      nextInput.focus();
+      if (selectionStart !== null && selectionStart !== undefined) {
+        nextInput.setSelectionRange(selectionStart, selectionStart);
+      }
+    });
+  };
+
+  return (
+    <span className="auth-password-wrap">
+      <input
+        ref={inputRef}
+        type={visible ? "text" : "password"}
+        autoComplete={autoComplete}
+        autoFocus={autoFocus}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        data-testid={testId}
+      />
+      <button
+        type="button"
+        className="auth-password-toggle"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={toggleVisibility}
+        aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
+        aria-pressed={visible}
+        title={visible ? "Ocultar senha" : "Mostrar senha"}
+        data-testid={toggleTestId}
+      >
+        {visible ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+      </button>
+    </span>
+  );
+}
+
 function Pill({ active, children, onClick, testId }: { active?: boolean; children: ReactNode; onClick?: () => void; testId: string }) {
   return <button type="button" className={`pill ${active ? "pill-active" : ""}`} onClick={onClick} data-testid={testId}>{children}</button>;
 }
@@ -266,7 +330,14 @@ function OnboardingModal({ userId, onComplete }: { userId: string; onComplete: (
 
   return (
     <div className="modal-backdrop">
-      <div className="modal-card onboarding-card" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-card onboarding-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`onboarding-step-${step}-title`}
+        aria-describedby={`onboarding-step-${step}-description`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="onboarding-progress">
           <span className={step >= 1 ? "step-active" : ""} />
           <span className={step >= 2 ? "step-active" : ""} />
@@ -275,11 +346,11 @@ function OnboardingModal({ userId, onComplete }: { userId: string; onComplete: (
         {step === 1 && (
           <>
             <div className="modal-top">
-              <div><span className="card-kicker">BEM-VINDA</span><h2>Como posso te chamar?</h2></div>
+              <div className="onboarding-intro"><span className="card-kicker">BEM-VINDA</span><h2 id="onboarding-step-1-title">Como posso te chamar?</h2></div>
             </div>
-            <p className="muted-copy">Não precisa ser seu nome completo — pode ser como preferir.</p>
+            <p className="muted-copy onboarding-description" id="onboarding-step-1-description">Pode ser seu nome, um apelido ou como você gosta de ser chamada.</p>
             <label className="modal-label">
-              SEU NOME OU APELIDO
+              NOME OU APELIDO
               <input
                 autoFocus
                 value={name}
@@ -303,12 +374,12 @@ function OnboardingModal({ userId, onComplete }: { userId: string; onComplete: (
         {step === 2 && (
           <>
             <div className="modal-top">
-              <div><span className="card-kicker">CHEGADA</span><h2>Qual é a data prevista?</h2></div>
+              <div className="onboarding-intro"><span className="card-kicker">CHEGADA</span><h2 id="onboarding-step-2-title">Qual é a data prevista?</h2></div>
               <TinyButton onClick={() => setStep(1)} label="Voltar" testId="button-onboarding-back"><ChevronRight size={17} className="rotate-180" /></TinyButton>
             </div>
-            <p className="muted-copy">Usamos para calcular a sua semana e personalizar os marcos. Pode editar depois.</p>
+            <p className="muted-copy onboarding-description" id="onboarding-step-2-description">A partir dela, calculamos sua semana e os marcos. Você pode mudar depois.</p>
             <label className="modal-label">
-              DATA PROVÁVEL DO PARTO
+              DATA PREVISTA
               <input
                 type="date"
                 value={dueDate}
@@ -630,12 +701,17 @@ function TimelinePanel({
         {miles.map((m) => {
           const Icon = m.week <= 20 ? Sparkles : m.week <= 28 ? ClipboardCheck : m.week <= 32 ? Gift : Heart;
           const past = week !== null && m.week < (week ?? 0);
+            const current = week !== null && m.week === week;
+            const state = m.completed ? "completed" : past ? "past" : current ? "current" : "future";
           return (
             <button
               type="button"
-              className={`milestone-item ${m.completed ? "milestone-done" : ""} ${past && !m.completed ? "milestone-past" : ""}`}
+                className={`milestone-item milestone-${state} ${m.completed ? "milestone-done" : ""}`}
               key={m.id}
               onClick={() => onToggle(m.id, !m.completed)}
+                aria-pressed={m.completed}
+                aria-current={current ? "step" : undefined}
+                aria-label={`${m.title}, semana ${m.week}. ${m.completed ? "Concluído. Toque para marcar como pendente." : "Pendente. Toque para marcar como concluído."}`}
               data-testid={`button-phone-milestone-${m.week}`}
             >
               <span className="milestone-icon"><Icon size={14} /></span>
@@ -832,14 +908,14 @@ function ProfilePanel({
   const canSave = editing && saveState !== "saving";
 
   return (
-    <div className="phone-content flow">
+    <div className="phone-content flow profile-content">
       <div className="eyebrow-row">
         <span>SEU ESPAÇO</span>
         <TinyButton onClick={() => editing ? canSave && save() : setEditing(true)} label={editing ? "Salvar" : "Editar"} testId="button-phone-edit-profile">
           {editing ? (saveState === "saving" ? <span className="profile-save-dot" /> : <Check size={15} />) : <Pencil size={14} />}
         </TinyButton>
       </div>
-      <h1 className="phone-heading">Tudo sobre<br /><strong>vocês dois.</strong></h1>
+       <h1 className="phone-heading">Seu espaço,<br /><strong>do seu jeito.</strong></h1>
       <div className="profile-card">
         <div className="avatar">{initials}</div>
         <div>
@@ -854,7 +930,7 @@ function ProfilePanel({
             <div><span className="card-kicker">QUEM ESTÁ PREPARANDO</span><h2>Sobre você</h2></div>
             <span className="optional-badge">opcional</span>
           </div>
-          <p className="profile-section-copy">Um jeito carinhoso de deixar seu espaço com a sua cara.</p>
+           <p className="profile-section-copy">Conte só o que fizer sentido para você.</p>
           <label>
             NOME OU APELIDO
             <input value={name} onChange={(e) => setName(e.target.value)} disabled={!editing} placeholder="Como você prefere ser chamada?" data-testid="input-phone-profile-name" />
@@ -870,7 +946,7 @@ function ProfilePanel({
             <div><span className="card-kicker">A PEQUENA PESSOA</span><h2>Sobre o bebê</h2></div>
             <span className="optional-badge">opcional</span>
           </div>
-          <p className="profile-section-copy">Pode ser o nome, um apelido ou deixar para decidir depois.</p>
+           <p className="profile-section-copy">Nome, apelido ou nada por enquanto — tudo bem.</p>
           <label>
             NOME OU APELIDO DO BEBÊ
             <input value={babyName} onChange={(e) => setBabyName(e.target.value)} disabled={!editing} placeholder="Como vocês chamam o bebê?" data-testid="input-phone-profile-baby-name" />
@@ -889,7 +965,7 @@ function ProfilePanel({
             <div><span className="card-kicker">PARA CHEGAR COM CALMA</span><h2>Organização da chegada</h2></div>
             <span className="optional-badge">opcional</span>
           </div>
-          <p className="profile-section-copy">Detalhes úteis para você se organizar, sem pressa e sem excesso.</p>
+           <p className="profile-section-copy">Anote o que ajudar a organizar a chegada, no seu tempo.</p>
           <label>
             MATERNIDADE OU HOSPITAL
             <input value={hospital} onChange={(e) => setHospital(e.target.value)} disabled={!editing} placeholder="Onde você imagina a chegada?" data-testid="input-phone-profile-hospital" />
@@ -2260,13 +2336,13 @@ function AuthPage({ mode }: { mode: AuthMode }) {
             </label>
             <label className="auth-field">
               SENHA
-              <input
-                type="password"
+              <PasswordField
                 autoComplete={isSignup ? "new-password" : "current-password"}
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={setPassword}
                 placeholder="Pelo menos 8 caracteres"
-                data-testid="input-auth-password"
+                testId="input-auth-password"
+                toggleTestId="button-toggle-auth-password"
               />
             </label>
             {!isSignup && (
@@ -2277,13 +2353,13 @@ function AuthPage({ mode }: { mode: AuthMode }) {
             {isSignup && (
               <label className="auth-field">
                 CONFIRME A SENHA
-                <input
-                  type="password"
+                <PasswordField
                   autoComplete="new-password"
                   value={confirmation}
-                  onChange={(event) => setConfirmation(event.target.value)}
+                  onChange={setConfirmation}
                   placeholder="Repita sua senha"
-                  data-testid="input-auth-confirmation"
+                  testId="input-auth-confirmation"
+                  toggleTestId="button-toggle-auth-confirmation"
                 />
               </label>
             )}
