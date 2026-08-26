@@ -23,7 +23,6 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  ShoppingBag,
   Sparkles,
   Star,
   Trash2,
@@ -168,7 +167,7 @@ function Brand() {
   );
 }
 
-function AccountControl() {
+function AccountControl({ onProfile }: { onProfile?: () => void }) {
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
   const { data } = useQuery({ queryKey: ["auth-session"], queryFn: getSession, staleTime: Infinity });
@@ -184,9 +183,25 @@ function AccountControl() {
       setLocation("/sign-in");
     }
   };
+  const handleProfile = () => {
+    if (onProfile) {
+      onProfile();
+      return;
+    }
+    setLocation("/profile");
+  };
   return (
     <div className="account-control">
-      <span className="toolbar-avatar">{initials}</span>
+      <button
+        type="button"
+        className="toolbar-avatar toolbar-avatar-button"
+        onClick={handleProfile}
+        aria-label="Abrir Meu perfil"
+        title="Meu perfil"
+        data-testid="button-open-profile-avatar"
+      >
+        {initials}
+      </button>
       <button type="button" onClick={handleSignOut} className="account-signout" data-testid="button-sign-out">
         <LogOut size={14} /> sair
       </button>
@@ -330,11 +345,10 @@ function Phone({ children, title, activeRoute, setLocation, activePanel, onPanel
   setLocation: (path: string) => void; activePanel: number; onPanel: (index: number) => void;
 }) {
   const tabs = [
-    { path: "/dashboard", label: "Início", icon: Home, panel: 0 },
-    { path: "/checklist", label: "Lista", icon: ListChecks, panel: 1 },
-    { path: "/milestones", label: "Marcos", icon: History, panel: 2 },
-    { path: "/recommendations", label: "Ideias", icon: ShoppingBag, panel: 0 },
-    { path: "/profile", label: "Perfil", icon: UserRound, panel: 0 },
+    { path: "/dashboard", label: "Início", testId: "inicio", icon: Home, panel: 0 },
+    { path: "/checklist", label: "Lista", testId: "lista", icon: ListChecks, panel: 1 },
+    { path: "/milestones", label: "Marcos", testId: "marcos", icon: History, panel: 2 },
+    { path: "/recommendations", label: "Inspirações", testId: "inspiracoes", icon: Sparkles, panel: 0 },
   ];
   const panelIdx = title === "Ninho" ? 0 : title === "Registro rápido" ? 1 : 2;
   return (
@@ -342,10 +356,10 @@ function Phone({ children, title, activeRoute, setLocation, activePanel, onPanel
       <div className="phone-screen">
         {children}
         <nav className="phone-tabs" aria-label="Navegação do Ninho">
-          {tabs.map(({ path, label, icon: Icon, panel }) => {
+          {tabs.map(({ path, label, testId, icon: Icon, panel }) => {
             const selected = activeRoute === path;
             return (
-              <button type="button" key={path} onClick={() => { onPanel(panel); setLocation(path); }} className={`phone-tab ${selected ? "tab-active" : ""}`} data-testid={`button-phone-tab-${label.toLowerCase()}`}>
+              <button type="button" key={path} onClick={() => { onPanel(panel); setLocation(path); }} className={`phone-tab ${selected ? "tab-active" : ""}`} aria-current={selected ? "page" : undefined} data-testid={`button-phone-tab-${testId}`}>
                 <Icon size={16} strokeWidth={selected ? 2 : 1.5} /><span>{label}</span>
               </button>
             );
@@ -429,8 +443,8 @@ function OverviewPanel({
         </button>
       </div>
       <button type="button" className="soft-action recommendation-prompt" onClick={() => setLocation("/recommendations")} data-testid="button-open-recommendations">
-        <ShoppingBag size={15} />
-        <span><strong>ideias para o seu momento</strong><small>uma curadoria leve para complementar sua lista</small></span>
+        <Sparkles size={15} />
+        <span><strong>inspirações para o seu momento</strong><small>uma seleção leve para complementar sua lista</small></span>
         <ArrowUpRight size={14} />
       </button>
     </div>
@@ -512,10 +526,10 @@ function ChecklistPanel({
                         onClick={() => onOpenRecommendation(item.recommendationId!)}
                         data-testid={`button-open-item-recommendation-${item.id}`}
                       >
-                        <Sparkles size={10} /> ver recomendação
+                        <Sparkles size={10} /> ver inspiração
                       </button>
                     ) : (
-                      <span className="check-recommendation-unavailable">recomendação indisponível</span>
+                        <span className="check-recommendation-unavailable">inspiração indisponível</span>
                     )}
                     <button
                       type="button"
@@ -996,7 +1010,7 @@ function RecommendationCard({
                 onClick={() => onOpenLinkedItem(linkedItem)}
                 data-testid={`button-recommendation-added-${recommendation.id}`}
               >
-                <Check size={12} /> na sua lista
+                <Check size={12} /> salvo na sua lista
               </button>
             ) : (
               <button
@@ -1006,7 +1020,7 @@ function RecommendationCard({
                 disabled={isPending}
                 data-testid={`button-add-recommendation-${recommendation.id}`}
               >
-                <Plus size={12} /> {matchingItems.length ? "adicionar ou vincular" : "adicionar à lista"}
+                <Plus size={12} /> {matchingItems.length ? "salvar ou vincular" : "salvar na lista"}
               </button>
             )}
             <a
@@ -1019,9 +1033,10 @@ function RecommendationCard({
                   onExpired();
                 }
               }}
+              aria-label={`Abrir ${recommendation.name} na loja externa`}
               data-testid={`link-recommendation-${recommendation.id}`}
             >
-              ver na loja <ArrowUpRight size={13} />
+              abrir loja externa <ArrowUpRight size={13} />
             </a>
           </div>
         </div>
@@ -1094,7 +1109,7 @@ function RecommendationLinkModal({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="modal-top">
-          <div><span className="card-kicker">PARA A SUA LISTA</span><h2 id={`recommendation-link-title-${recommendation.id}`}>Como guardar esta ideia?</h2></div>
+          <div><span className="card-kicker">PARA A SUA LISTA</span><h2 id={`recommendation-link-title-${recommendation.id}`}>Como salvar esta inspiração?</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-recommendation-modal"><X size={17} /></TinyButton>
         </div>
         <p className="recommendation-link-description" id={`recommendation-link-description-${recommendation.id}`}>
@@ -1112,7 +1127,7 @@ function RecommendationLinkModal({
             </button>
           ))}
         </div>
-        <p className="recommendation-link-note">A recomendação fica ligada ao item, mas você continua comprando onde preferir.</p>
+        <p className="recommendation-link-note">A inspiração fica ligada ao item, mas você continua comprando onde preferir.</p>
       </div>
     </div>
   );
@@ -1138,6 +1153,7 @@ function RecommendationsPanel({
   const [category, setCategory] = useState<"Para você" | CategoryKey>("Para você");
   const [linkingRecommendation, setLinkingRecommendation] = useState<Recommendation | null>(null);
   const [availabilityNotice, setAvailabilityNotice] = useState<string | null>(null);
+  const handledFocusId = useRef<string | null>(null);
   const now = useRecommendationClock();
   const recommendations = getVisibleRecommendations(now);
   const pendingCategories = useMemo(
@@ -1155,25 +1171,31 @@ function RecommendationsPanel({
   });
 
   useEffect(() => {
-    if (!focusId) return;
+    if (!focusId) {
+      handledFocusId.current = null;
+      return;
+    }
     const recommendation = getVisibleRecommendations(now).find((item) => item.id === focusId);
     if (!recommendation) return;
-    setCategory(recommendation.category);
-    requestAnimationFrame(() => document.getElementById(`recommendation-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
-  }, [focusId, now]);
+    if (category !== recommendation.category) {
+      setCategory(recommendation.category);
+      return;
+    }
+    if (handledFocusId.current === focusId) return;
+    handledFocusId.current = focusId;
+    const frame = requestAnimationFrame(() => document.getElementById(`recommendation-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    return () => cancelAnimationFrame(frame);
+  }, [category, focusId, now]);
 
   return (
     <div className="phone-content flow recommendations-content">
-      <div className="eyebrow-row"><span>CURADORIA NINHO</span><ShoppingBag size={14} /></div>
-      <h1 className="phone-heading">Escolhas que deixam<br /><strong>tudo mais leve.</strong></h1>
-      <div className="recommendation-intro">
-        <div className="recommendation-intro-icon"><Sparkles size={17} /></div>
-        <div>
-          <span className="card-kicker">SEM PRESSA, SEM EXCESSO</span>
-          <p>{hasPersonalizedSuggestions ? "Selecionamos ideias para categorias que ainda estão esperando por você." : "Uma seleção de essenciais para inspirar os próximos passos do seu enxoval."}</p>
-        </div>
-      </div>
-      <div className="filter-row recommendation-filters" aria-label="Filtrar recomendações">
+      <div className="eyebrow-row"><span>INSPIRAÇÕES NINHO</span><Sparkles size={14} /></div>
+      <h1 className="phone-heading">Inspirações para<br /><strong>deixar tudo mais leve.</strong></h1>
+      <p className="recommendation-context">
+        <Sparkles size={14} />
+        <span>{hasPersonalizedSuggestions ? "O Ninho seleciona caminhos para as categorias que ainda estão esperando por você." : "Uma seleção editorial do Ninho para inspirar os próximos passos do seu enxoval."}</span>
+      </p>
+      <div className="filter-row recommendation-filters" aria-label="Filtrar inspirações">
         <Pill active={category === "Para você"} onClick={() => setCategory("Para você")} testId="button-recommendation-for-you">Para você</Pill>
         {CATEGORIES.map((key) => (
           <Pill key={key} active={category === key} onClick={() => setCategory(key)} testId={`button-recommendation-category-${key.toLowerCase()}`}>{key}</Pill>
@@ -1195,7 +1217,7 @@ function RecommendationsPanel({
                 matchingItems={matchingItems}
                 onAdd={() => matchingItems.length ? setLinkingRecommendation(recommendation) : onAddRecommendation(recommendation)}
                 onOpenLinkedItem={onOpenLinkedItem}
-                onExpired={() => setAvailabilityNotice("Esta recomendação acabou de expirar. Atualize a página para ver sugestões revisadas.")}
+                onExpired={() => setAvailabilityNotice("Esta inspiração acabou de expirar. Atualize a página para ver opções revisadas.")}
                 isPending={isActionPending}
                 now={now}
               />
@@ -1205,11 +1227,11 @@ function RecommendationsPanel({
       </div>
       {visible.length === 0 && (
         <div className="empty-recommendations">
-          <ShoppingBag size={24} />
-          <p>Nenhuma recomendação encontrada nessa categoria.</p>
+          <Sparkles size={24} />
+          <p>Nenhuma inspiração encontrada nessa categoria.</p>
         </div>
       )}
-      <p className="recommendation-disclaimer">As recomendações são uma curadoria editorial. O Ninho não vende os produtos; ao escolher um item, você será direcionada para a loja.</p>
+      <p className="recommendation-disclaimer">O Ninho seleciona cada inspiração e não vende os produtos. Ao escolher uma delas, você será direcionada para a loja externa.</p>
       {linkingRecommendation && (
         <RecommendationLinkModal
           recommendation={linkingRecommendation}
@@ -1323,7 +1345,7 @@ function DesktopSidebar({ location, go }: { location: string; go: (path: string,
       </nav>
       <div className="desktop-nav-label desktop-secondary-label">ORGANIZAÇÃO</div>
       <nav className="desktop-nav">
-        <button type="button" className={`desktop-nav-item ${location === "/recommendations" ? "selected" : ""}`} onClick={() => go("/recommendations", 0)} data-testid="button-desktop-nav-recomendacoes"><ShoppingBag size={17} /><span>Recomendações</span>{location === "/recommendations" && <span className="desktop-nav-indicator" />}</button>
+      <button type="button" className={`desktop-nav-item ${location === "/recommendations" ? "selected" : ""}`} onClick={() => go("/recommendations", 0)} data-testid="button-desktop-nav-inspiracoes"><Sparkles size={17} /><span>Inspirações</span>{location === "/recommendations" && <span className="desktop-nav-indicator" />}</button>
         <button type="button" className={`desktop-nav-item ${location === "/budget" ? "selected" : ""}`} onClick={() => go("/budget", 0)} data-testid="button-desktop-nav-orcamento"><WalletCards size={17} /><span>Orçamento</span></button>
         <button type="button" className={`desktop-nav-item ${location === "/profile" ? "selected" : ""}`} onClick={() => go("/profile", 0)} data-testid="button-desktop-nav-perfil"><UserRound size={17} /><span>Meu perfil</span></button>
       </nav>
@@ -1381,7 +1403,7 @@ function DesktopWorkspace({ location, go, items, milestones: miles, profile, bud
   profile: ServerProfile; budget: ServerBudgetCategory[];
   content: ReactNode;
 }) {
-  const titles: Record<string, string> = { "/dashboard": "Visão geral", "/checklist": "Minha lista", "/milestones": "Linha do tempo", "/recommendations": "Recomendações", "/budget": "Orçamento", "/profile": "Meu perfil" };
+  const titles: Record<string, string> = { "/dashboard": "Visão geral", "/checklist": "Minha lista", "/milestones": "Linha do tempo", "/recommendations": "Inspirações", "/budget": "Orçamento", "/profile": "Meu perfil" };
   const title = titles[location] ?? "Ninho";
   const isOverview = location === "/dashboard";
   const routeClass = `desktop-route-${location.slice(1) || "dashboard"}`;
@@ -1397,7 +1419,7 @@ function DesktopWorkspace({ location, go, items, milestones: miles, profile, bud
           <div><span className="desktop-greeting">{todayLabel()}</span><h1>{title}</h1></div>
           <div className="desktop-header-actions">
             <button type="button" className="desktop-help-button"><Sparkles size={15} /> seu espaço, do seu jeito</button>
-            <AccountControl />
+            <AccountControl onProfile={() => go("/profile", 0)} />
           </div>
         </header>
         {isOverview && (
@@ -1638,15 +1660,15 @@ function Workspace({ userId: uid }: { userId: string }) {
       {
         name: recommendation.name,
         category: recommendation.category,
-        group: "Recomendação Ninho",
+        group: "Inspiração Ninho",
         price: recommendation.price ?? 0,
         recommendationId: recommendation.id,
       },
       {
-        onSuccess: () => setRecommendationFeedback({ tone: "success", message: "Ideia adicionada à sua lista como “A comprar”." }),
+        onSuccess: () => setRecommendationFeedback({ tone: "success", message: "Inspiração salva na sua lista como “A comprar”." }),
         onError: (error) => setRecommendationFeedback({
           tone: "error",
-          message: error instanceof Error && error.message ? error.message : "Não foi possível adicionar esta ideia agora.",
+          message: error instanceof Error && error.message ? error.message : "Não foi possível salvar esta inspiração agora.",
         }),
       },
     );
@@ -1657,10 +1679,10 @@ function Workspace({ userId: uid }: { userId: string }) {
     updateItemMutation.mutate(
       { id: item.id, data: { recommendationId: recommendation.id } },
       {
-        onSuccess: () => setRecommendationFeedback({ tone: "success", message: "Recomendação vinculada ao item da sua lista." }),
+        onSuccess: () => setRecommendationFeedback({ tone: "success", message: "Inspiração vinculada ao item da sua lista." }),
         onError: (error) => setRecommendationFeedback({
           tone: "error",
-          message: error instanceof Error && error.message ? error.message : "Não foi possível vincular esta ideia agora.",
+          message: error instanceof Error && error.message ? error.message : "Não foi possível vincular esta inspiração agora.",
         }),
       },
     );
@@ -1670,10 +1692,10 @@ function Workspace({ userId: uid }: { userId: string }) {
     updateItemMutation.mutate(
       { id, data: { recommendationId: null } },
       {
-        onSuccess: () => setRecommendationFeedback({ tone: "success", message: "A recomendação foi desvinculada; o item continua na sua lista." }),
+        onSuccess: () => setRecommendationFeedback({ tone: "success", message: "A inspiração foi desvinculada; o item continua na sua lista." }),
         onError: (error) => setRecommendationFeedback({
           tone: "error",
-          message: error instanceof Error && error.message ? error.message : "Não foi possível desvincular esta ideia agora.",
+          message: error instanceof Error && error.message ? error.message : "Não foi possível desvincular esta inspiração agora.",
         }),
       },
     );
@@ -1790,7 +1812,7 @@ function Workspace({ userId: uid }: { userId: string }) {
           <span className="toolbar-divider" />
           <span className="toolbar-caption">gestão de enxoval</span>
         </div>
-        <div className="toolbar-actions"><AccountControl /></div>
+        <div className="toolbar-actions"><AccountControl onProfile={() => go("/profile", 0)} /></div>
       </div>
       <div className="phone-stage">
         <Phone title="Ninho" activeRoute={location} setLocation={go} activePanel={activePanel} onPanel={setActivePanel}>
