@@ -1,0 +1,58 @@
+# Roadmap de melhorias — Ninho
+
+Depois dos 4 bugs do plano de correção anterior. Dividido por esforço de implementação (o que dá pra pedir ao Replit Agent em poucos prompts vs. o que exige mais decisão de produto/estrutura de dados).
+
+---
+
+## Sprint 1 — Ganho rápido, alto impacto emocional
+*Tudo aqui é ajuste de copy/UI em cima do que já existe — não exige nova tabela no banco.*
+
+1. **Usar o nome do bebê nas telas** — o perfil já coleta "apelido do bebê", mas nenhuma tela usa esse dado. Trocar textos genéricos ("Feche a lista de roupas RN") por versões com o nome, onde fizer sentido.
+2. **Reforçar o tom emocional no copy** — a frase do rodapé ("Um passo de cada vez, sem pressa, sem excesso") é a melhor do app. Levar esse tom para os títulos de card hoje frios ("Próximo marco", "Preparação 50%") em vez de linguagem de dashboard.
+3. **Corrigir o campo Cidade não salvar** (já está no plano de correção anterior — sem isso, a personalização por clima do onboarding não existe de fato).
+4. **Contagem regressiva com contexto** — trocar "faltam 6 semanas" por algo com uma referência concreta de tamanho/desenvolvimento do bebê na semana atual.
+
+**Prompt sugerido para o Replit Agent (pode pedir tudo de uma vez, é só copy/UI):**
+> No app, quero reforçar o tom emocional e usar dados que já existem mas não aparecem: 1) usar o apelido do bebê (já coletado no perfil) nos textos de marcos e no painel, no lugar de frases genéricas; 2) revisar os títulos de card no dashboard (hoje frios, tipo "Próximo marco", "Preparação") para um tom mais acolhedor, no mesmo estilo da frase que já existe no rodapé ("Um passo de cada vez, sem pressa, sem excesso"); 3) na contagem regressiva de semanas, adicionar uma referência simples de desenvolvimento do bebê na semana atual (ex: tamanho aproximado), sem inventar dados médicos incorretos — usar uma tabela padrão de referência por semana gestacional.
+
+---
+
+## Sprint 2 — Identidade visual
+*Exige decisões de design mais estruturadas — melhor fazer telas de referência antes de pedir ao Agent.*
+
+5. **Trocar paleta roxo-genérica** pela paleta terrosa/ivory com sage e vinho do protótipo já aprovado.
+6. **Adicionar tipografia serifada** (Fraunces ou similar) nos títulos de seção.
+7. **Substituir o indicador circular de progresso** pela barra "fita métrica" (elemento de assinatura visual do protótipo).
+
+**Como abordar:** eu já tenho o protótipo com os tokens de design definidos (cores em hex, fontes, o motivo da fita métrica). O ideal aqui é eu gerar um prompt de atualização visual completo referenciando esse protótipo específico, para o Agent aplicar de forma consistente em vez de ajustar tela por tela.
+
+---
+
+## Sprint 3 — Gamificação de verdade
+*Exige nova lógica de estado (badges conquistados, sequência semanal) — mais estrutural.*
+
+8. **Badges visuais ao cumprir marco no prazo** — hoje um marco só muda de "a seguir" para "feito" sem nenhum reconhecimento visual.
+9. **Sequência de cuidado semanal** ("3 semanas seguidas mantendo o ritmo") — sem punição visual ao quebrar, só reinício silencioso.
+10. **Upload de foto** (quarto, barriga, enxoval montado) — associada a marcos ou à timeline.
+
+**Como abordar:** esses provavelmente precisam de novos campos/tabelas (histórico de badges conquistados, streak counter, storage de imagem). Vale eu escrever a extensão do modelo de dados do PRD original antes de pedir a implementação, para o Agent não inventar uma estrutura solta.
+
+---
+
+## Sprint 4 — Funcionalidades de diferenciação competitiva
+*Maior esforço, maior retorno de retenção/viralidade — o que separa o Ninho da concorrência.*
+
+11. **Chá de bebê colaborativo funcional** — validar se o fluxo já existe de fato (a aba aparece no menu, mas não testei o fluxo ponta a ponta) e completar: link compartilhável sem exigir conta do convidado, confirmação de presente, notificação para a anfitriã.
+12. **Comparador de preço** entre lojas nos itens sugeridos.
+13. **Popular a base de itens** — hoje ~10 itens no total; a planilha original tinha ~179 só em Roupas. Sem isso, qualquer teste com uma mãe real vai expor a lista como incompleta rápido.
+
+---
+
+## Por que essa ordem
+
+- **Sprint 1** é o melhor custo-benefício: muda a percepção emocional do app sem tocar em estrutura de dados, e corrige o bug que já estava no plano anterior.
+- **Sprint 2** dá a identidade visual que hoje falta — importante antes de mostrar pra qualquer mãe de fora, porque a primeira impressão visual pesa mais que qualquer funcionalidade.
+- **Sprint 3** é onde a gamificação realmente aparece (hoje o app tem *estrutura* de marcos, mas nenhuma recompensa visual) — só faz sentido depois que a base emocional e visual já estão certas.
+- **Sprint 4** é o que compete de verdade com Colo/Mamity/Babylist, mas é o mais caro em esforço — deixar para quando o núcleo já estiver validado com usuárias reais.
+
+Quer que eu já escreva o prompt completo do Sprint 2 (aplicação da identidade visual) ou o modelo de dados do Sprint 3 (badges/streak) primeiro?
