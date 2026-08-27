@@ -511,7 +511,7 @@ function OverviewPanel({
   const focusDone = focusCategory.filter((i) => i.status !== "A comprar").length;
 
   return (
-    <div className="phone-content flow">
+    <div className="phone-content flow timeline-panel">
       <div className="eyebrow-row"><span>{todayLabel()}</span><span className="live-dot" /></div>
       <h1 className="phone-heading">Seu caminho,<br /><strong>um passo de cada vez.</strong></h1>
       <div className="focus-card">
