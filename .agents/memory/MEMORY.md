@@ -2,3 +2,4 @@
 - [Password recovery security](password-recovery-security.md) — reset links use a canonical app origin and invalidate every prior session after use.
 - [Responsive workspace shell](responsive-workspace-shell.md) — tablet and mobile use a full-width web shell, not a decorative phone frame.
 - [Fixed desktop sidebar](fixed-desktop-sidebar.md) — backdrop filters create a containing block, so the desktop sidebar must be outside them to remain viewport-fixed.
+- [Transient save-state tests](transient-save-state-tests.md) — validate fast pending states with deterministic request latency, then verify recovery after success.

@@ -123,6 +123,8 @@ type RecommendationFeedback = {
   message: string;
 };
 
+type ActionFeedback = RecommendationFeedback;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
@@ -130,6 +132,7 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const loginHeroImage = `${basePath}/login-pregnancy.png`;
 
 const CATEGORIES: CategoryKey[] = ["Roupas", "Higiene", "Alimentação", "Acessórios"];
+const GESTATION_WEEKS = Array.from({ length: 40 }, (_, index) => index + 1);
 
 const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const iconForCategory = (cat: CategoryKey) =>
@@ -283,6 +286,17 @@ function Pill({ active, children, onClick, testId }: { active?: boolean; childre
 
 function Progress({ value, className = "" }: { value: number; className?: string }) {
   return <div className={`progress-line ${className}`}><span style={{ width: `${Math.min(100, Math.max(0, value))}%` }} /></div>;
+}
+
+function ActionFeedbackBanner({ feedback, onDismiss }: { feedback: ActionFeedback | null; onDismiss: () => void }) {
+  if (!feedback) return null;
+  return (
+    <div className={`action-feedback action-feedback-${feedback.tone}`} role={feedback.tone === "error" ? "alert" : "status"}>
+      {feedback.tone === "success" ? <CheckCircle2 size={15} /> : <X size={15} />}
+      <span>{feedback.message}</span>
+      <button type="button" onClick={onDismiss} aria-label="Fechar mensagem" data-testid="button-dismiss-action-feedback"><X size={13} /></button>
+    </div>
+  );
 }
 
 function LoadingSpinner() {
@@ -441,6 +455,31 @@ function Phone({ children, title, activeRoute, setLocation, activePanel, onPanel
   );
 }
 
+function MobileUtilityLinks({ location, onBudget, onProfile }: { location: string; onBudget: () => void; onProfile: () => void }) {
+  return (
+    <div className="mobile-utility-links" aria-label="Atalhos de organização">
+      <button
+        type="button"
+        className={`mobile-budget-link ${location === "/budget" ? "is-current" : ""}`}
+        onClick={onBudget}
+        aria-current={location === "/budget" ? "page" : undefined}
+        data-testid="button-mobile-nav-orcamento"
+      >
+        <WalletCards size={14} /><span>Orçamento</span>
+      </button>
+      <button
+        type="button"
+        className={`mobile-budget-link ${location === "/profile" ? "is-current" : ""}`}
+        onClick={onProfile}
+        aria-current={location === "/profile" ? "page" : undefined}
+        data-testid="button-mobile-nav-perfil"
+      >
+        <UserRound size={14} /><span>Perfil</span>
+      </button>
+    </div>
+  );
+}
+
 // ─── Panels ───────────────────────────────────────────────────────────────────
 
 function getNextMilestone(miles: ServerMilestone[], week: number | null): ServerMilestone | undefined {
@@ -524,7 +563,7 @@ function OverviewPanel({
 
 function ChecklistPanel({
   items, onToggle, onAdd, onDelete, onOpenRecommendation, onUnlinkRecommendation,
-  onReleaseGiftReservation, onUpdateGiftReservation,
+  onReleaseGiftReservation, onUpdateGiftReservation, isActionPending,
 }: {
   items: ChecklistItem[];
   onToggle: (id: number, current: ItemStatus) => void;
@@ -534,6 +573,7 @@ function ChecklistPanel({
   onUnlinkRecommendation: (id: number) => void;
   onReleaseGiftReservation: (reservationId: number) => void;
   onUpdateGiftReservation: (reservationId: number, status: GiftReservationStatus) => void;
+  isActionPending: boolean;
 }) {
   const [category, setCategory] = useState<CategoryKey>("Roupas");
   const visible = items.filter((i) => i.category === category);
@@ -556,7 +596,7 @@ function ChecklistPanel({
           <div><span className="card-kicker">CHECKLIST ATIVO</span><h2>{category}</h2></div>
           <TinyButton onClick={() => onAdd(category)} label="Adicionar item" testId="button-phone-add-item"><Plus size={16} /></TinyButton>
         </div>
-        <div className="check-list">
+        <div className="check-list" aria-busy={isActionPending}>
           {visible.length === 0 && (
             <div className="empty-category">
               <p>Nenhum item em {category} ainda.</p>
@@ -571,6 +611,7 @@ function ChecklistPanel({
                 type="button"
                 className="check-item"
                 onClick={() => onToggle(item.id, nextStatus(item.status))}
+                disabled={isActionPending}
                 data-testid={`button-phone-check-${item.id}`}
               >
                 <span className={`check-circle ${item.status !== "A comprar" ? "checked" : ""}`}>
@@ -606,6 +647,7 @@ function ChecklistPanel({
                       type="button"
                       className="check-recommendation-unlink"
                       onClick={() => onUnlinkRecommendation(item.id)}
+                      disabled={isActionPending}
                       data-testid={`button-unlink-recommendation-${item.id}`}
                     >
                       desvincular
@@ -617,6 +659,7 @@ function ChecklistPanel({
                   <button
                     type="button"
                     className="gift-reservation-status"
+                    disabled={isActionPending}
                     onClick={() => onUpdateGiftReservation(
                       item.giftReservation!.id,
                       item.giftReservation!.status === "vou presentear" ? "presenteado" : "vou presentear",
@@ -629,13 +672,14 @@ function ChecklistPanel({
                     type="button"
                     className="gift-reservation-release"
                     onClick={() => onReleaseGiftReservation(item.giftReservation!.id)}
+                    disabled={isActionPending}
                     data-testid={`button-gift-reservation-release-${item.id}`}
                   >
                     desfazer
                   </button>
                 </span>
               )}
-              <button type="button" className="delete-item-btn" onClick={() => onDelete(item.id)} aria-label="Remover item" data-testid={`button-phone-delete-${item.id}`}>
+              <button type="button" className="delete-item-btn" onClick={() => onDelete(item.id)} disabled={isActionPending} aria-label={`Remover ${item.name}`} data-testid={`button-phone-delete-${item.id}`}>
                 <Trash2 size={13} />
               </button>
             </div>
@@ -657,22 +701,24 @@ function ChecklistPanel({
 }
 
 function TimelinePanel({
-  milestones: miles, profile, onToggle,
+  milestones: miles, profile, onToggle, isActionPending,
 }: {
   milestones: ServerMilestone[];
   profile: ServerProfile;
   onToggle: (id: number, completed: boolean) => void;
+  isActionPending: boolean;
 }) {
   const week = calcGestationalWeek(profile.dueDate);
   const name = profile.displayName || "você";
-  const progress = week ? Math.round((week / 40) * 100) : 0;
+  const displayWeek = week ? Math.min(40, week) : null;
+  const progress = displayWeek ? Math.round((displayWeek / 40) * 100) : 0;
   const trackProgress = Math.min(100, Math.max(0, progress));
 
   return (
     <div className="phone-content flow">
       <div className="eyebrow-row">
         <span>{week ? `JORNADA DE ${name.toUpperCase()}` : "LINHA DO TEMPO"}</span>
-        <span>{week ? `${week} / 40` : "—"}</span>
+        <span>{week ? `${displayWeek} / 40` : "—"}</span>
       </div>
       <h1 className="phone-heading">Os próximos<br /><strong>pequenos marcos.</strong></h1>
 
@@ -684,12 +730,12 @@ function TimelinePanel({
       ) : (
         <div className="timeline-chart">
           <div className="chart-top"><span>PROGRESSO DA GESTAÇÃO</span><strong>{progress}%</strong></div>
-          <div className="gestation-visual" role="img" aria-label={`Semana ${week} de 40, ${progress}% da gestação concluída`}>
+          <div className="gestation-visual" role="img" aria-label={`Semana ${displayWeek} de 40, ${progress}% da gestação concluída`}>
             <div className="gestation-scale">
               <div className="gestation-rail">
                 <span className="gestation-rail-fill" style={{ width: `${trackProgress}%` }} />
                 <span className="gestation-current" style={{ left: `${trackProgress}%` }}>
-                  <b>{week}</b>
+                  <b>{displayWeek}</b>
                 </span>
               </div>
               <div className="gestation-ticks" aria-hidden="true">
@@ -702,9 +748,34 @@ function TimelinePanel({
           </div>
           <div className="chart-foot">
             <span>sem 1</span>
-            <span>agora · sem {week}</span>
+            <span>agora · sem {displayWeek}</span>
             <span>sem 40 · parto</span>
           </div>
+        </div>
+      )}
+
+      {week && (
+        <div className="week-overview">
+          <div className="week-overview-top">
+            <span>JORNADA DE 40 SEMANAS</span>
+            <strong>{week > 40 ? "data prevista alcançada" : `semana ${displayWeek}`}</strong>
+          </div>
+          <ol className="week-grid" aria-label="Semanas da gestação">
+            {GESTATION_WEEKS.map((weekNumber) => {
+              const isCurrent = weekNumber === displayWeek;
+              const isPast = weekNumber < (displayWeek ?? 0);
+              return (
+                <li
+                  key={weekNumber}
+                  className={`week-marker ${isPast ? "is-past" : ""} ${isCurrent ? "is-current" : ""}`}
+                  aria-label={`Semana ${weekNumber}${isCurrent ? ", semana atual" : isPast ? ", concluída" : ""}`}
+                >
+                  <span>{weekNumber}</span>
+                </li>
+              );
+            })}
+          </ol>
+          <div className="week-overview-foot"><span>1º trimestre</span><span>2º trimestre</span><span>3º trimestre</span></div>
         </div>
       )}
 
@@ -721,6 +792,7 @@ function TimelinePanel({
                 className={`milestone-item milestone-${state} ${m.completed ? "milestone-done" : ""}`}
               key={m.id}
               onClick={() => onToggle(m.id, !m.completed)}
+                disabled={isActionPending}
                 aria-pressed={m.completed}
                 aria-current={current ? "step" : undefined}
                 aria-label={`${m.title}, semana ${m.week}. ${m.completed ? "Concluído. Toque para marcar como pendente." : "Pendente. Toque para marcar como concluído."}`}
@@ -741,11 +813,13 @@ function TimelinePanel({
 }
 
 function BudgetPanel({
-  items, budget, onSave,
+  items, budget, onSave, onEdit, saveState,
 }: {
   items: ChecklistItem[];
   budget: ServerBudgetCategory[];
   onSave: (categories: Array<{ category: string; planned: number }>) => void;
+  onEdit: () => void;
+  saveState: "idle" | "saving" | "success" | "error";
 }) {
   const [planned, setPlanned] = useState<Record<string, number>>(() => {
     const r: Record<string, number> = {};
@@ -768,11 +842,11 @@ function BudgetPanel({
   const handleChange = (cat: string, val: number) => {
     setPlanned((p) => ({ ...p, [cat]: val }));
     setDirty(true);
+    onEdit();
   };
 
   const save = () => {
     onSave(CATEGORIES.map((c) => ({ category: c, planned: planned[c] || 0 })));
-    setDirty(false);
   };
 
   return (
@@ -785,7 +859,7 @@ function BudgetPanel({
         <small>de {money(total)} planejados</small>
         <Progress value={total > 0 ? (spent / total) * 100 : 0} />
       </div>
-      <div className="white-card budget-list">
+      <div className="white-card budget-list" aria-busy={saveState === "saving"} data-testid="budget-edit-card">
         <div className="card-head"><h2>Por categoria</h2><span className="card-kicker">EDITÁVEL</span></div>
         {CATEGORIES.map((cat) => (
           <label className="budget-row" key={cat}>
@@ -794,13 +868,24 @@ function BudgetPanel({
               type="number"
               value={planned[cat] ?? 0}
               onChange={(e) => handleChange(cat, Number(e.target.value) || 0)}
+              disabled={saveState === "saving"}
               data-testid={`input-phone-budget-${cat.toLowerCase()}`}
             />
           </label>
         ))}
+        {saveState === "success" && !dirty && (
+          <div className="budget-save-message budget-save-success" role="status">
+            <CheckCircle2 size={14} /> Orçamento salvo.
+          </div>
+        )}
+        {saveState === "error" && (
+          <div className="budget-save-message budget-save-error" role="alert">
+            Não foi possível salvar. Seus valores continuam aqui para tentar novamente.
+          </div>
+        )}
         {dirty && (
-          <button type="button" className="primary-button" style={{ marginTop: 12 }} onClick={save} data-testid="button-save-budget">
-            <Check size={14} /> salvar orçamento
+          <button type="button" className="primary-button" style={{ marginTop: 12 }} onClick={save} disabled={saveState === "saving"} data-testid="button-save-budget">
+            {saveState === "saving" ? "salvando…" : <><Check size={14} /> salvar orçamento</>}
           </button>
         )}
       </div>
@@ -819,15 +904,31 @@ function GiftShareCard({
   error: string | null;
 }) {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const link = share ? `${window.location.origin}${basePath}/gift/${share.token}` : "";
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(link);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        const field = document.createElement("textarea");
+        field.value = link;
+        field.setAttribute("readonly", "");
+        field.style.position = "fixed";
+        field.style.opacity = "0";
+        document.body.appendChild(field);
+        field.select();
+        const copiedWithFallback = document.execCommand("copy");
+        field.remove();
+        if (!copiedWithFallback) throw new Error("Clipboard unavailable");
+      }
       setCopied(true);
+      setCopyError(false);
       window.setTimeout(() => setCopied(false), 2200);
     } catch {
       setCopied(false);
+      setCopyError(true);
     }
   };
 
@@ -861,6 +962,7 @@ function GiftShareCard({
           <Gift size={15} /> {isLoading ? "criando link…" : "criar link para presentes"}
         </button>
       )}
+      {copyError && <p className="gift-share-error" role="alert">Não foi possível copiar automaticamente. Selecione o endereço acima e copie manualmente.</p>}
       {error && <p className="gift-share-error" role="alert">{error}</p>}
     </section>
   );
@@ -1566,6 +1668,16 @@ function Workspace({ userId: uid }: { userId: string }) {
   const [addCategory, setAddCategory] = useState<CategoryKey>("Roupas");
   const [recommendationFocusId, setRecommendationFocusId] = useState<string | null>(null);
   const [recommendationFeedback, setRecommendationFeedback] = useState<RecommendationFeedback | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
+
+  const showActionFeedback = (feedback: ActionFeedback) => {
+    setActionFeedback(feedback);
+    if (feedback.tone === "success") {
+      window.setTimeout(() => {
+        setActionFeedback((current) => current?.message === feedback.message ? null : current);
+      }, 3200);
+    }
+  };
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 901px)");
@@ -1581,7 +1693,9 @@ function Workspace({ userId: uid }: { userId: string }) {
     mutationFn: updateProfile,
     onSuccess: (profile) => {
       qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, profile } : old);
+      showActionFeedback({ tone: "success", message: "Perfil salvo com sucesso." });
     },
+    onError: () => showActionFeedback({ tone: "error", message: "Não foi possível salvar o perfil. Revise sua conexão e tente novamente." }),
   });
 
   const addItemMutation = useMutation({
@@ -1590,7 +1704,9 @@ function Workspace({ userId: uid }: { userId: string }) {
       qc.setQueryData<Workspace>(wqKey, (old) =>
         old ? { ...old, items: [...old.items, item] } : old,
       );
+      showActionFeedback({ tone: "success", message: "Item adicionado à sua lista." });
     },
+    onError: () => showActionFeedback({ tone: "error", message: "Não foi possível adicionar o item. Tente novamente." }),
   });
 
   const updateItemMutation = useMutation({
@@ -1606,6 +1722,12 @@ function Workspace({ userId: uid }: { userId: string }) {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
+      showActionFeedback({ tone: "error", message: "A alteração não foi salva e o estado anterior foi restaurado." });
+    },
+    onSuccess: (_item, { data }) => {
+      if (!("recommendationId" in data)) {
+        showActionFeedback({ tone: "success", message: "Item atualizado na sua lista." });
+      }
     },
     onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
   });
@@ -1622,18 +1744,28 @@ function Workspace({ userId: uid }: { userId: string }) {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
+      showActionFeedback({ tone: "error", message: "Não foi possível remover o item. Ele foi restaurado na lista." });
     },
+    onSuccess: () => showActionFeedback({ tone: "success", message: "Item removido da sua lista." }),
     onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
   });
 
   const createShareMutation = useMutation({
     mutationFn: createGiftShare,
-    onSuccess: (share) => qc.setQueryData(["gift-share", uid], share),
+    onSuccess: (share) => {
+      qc.setQueryData(["gift-share", uid], share);
+      showActionFeedback({ tone: "success", message: "Novo link de presentes criado." });
+    },
+    onError: () => showActionFeedback({ tone: "error", message: "Não foi possível criar o link de presentes." }),
   });
 
   const revokeShareMutation = useMutation({
     mutationFn: revokeGiftShare,
-    onSuccess: () => qc.setQueryData(["gift-share", uid], null),
+    onSuccess: () => {
+      qc.setQueryData(["gift-share", uid], null);
+      showActionFeedback({ tone: "success", message: "O link público foi revogado." });
+    },
+    onError: () => showActionFeedback({ tone: "error", message: "Não foi possível revogar o link público." }),
   });
 
   const updateGiftReservationMutation = useMutation({
@@ -1643,7 +1775,9 @@ function Workspace({ userId: uid }: { userId: string }) {
       qc.setQueryData<Workspace>(wqKey, (old) => old
         ? { ...old, giftReservations: old.giftReservations.map((current) => current.id === reservation.id ? reservation : current) }
         : old);
+      showActionFeedback({ tone: "success", message: "Status do presente atualizado." });
     },
+    onError: () => showActionFeedback({ tone: "error", message: "Não foi possível atualizar o presente." }),
   });
 
   const deleteGiftReservationMutation = useMutation({
@@ -1652,7 +1786,9 @@ function Workspace({ userId: uid }: { userId: string }) {
       qc.setQueryData<Workspace>(wqKey, (old) => old
         ? { ...old, giftReservations: old.giftReservations.filter((reservation) => reservation.id !== id) }
         : old);
+      showActionFeedback({ tone: "success", message: "Reserva desfeita e item liberado." });
     },
+    onError: () => showActionFeedback({ tone: "error", message: "Não foi possível desfazer a reserva." }),
   });
 
   const milestoneMutation = useMutation({
@@ -1667,7 +1803,12 @@ function Workspace({ userId: uid }: { userId: string }) {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
+      showActionFeedback({ tone: "error", message: "Não foi possível atualizar o marco. O estado anterior foi restaurado." });
     },
+    onSuccess: (_milestone, { completed }) => showActionFeedback({
+      tone: "success",
+      message: completed ? "Marco concluído." : "Marco voltou para pendente.",
+    }),
     onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
   });
 
@@ -1676,7 +1817,9 @@ function Workspace({ userId: uid }: { userId: string }) {
       updateBudget({ categories }),
     onSuccess: (budget) => {
       qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, budget } : old);
+      showActionFeedback({ tone: "success", message: "Orçamento salvo com sucesso." });
     },
+    onError: () => showActionFeedback({ tone: "error", message: "Não foi possível salvar o orçamento. Seus valores continuam disponíveis para tentar novamente." }),
   });
 
   const profileSaveState: "idle" | "saving" | "error" | "success" = profileMutation.isPending
@@ -1739,6 +1882,8 @@ function Workspace({ userId: uid }: { userId: string }) {
   };
 
   const handleDelete = (id: number) => {
+    const item = items.find((current) => current.id === id);
+    if (!item || !window.confirm(`Remover “${item.name}” da sua lista?`)) return;
     deleteItemMutation.mutate(id);
   };
 
@@ -1827,12 +1972,27 @@ function Workspace({ userId: uid }: { userId: string }) {
       onUnlinkRecommendation={handleUnlinkRecommendation}
       onReleaseGiftReservation={handleReleaseGiftReservation}
       onUpdateGiftReservation={handleUpdateGiftReservation}
+      isActionPending={
+        addItemMutation.isPending
+        || updateItemMutation.isPending
+        || deleteItemMutation.isPending
+        || updateGiftReservationMutation.isPending
+        || deleteGiftReservationMutation.isPending
+      }
     />
   );
   const milestonePanel = (
-    <TimelinePanel milestones={miles} profile={profile} onToggle={handleMilestoneToggle} />
+    <TimelinePanel milestones={miles} profile={profile} onToggle={handleMilestoneToggle} isActionPending={milestoneMutation.isPending} />
   );
-  const budgetPanel = <BudgetPanel items={items} budget={budget} onSave={handleBudgetSave} />;
+  const budgetPanel = (
+    <BudgetPanel
+      items={items}
+      budget={budget}
+      onSave={handleBudgetSave}
+      onEdit={() => budgetMutation.reset()}
+      saveState={budgetMutation.isPending ? "saving" : budgetMutation.isError ? "error" : budgetMutation.isSuccess ? "success" : "idle"}
+    />
+  );
   const profilePanel = (
     <ProfilePanel
       profile={profile}
@@ -1882,6 +2042,7 @@ function Workspace({ userId: uid }: { userId: string }) {
       <div className="ninho-app">
         <DesktopWorkspace location={location} go={go} items={items} milestones={miles} profile={profile} budget={budget} content={desktopContent} />
         {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} />}
+        <ActionFeedbackBanner feedback={actionFeedback} onDismiss={() => setActionFeedback(null)} />
       </div>
     );
   }
@@ -1900,7 +2061,10 @@ function Workspace({ userId: uid }: { userId: string }) {
           <span className="toolbar-divider" />
           <span className="toolbar-caption">gestão de enxoval</span>
         </div>
-        <div className="toolbar-actions"><AccountControl onProfile={() => go("/profile", 0)} /></div>
+        <div className="toolbar-actions">
+          <MobileUtilityLinks location={location} onBudget={() => go("/budget", 0)} onProfile={() => go("/profile", 0)} />
+          <span className="mobile-account-control"><AccountControl onProfile={() => go("/profile", 0)} /></span>
+        </div>
       </div>
       <div className="phone-stage">
         <Phone title="Ninho" activeRoute={location} setLocation={go} activePanel={activePanel} onPanel={setActivePanel}>
@@ -1914,6 +2078,7 @@ function Workspace({ userId: uid }: { userId: string }) {
         </Phone>
       </div>
       {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} />}
+      <ActionFeedbackBanner feedback={actionFeedback} onDismiss={() => setActionFeedback(null)} />
     </div>
   );
 }
