@@ -1171,16 +1171,16 @@ body { font-size: var(--type-body); line-height: 1.45; }
 .timeline-panel > .eyebrow-row { margin-bottom: 12px; }
 .timeline-panel > .phone-heading { margin-top: 0; margin-bottom: 36px; }
 .timeline-panel .timeline-chart { width: 100%; box-sizing: border-box; margin-bottom: 24px; padding: 22px 22px 18px; border-radius: 24px; }
-.timeline-panel .chart-top { align-items: center; font-size: 11px; letter-spacing: 0.5px; }
-.timeline-panel .chart-top strong { font-size: 18px; font-weight: 700; }
+.timeline-panel .chart-top { align-items: center; font-size: 13px; letter-spacing: 0.5px; }
+.timeline-panel .chart-top strong { font-size: 21px; font-weight: 700; }
 .timeline-panel .gestation-visual { padding: 48px 4px 34px; }
-.timeline-panel .gestation-rail { height: 18px; border-radius: 9px; }
-.timeline-panel .gestation-current { width: 44px; height: 44px; border-width: 4px; }
-.timeline-panel .gestation-current::after { top: 40px; height: 18px; width: 2px; }
-.timeline-panel .gestation-current b { font-size: 13px; }
+.timeline-panel .gestation-rail { height: 22px; border-radius: 11px; }
+.timeline-panel .gestation-current { width: 56px; height: 56px; border-width: 5px; }
+.timeline-panel .gestation-current::after { top: 51px; height: 22px; width: 2px; }
+.timeline-panel .gestation-current b { font-size: 16px; }
 .timeline-panel .gestation-ticks { bottom: -12px; }
 .timeline-panel .gestation-ticks i { height: 10px; width: 2px; border-radius: 2px; }
-.timeline-panel .chart-foot { font-size: 11px; font-weight: 500; }
+.timeline-panel .chart-foot { font-size: 13px; font-weight: 500; }
 .timeline-panel .week-overview { width: 100%; box-sizing: border-box; margin-bottom: 36px; padding: 22px 22px 20px; border-radius: 24px; }
 .timeline-panel .week-overview-top { font-size: 11px; }
 .timeline-panel .week-overview-top strong { font-size: 14px; }
@@ -1203,7 +1203,14 @@ body { font-size: var(--type-body); line-height: 1.45; }
   .timeline-panel { padding: 20px clamp(20px, 5vw, 32px) calc(120px + env(safe-area-inset-bottom)); }
   .timeline-panel > .phone-heading { margin-bottom: 28px; }
   .timeline-panel .timeline-chart { margin-bottom: 20px; padding-right: 18px; padding-left: 18px; }
-  .timeline-panel .gestation-visual { padding-top: 42px; padding-bottom: 30px; }
+  .timeline-panel .chart-top { font-size: 11px; }
+  .timeline-panel .chart-top strong { font-size: 18px; }
+  .timeline-panel .gestation-visual { padding-top: 44px; padding-bottom: 32px; }
+  .timeline-panel .gestation-rail { height: 20px; border-radius: 10px; }
+  .timeline-panel .gestation-current { width: 50px; height: 50px; }
+  .timeline-panel .gestation-current::after { top: 45px; height: 20px; }
+  .timeline-panel .gestation-current b { font-size: 15px; }
+  .timeline-panel .chart-foot { font-size: 11px; }
   .timeline-panel .week-overview { margin-bottom: 32px; padding-right: 18px; padding-left: 18px; }
   .timeline-panel .week-grid { gap: 8px 6px; }
 }
