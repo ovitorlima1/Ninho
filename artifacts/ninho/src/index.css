@@ -964,7 +964,8 @@
 @media (max-width: 520px) {
   .public-gift-page { padding: 18px 14px 30px; }
   .public-gift-header { margin-bottom: 20px; }
-  .public-gift-header > span { max-width: 150px; font-size: 12px; }
+  /* Com 12px o rótulo quebrava em três linhas dentro dos 150px antigos. */
+  .public-gift-header > span { max-width: 200px; font-size: 12px; letter-spacing: .04em; }
   .public-gift-hero { padding: 25px 20px; border-radius: 22px; }
   .public-gift-item { grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
   .public-gift-item > button, .public-gift-reserved { grid-column: 2; justify-self: start; }

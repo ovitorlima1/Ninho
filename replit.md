@@ -55,7 +55,7 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - **Checklist de enxoval**: categorias (Roupas, Higiene, Alimentação, Acessórios), status por item (A comprar / Comprado / Ganhei), adicionar itens personalizados, remover itens
 - **Dashboard**: progresso real calculado dos dados salvos, próximo marco, orçamento investido
 - **Linha do tempo**: marcos de preparação semanais com toggle de conclusão; estado vazio amigável quando data prevista não está configurada
-- **Orçamento**: planejado por categoria com total calculado; itens marcados como resolvidos contam como gastos
+- **Orçamento**: planejado por categoria com total calculado; o "investido" soma preço unitário × quantidade só dos itens **Comprado** — "Ganhei" é presente e não conta como gasto (regra em `artifacts/ninho/src/lib/budget.ts`, com testes)
 - **Perfil**: nome, cidade, data prevista do parto (usada para calcular semana atual)
 - **Onboarding**: modal de boas-vindas para novos usuários configurarem nome e data prevista
 
