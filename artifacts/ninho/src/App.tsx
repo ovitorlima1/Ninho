@@ -79,6 +79,7 @@ import {
   resetPassword,
   type AuthSession,
 } from "@/lib/api";
+import { calcSpent } from "@/lib/budget";
 import { calcGestationalWeek } from "@/lib/gestation";
 import {
   getNextRecommendationRefreshDelay,
@@ -504,7 +505,7 @@ function OverviewPanel({
   const score = items.length ? Math.round((done / items.length) * 100) : 0;
   const name = profile.displayName || "você";
   const week = calcGestationalWeek(profile.dueDate);
-  const spent = items.filter((i) => i.status !== "A comprar").reduce((s, i) => s + i.price, 0);
+  const spent = calcSpent(items);
   const totalPlanned = budget.reduce((s, b) => s + parseFloat(b.planned), 0);
   const nextMilestone = getNextMilestone(miles, week);
   const focusCategory = items.filter((i) => i.category === "Roupas" && i.essential);
@@ -836,7 +837,7 @@ function BudgetPanel({
     setDirty(false);
   }, [budget]);
 
-  const spent = items.filter((i) => i.status !== "A comprar").reduce((s, i) => s + i.price, 0);
+  const spent = calcSpent(items);
   const total = Object.values(planned).reduce((s, v) => s + v, 0);
 
   const handleChange = (cat: string, val: number) => {

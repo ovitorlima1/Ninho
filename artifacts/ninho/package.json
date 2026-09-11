@@ -8,6 +8,8 @@
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm run test:recommendations && pnpm run test:budget",
+    "test:budget": "rm -rf /tmp/ninho-budget-tests && tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --outDir /tmp/ninho-budget-tests src/lib/budget.ts src/lib/budget.test.ts && node --test /tmp/ninho-budget-tests/budget.test.js",
     "test:recommendations": "rm -rf /tmp/ninho-recommendation-tests && tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --outDir /tmp/ninho-recommendation-tests src/lib/recommendations.ts src/lib/recommendations.test.ts && node --test /tmp/ninho-recommendation-tests/recommendations.test.js"
   },
   "devDependencies": {
