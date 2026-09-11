@@ -1008,9 +1008,19 @@
   --type-control: 13px;
   --type-meta: 12px;
   --type-label: 10px;
+  /* Campos de formulário: abaixo de 16px o iOS dá zoom ao focar o campo. */
+  --type-field: 16px;
 }
 
 body { font-size: var(--type-body); line-height: 1.45; }
+
+/* Todo campo editável usa --type-field, inclusive os que não aparecem na
+   lista de seletores abaixo (a regra genérica cobre componentes novos). */
+input,
+textarea,
+select,
+.auth-field input,
+.auth-password-wrap input { font-size: var(--type-field); }
 
 /* Workspace shell */
 .desktop-sidebar-brand > span,
@@ -1084,14 +1094,14 @@ body { font-size: var(--type-body); line-height: 1.45; }
 .milestone-text strong { font-size: var(--type-control); }
 .shower-hero p { font-size: var(--type-control); }
 .share-button,
-.budget-row,
-.budget-row input { font-size: var(--type-control); }
+.budget-row { font-size: var(--type-control); }
+.budget-row input { font-size: var(--type-field); }
 .profile-card p,
 .profile-section-copy { font-size: var(--type-meta); }
 .profile-form label { font-size: var(--type-label); }
 .profile-form input,
 .profile-section input,
-.profile-section textarea { font-size: var(--type-control); }
+.profile-section textarea { font-size: var(--type-field); }
 .profile-detail,
 .profile-detail strong,
 .profile-week { font-size: var(--type-meta); }
@@ -1124,7 +1134,7 @@ body { font-size: var(--type-body); line-height: 1.45; }
 .modal-top h2 { font-size: 21px; }
 .modal-label { font-size: var(--type-label); }
 .modal-label input,
-.date-input { font-size: var(--type-control); }
+.date-input { font-size: var(--type-field); }
 .modal-card > p { font-size: var(--type-control); line-height: 1.5; }
 .primary-button { font-size: var(--type-control); }
 .empty-category,
