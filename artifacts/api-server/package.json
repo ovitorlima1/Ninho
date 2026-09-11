@@ -8,7 +8,8 @@
     "dev:watch": "NODE_ENV=development tsx watch --clear-screen=false src/index.ts",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "rm -rf /tmp/ninho-api-server-tests && tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --outDir /tmp/ninho-api-server-tests src/lib/auth.ts src/lib/auth.test.ts && node --test /tmp/ninho-api-server-tests/auth.test.js"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",

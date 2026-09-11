@@ -13,6 +13,10 @@ const AUTH_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_ATTEMPT_BLOCK_MS = 15 * 60 * 1000;
 const AUTH_ATTEMPT_LIMIT = 5;
 const AUTH_ATTEMPT_MAX_ENTRIES = 10_000;
+const PASSWORD_RESET_ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
+const PASSWORD_RESET_ATTEMPT_BLOCK_MS = 60 * 60 * 1000;
+const PASSWORD_RESET_EMAIL_ATTEMPT_LIMIT = 3;
+const PASSWORD_RESET_ORIGIN_ATTEMPT_LIMIT = 10;
 
 type AttemptBucket = {
   count: number;
@@ -149,6 +153,28 @@ export class AuthAttemptLimiter {
 }
 
 export const authAttemptLimiter = new AuthAttemptLimiter();
+
+/**
+ * Password reset requests are limited per e-mail address, so a single account
+ * cannot be flooded with recovery messages. The route consumes the attempt
+ * before looking the account up, keeping existing and unknown addresses
+ * indistinguishable.
+ */
+export const passwordResetEmailLimiter = new AuthAttemptLimiter({
+  windowMs: PASSWORD_RESET_ATTEMPT_WINDOW_MS,
+  blockMs: PASSWORD_RESET_ATTEMPT_BLOCK_MS,
+  maxAttempts: PASSWORD_RESET_EMAIL_ATTEMPT_LIMIT,
+});
+
+/**
+ * Companion limiter keyed by request origin: it caps how many distinct
+ * addresses a single caller can probe within the same hour.
+ */
+export const passwordResetOriginLimiter = new AuthAttemptLimiter({
+  windowMs: PASSWORD_RESET_ATTEMPT_WINDOW_MS,
+  blockMs: PASSWORD_RESET_ATTEMPT_BLOCK_MS,
+  maxAttempts: PASSWORD_RESET_ORIGIN_ATTEMPT_LIMIT,
+});
 
 type JwtPayload = {
   sub: string;

@@ -15,6 +15,8 @@ import {
   createPasswordResetToken,
   hashPasswordResetToken,
   authAttemptLimiter,
+  passwordResetEmailLimiter,
+  passwordResetOriginLimiter,
 } from "../lib/auth";
 import { sendPasswordResetEmail } from "../lib/email";
 
@@ -25,6 +27,7 @@ const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 const PASSWORD_RESET_RESPONSE_MIN_MS = 400;
 const GENERIC_RESET_MESSAGE = "Se houver uma conta com este e-mail, enviaremos um link para redefinir sua senha.";
 const AUTH_RATE_LIMIT_MESSAGE = "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.";
+const PASSWORD_RESET_RATE_LIMIT_MESSAGE = "Muitos pedidos de redefinição de senha. Aguarde uma hora antes de tentar novamente.";
 
 function validateCredentials(body: unknown): { data: Credentials } | { error: string } {
   if (!body || typeof body !== "object") return { error: "Confira os dados informados." };
@@ -51,12 +54,23 @@ function getAuthAttemptKeys(scope: "login" | "register", email: string, origin: 
   return [`auth:${scope}:origin:${origin}`, `auth:${scope}:account:${email}`];
 }
 
+/**
+ * Password reset counters live in their own limiters, so the e-mail and the
+ * origin quotas can differ. Each limiter receives a single key.
+ */
+function getPasswordResetAttemptKeys(scope: "origin" | "account", value: string): string[] {
+  return [`auth:password-reset:${scope}:${value}`];
+}
+
+type RateLimitedRoute = "login" | "register" | "password-reset-request";
+
 function rejectRateLimitedRequest(
   req: Request,
   res: Response,
-  route: "login" | "register",
+  route: RateLimitedRoute,
   result: { allowed: false; retryAfterSeconds: number },
   origin: string,
+  message: string = AUTH_RATE_LIMIT_MESSAGE,
 ): void {
   req.log.warn({
     event: "auth_attempts_rate_limited",
@@ -66,7 +80,7 @@ function rejectRateLimitedRequest(
   }, "authentication attempt rate limit exceeded");
   res.set("Retry-After", String(result.retryAfterSeconds));
   res.status(429).json({
-    error: AUTH_RATE_LIMIT_MESSAGE,
+    error: message,
     retryAfterSeconds: result.retryAfterSeconds,
   });
 }
@@ -200,7 +214,23 @@ router.post("/password-reset/request", async (req, res) => {
     : "";
   const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) {
+    // Malformed addresses are rejected before any counter moves, so a typo
+    // never costs the caller one of its hourly attempts.
     res.status(400).json({ error: "Digite um e-mail válido." });
+    return;
+  }
+
+  // Both counters are consumed before the account lookup: an address with an
+  // account and one without behave exactly the same under the limit.
+  const origin = getRequestOrigin(req);
+  const emailRateLimit = passwordResetEmailLimiter.consume(getPasswordResetAttemptKeys("account", email));
+  if (!emailRateLimit.allowed) {
+    rejectRateLimitedRequest(req, res, "password-reset-request", emailRateLimit, origin, PASSWORD_RESET_RATE_LIMIT_MESSAGE);
+    return;
+  }
+  const originRateLimit = passwordResetOriginLimiter.consume(getPasswordResetAttemptKeys("origin", origin));
+  if (!originRateLimit.allowed) {
+    rejectRateLimitedRequest(req, res, "password-reset-request", originRateLimit, origin, PASSWORD_RESET_RATE_LIMIT_MESSAGE);
     return;
   }
 
