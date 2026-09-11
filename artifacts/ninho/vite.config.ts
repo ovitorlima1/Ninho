@@ -19,6 +19,10 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+// Outside Replit there is no shared proxy routing /api to the API server, so
+// local development forwards it explicitly (e.g. http://localhost:8787).
+const apiProxyTarget = process.env.API_PROXY_TARGET;
+
 const basePath = process.env.BASE_PATH;
 
 if (!basePath) {
@@ -72,6 +76,9 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    ...(apiProxyTarget
+      ? { proxy: { '/api': { target: apiProxyTarget, changeOrigin: true } } }
+      : {}),
   },
   preview: {
     port,
