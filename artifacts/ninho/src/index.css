@@ -783,8 +783,14 @@
   border: 0; border-radius: 8px; color: #c4a5d6; background: transparent;
   flex: none; order: 1; opacity: 0; transition: opacity .2s ease, color .2s ease, background .2s ease;
 }
-.check-item-row:hover .delete-item-btn { opacity: 1; }
+.check-item-row:hover .delete-item-btn,
+.check-item-row:focus-within .delete-item-btn { opacity: 1; }
 .delete-item-btn:hover { color: #c44c5c; background: #faeaed; }
+/* Em telas de toque não existe hover: sem isto, remover um item fica
+   impossível de descobrir e o alvo invisível ainda responde ao toque. */
+@media (hover: none) {
+  .delete-item-btn { width: 44px; height: 44px; opacity: 1; }
+}
 .check-recommendation-actions { display: flex; width: 100%; align-items: center; gap: 9px; order: 2; padding: 0 0 7px 28px; }
 .check-recommendation-link, .check-recommendation-unlink { display: inline-flex; min-height: 24px; align-items: center; gap: 4px; padding: 4px 0; border: 0; background: transparent; font-size: 12px; font-weight: 700; }
 .check-recommendation-link { color: #9854c3; }
