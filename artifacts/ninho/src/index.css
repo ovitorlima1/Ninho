@@ -256,6 +256,11 @@
 .auth-hidden-username { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .auth-forgot { justify-self: end; margin-top: -5px; padding: 0; border: 0; color: #9b50c7; background: transparent; font-size: 12px; font-weight: 700; text-align: right; }
 .auth-error { margin: 0; padding: 10px 12px; border-radius: 12px; color: #a2475a; background: #f9edf2; font-size: 12px; line-height: 1.4; }
+/* Erro ligado a um campo: fica logo abaixo dele, sem caixa, para não empurrar
+   o formulário inteiro como a faixa de erro geral fazia. */
+.field-error { margin: 6px 0 0; color: #a2475a; font-size: 12px; line-height: 1.35; }
+.field-error::before { content: "! "; font-weight: 700; }
+input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #cf7f92 !important; }
 .auth-submit { margin-top: 20px; }
 .auth-switch { margin: 18px 0 0; color: #766f7d; font-size: 12px; text-align: center; }
 .auth-switch button { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; color: #9b50c7; background: transparent; font-weight: 700; }
@@ -777,6 +782,42 @@
 }
 .check-item-row .check-item {
   flex: 1; order: 0;
+}
+.check-item-row.is-saving { opacity: .6; }
+
+/* Status explícito: as três opções ficam à vista, no lugar do antigo ciclo
+   escondido em que cada toque avançava para o próximo estado. */
+.status-picker {
+  order: 1; display: flex; gap: 4px; flex: none; padding: 4px 0;
+}
+.status-option {
+  min-height: 32px; padding: 6px 10px; border: 1px solid #e3dce8; border-radius: 99px;
+  color: #756b7c; background: #fbfafc; font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: color .15s ease, background .15s ease, border-color .15s ease;
+}
+.status-option:hover:not(:disabled) { border-color: #cdb2df; color: #6c3f88; }
+.status-option.selected { border-color: #9851d0; color: #fff; background: #9851d0; }
+.status-option:disabled { cursor: wait; opacity: .55; }
+.check-item-edit-hint { display: grid; place-items: center; color: #c4bccb; }
+.check-item:hover .check-item-edit-hint { color: #9851d0; }
+
+.item-form-row { display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px; }
+.item-form-row .modal-label { margin-top: 12px; }
+.price-input { display: flex; align-items: center; gap: 6px; padding-left: 12px; border: 1px solid #e3dce8; border-radius: 12px; background: #f8f5fa; color: #8b8797; }
+.price-input input { border: 0; background: transparent; padding-left: 0; }
+.price-input:focus-within { outline: 2px solid #a453d1; outline-offset: -1px; }
+.price-input input:focus { outline: none; }
+
+.action-feedback-action {
+  border: 0; border-radius: 8px; padding: 5px 10px; margin-left: 4px;
+  color: #6c3f88; background: rgba(152, 81, 208, .12);
+  font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.action-feedback-action:hover { background: rgba(152, 81, 208, .2); }
+
+@media (max-width: 430px) {
+  .status-picker { order: 2; width: 100%; padding-left: 28px; }
+  .item-form-row { grid-template-columns: 1fr; }
 }
 .delete-item-btn {
   display: grid; place-items: center; width: 28px; height: 28px;

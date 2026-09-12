@@ -130,7 +130,24 @@ type RecommendationFeedback = {
   message: string;
 };
 
-type ActionFeedback = RecommendationFeedback;
+/** Opções de status na ordem em que a usuária pensa: a comprar → resolvido. */
+const ITEM_STATUS_OPTIONS: { value: ItemStatus; label: string; short: string }[] = [
+  { value: "A comprar", label: "A comprar", short: "a comprar" },
+  { value: "Comprado", label: "Comprado", short: "comprei" },
+  { value: "Ganhei", label: "Ganhei de presente", short: "ganhei" },
+];
+
+/** "6 un. × R$ 38,00 · R$ 228,00" — deixa explícito que o preço é unitário. */
+function describeItemTotal(item: { qty: number; price: number; status: ItemStatus }): string {
+  if (item.price <= 0) return `${item.qty} un.`;
+  if (item.qty <= 1) return money(item.price);
+  return `${item.qty} un. × ${money(item.price)} · ${money(item.price * item.qty)}`;
+}
+
+type ActionFeedback = RecommendationFeedback & {
+  /** Ação opcional no aviso, usada pelo "Desfazer" da remoção. */
+  action?: { label: string; onAction: () => void };
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -301,6 +318,16 @@ function ActionFeedbackBanner({ feedback, onDismiss }: { feedback: ActionFeedbac
     <div className={`action-feedback action-feedback-${feedback.tone}`} role={feedback.tone === "error" ? "alert" : "status"}>
       {feedback.tone === "success" ? <CheckCircle2 size={15} /> : <X size={15} />}
       <span>{feedback.message}</span>
+      {feedback.action && (
+        <button
+          type="button"
+          className="action-feedback-action"
+          onClick={() => { feedback.action?.onAction(); onDismiss(); }}
+          data-testid="button-action-feedback-action"
+        >
+          {feedback.action.label}
+        </button>
+      )}
       <button type="button" onClick={onDismiss} aria-label="Fechar mensagem" data-testid="button-dismiss-action-feedback"><X size={13} /></button>
     </div>
   );
@@ -695,25 +722,25 @@ function OverviewPanel({
 }
 
 function ChecklistPanel({
-  items, onToggle, onAdd, onDelete, onOpenRecommendation, onUnlinkRecommendation,
-  onReleaseGiftReservation, onUpdateGiftReservation, isActionPending,
+  items, onToggle, onAdd, onEdit, onDelete, onOpenRecommendation, onUnlinkRecommendation,
+  onReleaseGiftReservation, onUpdateGiftReservation, pendingItemId, isActionPending,
 }: {
   items: ChecklistItem[];
-  onToggle: (id: number, current: ItemStatus) => void;
+  onToggle: (id: number, status: ItemStatus) => void;
   onAdd: (category: CategoryKey) => void;
+  onEdit: (item: ChecklistItem) => void;
   onDelete: (id: number) => void;
   onOpenRecommendation: (id: string) => void;
   onUnlinkRecommendation: (id: number) => void;
   onReleaseGiftReservation: (reservationId: number) => void;
   onUpdateGiftReservation: (reservationId: number, status: GiftReservationStatus) => void;
+  /** Só a linha que está gravando fica travada; o resto da lista continua viva. */
+  pendingItemId: number | null;
   isActionPending: boolean;
 }) {
   const [category, setCategory] = useState<CategoryKey>("Roupas");
   const visible = items.filter((i) => i.category === category);
   const allDone = items.filter((i) => i.status !== "A comprar").length;
-
-  const nextStatus = (s: ItemStatus): ItemStatus =>
-    s === "A comprar" ? "Comprado" : s === "Comprado" ? "Ganhei" : "A comprar";
 
   return (
     <div className="phone-content flow">
@@ -739,21 +766,21 @@ function ChecklistPanel({
             </div>
           )}
           {visible.map((item) => (
-            <div className="check-item-row" key={item.id}>
+            <div className={`check-item-row ${pendingItemId === item.id ? "is-saving" : ""}`} key={item.id}>
               <button
                 type="button"
                 className="check-item"
-                onClick={() => onToggle(item.id, nextStatus(item.status))}
-                disabled={isActionPending}
+                onClick={() => onEdit(item)}
+                disabled={pendingItemId === item.id}
                 data-testid={`button-phone-check-${item.id}`}
               >
-                <span className={`check-circle ${item.status !== "A comprar" ? "checked" : ""}`}>
+                <span className={`check-circle ${item.status !== "A comprar" ? "checked" : ""}`} aria-hidden>
                   {item.status === "Comprado" && <Check size={12} />}
                   {item.status === "Ganhei" && <Heart size={10} />}
                 </span>
                 <span className="check-name">
                   <strong>{item.name}</strong>
-                  <small>{item.qty} un. · {item.status} {item.price > 0 ? `· ${money(item.price)}` : ""}</small>
+                  <small>{describeItemTotal(item)}</small>
                   {item.giftReservation && (
                     <span className="gift-reservation-owner">
                       <Gift size={11} />
@@ -761,7 +788,29 @@ function ChecklistPanel({
                     </span>
                   )}
                 </span>
+                <span className="check-item-edit-hint" aria-hidden><Pencil size={13} /></span>
               </button>
+              <div
+                className="status-picker"
+                role="radiogroup"
+                aria-label={`Status de ${item.name}`}
+              >
+                {ITEM_STATUS_OPTIONS.map(({ value, label, short }) => (
+                  <button
+                    type="button"
+                    key={value}
+                    role="radio"
+                    aria-checked={item.status === value}
+                    className={`status-option ${item.status === value ? "selected" : ""}`}
+                    onClick={() => item.status !== value && onToggle(item.id, value)}
+                    disabled={pendingItemId === item.id}
+                    title={label}
+                    data-testid={`button-item-status-${item.id}-${value.replace(/\s/g, "-")}`}
+                  >
+                    {short}
+                  </button>
+                ))}
+              </div>
                 {item.recommendationId && (
                   <div className="check-recommendation-actions">
                     {isRecommendationVisible(item.recommendationId) ? (
@@ -780,7 +829,7 @@ function ChecklistPanel({
                       type="button"
                       className="check-recommendation-unlink"
                       onClick={() => onUnlinkRecommendation(item.id)}
-                      disabled={isActionPending}
+                      disabled={pendingItemId === item.id}
                       data-testid={`button-unlink-recommendation-${item.id}`}
                     >
                       desvincular
@@ -792,7 +841,7 @@ function ChecklistPanel({
                   <button
                     type="button"
                     className="gift-reservation-status"
-                    disabled={isActionPending}
+                    disabled={pendingItemId === item.id}
                     onClick={() => onUpdateGiftReservation(
                       item.giftReservation!.id,
                       item.giftReservation!.status === "vou presentear" ? "presenteado" : "vou presentear",
@@ -805,14 +854,14 @@ function ChecklistPanel({
                     type="button"
                     className="gift-reservation-release"
                     onClick={() => onReleaseGiftReservation(item.giftReservation!.id)}
-                    disabled={isActionPending}
+                    disabled={pendingItemId === item.id}
                     data-testid={`button-gift-reservation-release-${item.id}`}
                   >
                     desfazer
                   </button>
                 </span>
               )}
-              <button type="button" className="delete-item-btn" onClick={() => onDelete(item.id)} disabled={isActionPending} aria-label={`Remover ${item.name}`} data-testid={`button-phone-delete-${item.id}`}>
+              <button type="button" className="delete-item-btn" onClick={() => onDelete(item.id)} disabled={pendingItemId === item.id} aria-label={`Remover ${item.name}`} data-testid={`button-phone-delete-${item.id}`}>
                 <Trash2 size={13} />
               </button>
             </div>
@@ -1532,29 +1581,170 @@ function RecommendationsPanel({
   );
 }
 
-function AddItemModal({ onClose, onAdd, category }: { onClose: () => void; onAdd: (name: string, category: CategoryKey) => void; category: CategoryKey }) {
-  const [name, setName] = useState("");
-  const [cat, setCat] = useState<CategoryKey>(category);
+type ItemFormValues = { name: string; category: CategoryKey; qty: number; price: number };
+
+/** Campo de dinheiro em pt-BR: aceita vírgula, recusa negativo. */
+function parsePriceInput(value: string): number | null {
+  const normalized = value.trim().replace(/\./g, "").replace(",", ".");
+  if (normalized === "") return 0;
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Math.round(parsed * 100) / 100;
+}
+
+function formatPriceInput(price: number): string {
+  return price > 0 ? price.toFixed(2).replace(".", ",") : "";
+}
+
+/** Campos compartilhados por adicionar e editar item. */
+function ItemFields({
+  values, onChange, priceError,
+}: {
+  values: ItemFormValues;
+  onChange: (values: ItemFormValues) => void;
+  priceError: string | null;
+}) {
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+    <>
+      <div className="filter-row" style={{ marginBottom: 12 }}>
+        {CATEGORIES.map((k) => (
+          <Pill key={k} active={values.category === k} onClick={() => onChange({ ...values, category: k })} testId={`button-modal-cat-${k}`}>{k}</Pill>
+        ))}
+      </div>
+      <label className="modal-label">
+        NOME DO ITEM
+        <input
+          value={values.name}
+          maxLength={200}
+          onChange={(event) => onChange({ ...values, name: event.target.value })}
+          placeholder="ex.: manta para o carrinho"
+          data-testid="input-new-item"
+        />
+      </label>
+      <div className="item-form-row">
+        <label className="modal-label">
+          QUANTIDADE
+          <input
+            type="number"
+            min={1}
+            max={999}
+            inputMode="numeric"
+            value={values.qty}
+            onChange={(event) => onChange({ ...values, qty: Math.max(1, Math.min(999, Number(event.target.value) || 1)) })}
+            data-testid="input-item-qty"
+          />
+        </label>
+        <label className="modal-label">
+          PREÇO POR UNIDADE
+          <span className="price-input">
+            <span aria-hidden>R$</span>
+            <input
+              inputMode="decimal"
+              value={formatPriceInput(values.price)}
+              aria-invalid={priceError ? true : undefined}
+              aria-describedby={priceError ? "item-price-error" : undefined}
+              onChange={(event) => {
+                const parsed = parsePriceInput(event.target.value);
+                onChange({ ...values, price: parsed ?? values.price });
+              }}
+              placeholder="0,00"
+              data-testid="input-item-price"
+            />
+          </span>
+        </label>
+      </div>
+      {priceError && <p className="field-error" role="alert" id="item-price-error">{priceError}</p>}
+      <p>Este item entra em <strong>{values.category}</strong>.</p>
+    </>
+  );
+}
+
+function AddItemModal({
+  onClose, onAdd, category,
+}: {
+  onClose: () => void;
+  onAdd: (values: ItemFormValues) => Promise<void>;
+  category: CategoryKey;
+}) {
+  const [values, setValues] = useState<ItemFormValues>({ name: "", category, qty: 1, price: 0 });
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Só fecha depois do sucesso: em erro o que foi digitado continua na tela.
+  const submit = async () => {
+    if (!values.name.trim() || isSaving) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      await onAdd({ ...values, name: values.name.trim() });
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell labelledBy="add-item-title" onClose={onClose} onSubmit={submit}>
+      <>
         <div className="modal-top">
-          <div><span className="card-kicker">SUA LISTA, SUAS REGRAS</span><h2>Adicionar item</h2></div>
+          <div><span className="card-kicker">SUA LISTA, SUAS REGRAS</span><h2 id="add-item-title">Adicionar item</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-add-item"><X size={17} /></TinyButton>
         </div>
-        <div className="filter-row" style={{ marginBottom: 12 }}>
-          {CATEGORIES.map((k) => <Pill key={k} active={cat === k} onClick={() => setCat(k)} testId={`button-modal-cat-${k}`}>{k}</Pill>)}
-        </div>
-        <label className="modal-label">
-          NOME DO ITEM
-          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && name.trim() && onAdd(name.trim(), cat)} placeholder="ex.: manta para o carrinho" data-testid="input-new-item" />
-        </label>
-        <p>Este item entra em <strong>{cat}</strong>.</p>
-        <button type="button" className="primary-button" onClick={() => name.trim() && onAdd(name.trim(), cat)} disabled={!name.trim()} data-testid="button-confirm-add-item">
-          <Plus size={15} /> colocar na lista
+        <ItemFields values={values} onChange={setValues} priceError={null} />
+        {error && <p className="field-error" role="alert">{error}</p>}
+        <button type="submit" className="primary-button" disabled={!values.name.trim() || isSaving} data-testid="button-confirm-add-item">
+          <Plus size={15} /> {isSaving ? "salvando…" : "colocar na lista"}
         </button>
-      </div>
-    </div>
+      </>
+    </ModalShell>
+  );
+}
+
+function EditItemModal({
+  item, onClose, onSave,
+}: {
+  item: ChecklistItem;
+  onClose: () => void;
+  onSave: (id: number, values: ItemFormValues) => Promise<void>;
+}) {
+  const [values, setValues] = useState<ItemFormValues>({
+    name: item.name,
+    category: item.category,
+    qty: item.qty,
+    price: item.price,
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const submit = async () => {
+    if (!values.name.trim() || isSaving) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      await onSave(item.id, { ...values, name: values.name.trim() });
+      onClose();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell labelledBy="edit-item-title" onClose={onClose} onSubmit={submit}>
+      <>
+        <div className="modal-top">
+          <div><span className="card-kicker">AJUSTAR ITEM</span><h2 id="edit-item-title">{item.name}</h2></div>
+          <TinyButton onClick={onClose} label="Fechar" testId="button-close-edit-item"><X size={17} /></TinyButton>
+        </div>
+        <ItemFields values={values} onChange={setValues} priceError={null} />
+        {error && <p className="field-error" role="alert">{error}</p>}
+        <button type="submit" className="primary-button" disabled={!values.name.trim() || isSaving} data-testid="button-confirm-edit-item">
+          <Check size={15} /> {isSaving ? "salvando…" : "salvar alterações"}
+        </button>
+      </>
+    </ModalShell>
   );
 }
 
@@ -1770,13 +1960,16 @@ function Workspace({ userId: uid }: { userId: string }) {
   const [recommendationFocusId, setRecommendationFocusId] = useState<string | null>(null);
   const [recommendationFeedback, setRecommendationFeedback] = useState<RecommendationFeedback | null>(null);
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
+  const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
 
   const showActionFeedback = (feedback: ActionFeedback) => {
     setActionFeedback(feedback);
     if (feedback.tone === "success") {
+      // Avisos com ação (o "Desfazer" da remoção) ficam mais tempo: 3s não dá
+      // para ler a frase e decidir.
       window.setTimeout(() => {
         setActionFeedback((current) => current?.message === feedback.message ? null : current);
-      }, 3200);
+      }, feedback.action ? 8000 : 3200);
     }
   };
 
@@ -1811,13 +2004,17 @@ function Workspace({ userId: uid }: { userId: string }) {
   });
 
   const updateItemMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { status?: ItemStatus; qty?: number; recommendationId?: string | null } }) =>
+    mutationFn: ({ id, data }: { id: number; data: { name?: string; category?: CategoryKey; status?: ItemStatus; qty?: number; price?: number; recommendationId?: string | null } }) =>
       updateChecklistItem(id, data),
     onMutate: async ({ id, data }) => {
       await qc.cancelQueries({ queryKey: wqKey });
       const prev = qc.getQueryData<Workspace>(wqKey);
+      // A API guarda price como numeric (string); o formulário manda número.
+      const { price, ...rest } = data;
+      const patch: Partial<ServerChecklistItem> =
+        price === undefined ? rest : { ...rest, price: String(price) };
       qc.setQueryData<Workspace>(wqKey, (old) =>
-        old ? { ...old, items: old.items.map((i) => i.id === id ? { ...i, ...data } : i) } : old,
+        old ? { ...old, items: old.items.map((i) => i.id === id ? { ...i, ...patch } : i) } : old,
       );
       return { prev };
     },
@@ -1847,7 +2044,7 @@ function Workspace({ userId: uid }: { userId: string }) {
       if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
       showActionFeedback({ tone: "error", message: "Não foi possível remover o item. Ele foi restaurado na lista." });
     },
-    onSuccess: () => showActionFeedback({ tone: "success", message: "Item removido da sua lista." }),
+    // O aviso (com "Desfazer") é dado por quem chama, que conhece o item.
     onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
   });
 
@@ -1973,19 +2170,45 @@ function Workspace({ userId: uid }: { userId: string }) {
 
   const openAdd = (cat: CategoryKey) => { setAddCategory(cat); setAddOpen(true); };
 
-  const handleAddItem = (name: string, cat: CategoryKey) => {
-    addItemMutation.mutate({ name, category: cat });
+  /** Id do item que está gravando: as outras linhas continuam utilizáveis. */
+  const pendingItemId =
+    updateItemMutation.isPending ? updateItemMutation.variables?.id ?? null
+      : deleteItemMutation.isPending ? deleteItemMutation.variables ?? null
+        : null;
+
+  const handleAddItem = async (values: { name: string; category: CategoryKey; qty: number; price: number }) => {
+    await addItemMutation.mutateAsync(values);
     setAddOpen(false);
+  };
+
+  const handleEditItem = async (id: number, values: { name: string; category: CategoryKey; qty: number; price: number }) => {
+    await updateItemMutation.mutateAsync({ id, data: values });
   };
 
   const handleToggle = (id: number, status: ItemStatus) => {
     updateItemMutation.mutate({ id, data: { status } });
   };
 
+  /** Remove na hora e oferece desfazer: recria o item com os mesmos dados. */
   const handleDelete = (id: number) => {
     const item = items.find((current) => current.id === id);
-    if (!item || !window.confirm(`Remover “${item.name}” da sua lista?`)) return;
-    deleteItemMutation.mutate(id);
+    if (!item) return;
+    deleteItemMutation.mutate(id, {
+      onSuccess: () => showActionFeedback({
+        tone: "success",
+        message: `“${item.name}” saiu da lista.`,
+        action: {
+          label: "Desfazer",
+          onAction: () => addItemMutation.mutate({
+            name: item.name,
+            category: item.category,
+            group: item.group,
+            qty: item.qty,
+            price: item.price,
+          }),
+        },
+      }),
+    });
   };
 
   const handleAddRecommendation = (recommendation: Recommendation) => {
@@ -2068,18 +2291,14 @@ function Workspace({ userId: uid }: { userId: string }) {
       items={items}
       onToggle={handleToggle}
       onAdd={openAdd}
+      onEdit={setEditingItem}
       onDelete={handleDelete}
       onOpenRecommendation={(id) => { setRecommendationFocusId(id); go("/recommendations", 0); }}
       onUnlinkRecommendation={handleUnlinkRecommendation}
       onReleaseGiftReservation={handleReleaseGiftReservation}
       onUpdateGiftReservation={handleUpdateGiftReservation}
-      isActionPending={
-        addItemMutation.isPending
-        || updateItemMutation.isPending
-        || deleteItemMutation.isPending
-        || updateGiftReservationMutation.isPending
-        || deleteGiftReservationMutation.isPending
-      }
+      pendingItemId={pendingItemId}
+      isActionPending={addItemMutation.isPending}
     />
   );
   const milestonePanel = (
@@ -2143,6 +2362,7 @@ function Workspace({ userId: uid }: { userId: string }) {
       <div className="ninho-app">
         <DesktopWorkspace location={location} go={go} items={items} milestones={miles} profile={profile} budget={budget} content={desktopContent} />
         {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} />}
+        {editingItem && <EditItemModal item={editingItem} onClose={() => setEditingItem(null)} onSave={handleEditItem} />}
         <ActionFeedbackBanner feedback={actionFeedback} onDismiss={() => setActionFeedback(null)} />
       </div>
     );
@@ -2179,6 +2399,7 @@ function Workspace({ userId: uid }: { userId: string }) {
         </Phone>
       </div>
       {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} />}
+        {editingItem && <EditItemModal item={editingItem} onClose={() => setEditingItem(null)} onSave={handleEditItem} />}
       <ActionFeedbackBanner feedback={actionFeedback} onDismiss={() => setActionFeedback(null)} />
     </div>
   );
