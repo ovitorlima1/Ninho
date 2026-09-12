@@ -407,6 +407,7 @@ function ModalShell({
   dismissible = true,
   focusKey,
   initialFocusRef,
+  returnFocusTestId,
   children,
 }: {
   labelledBy: string;
@@ -419,18 +420,35 @@ function ModalShell({
   /** Muda quando o conteúdo troca (ex.: passo do onboarding) para refocar. */
   focusKey?: string | number;
   initialFocusRef?: RefObject<HTMLElement | null>;
+  /** data-testid de quem abriu o diálogo, para devolver o foco ao fechar. */
+  returnFocusTestId?: string;
   children: ReactNode;
 }) {
   const dialogRef = useRef<HTMLDivElement | HTMLFormElement>(null);
 
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null;
+    // O React costuma recriar o botão de origem enquanto o diálogo está
+    // aberto, então guardamos também como reencontrá-lo.
+    const previousTestId = returnFocusTestId ?? previousFocus?.getAttribute("data-testid");
     const target =
       initialFocusRef?.current
       ?? dialogRef.current?.querySelector<HTMLElement>('input:not([disabled]), textarea:not([disabled]), select:not([disabled])')
       ?? dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
     target?.focus();
-    return () => previousFocus?.focus();
+    return () => {
+      // O foco volta depois que o React desmonta o diálogo; se o elemento de
+      // origem saiu da tela nesse meio-tempo, não força nada.
+      requestAnimationFrame(() => {
+        if (previousFocus && document.contains(previousFocus)) {
+          previousFocus.focus();
+          return;
+        }
+        if (previousTestId) {
+          document.querySelector<HTMLElement>(`[data-testid="${previousTestId}"]`)?.focus();
+        }
+      });
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusKey]);
 
@@ -1803,11 +1821,12 @@ function ItemFields({
 }
 
 function AddItemModal({
-  onClose, onAdd, category,
+  onClose, onAdd, category, returnFocusTestId,
 }: {
   onClose: () => void;
   onAdd: (values: ItemFormValues) => Promise<void>;
   category: CategoryKey;
+  returnFocusTestId?: string;
 }) {
   const [values, setValues] = useState<ItemFormValues>({ name: "", category, qty: 1, price: 0 });
   const [error, setError] = useState<string | null>(null);
@@ -1828,7 +1847,7 @@ function AddItemModal({
   };
 
   return (
-    <ModalShell labelledBy="add-item-title" onClose={onClose} onSubmit={submit}>
+    <ModalShell labelledBy="add-item-title" onClose={onClose} onSubmit={submit} returnFocusTestId={returnFocusTestId}>
       <>
         <div className="modal-top">
           <div><span className="card-kicker">SUA LISTA, SUAS REGRAS</span><h2 id="add-item-title">Adicionar item</h2></div>
@@ -1875,7 +1894,7 @@ function EditItemModal({
   };
 
   return (
-    <ModalShell labelledBy="edit-item-title" onClose={onClose} onSubmit={submit}>
+    <ModalShell labelledBy="edit-item-title" onClose={onClose} onSubmit={submit} returnFocusTestId={`button-phone-check-${item.id}`}>
       <>
         <div className="modal-top">
           <div><span className="card-kicker">AJUSTAR ITEM</span><h2 id="edit-item-title">{item.name}</h2></div>
@@ -2100,6 +2119,7 @@ function Workspace({ userId: uid }: { userId: string }) {
   const [activePanel, setActivePanel] = useState(location === "/checklist" ? 1 : location === "/milestones" ? 2 : 0);
   const [addOpen, setAddOpen] = useState(false);
   const [addCategory, setAddCategory] = useState<CategoryKey>("Roupas");
+  const [addTrigger, setAddTrigger] = useState<string | null>(null);
   const [recommendationFocusId, setRecommendationFocusId] = useState<string | null>(null);
   const [recommendationFeedback, setRecommendationFeedback] = useState<RecommendationFeedback | null>(null);
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
@@ -2314,7 +2334,11 @@ function Workspace({ userId: uid }: { userId: string }) {
     setLocation(path);
   };
 
-  const openAdd = (cat: CategoryKey) => { setAddCategory(cat); setAddOpen(true); };
+  const openAdd = (cat: CategoryKey) => {
+    setAddTrigger(document.activeElement?.getAttribute("data-testid") ?? null);
+    setAddCategory(cat);
+    setAddOpen(true);
+  };
 
   /** Id do item que está gravando: as outras linhas continuam utilizáveis. */
   const pendingItemId =
@@ -2507,7 +2531,7 @@ function Workspace({ userId: uid }: { userId: string }) {
     return (
       <div className="ninho-app">
         <DesktopWorkspace location={location} go={go} items={items} milestones={miles} profile={profile} budget={budget} content={desktopContent} />
-        {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} />}
+        {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} returnFocusTestId={addTrigger ?? undefined} />}
         {editingItem && <EditItemModal item={editingItem} onClose={() => setEditingItem(null)} onSave={handleEditItem} />}
         <ActionFeedbackBanner feedback={actionFeedback} onDismiss={() => setActionFeedback(null)} />
       </div>
@@ -2544,7 +2568,7 @@ function Workspace({ userId: uid }: { userId: string }) {
           {panelThree}
         </Phone>
       </div>
-      {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} />}
+      {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} returnFocusTestId={addTrigger ?? undefined} />}
         {editingItem && <EditItemModal item={editingItem} onClose={() => setEditingItem(null)} onSave={handleEditItem} />}
       <ActionFeedbackBanner feedback={actionFeedback} onDismiss={() => setActionFeedback(null)} />
     </div>
