@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type MouseEvent, type ReactNode, type RefObject, type SetStateAction } from "react";
 import { Redirect, Route, Router as WouterRouter, Switch, useLocation, useRoute } from "wouter";
 import {
   Activity,
@@ -80,7 +80,13 @@ import {
   type AuthSession,
 } from "@/lib/api";
 import { calcSpent } from "@/lib/budget";
-import { calcGestationalWeek } from "@/lib/gestation";
+import {
+  calcGestation,
+  calcGestationalWeek,
+  formatGestation,
+  getDueDateBounds,
+  validateDueDate,
+} from "@/lib/gestation";
 import {
   getNextRecommendationRefreshDelay,
   getRecommendationDisplayState,
@@ -318,12 +324,117 @@ function ErrorState({ message, onRetry }: { message: string; onRetry?: () => voi
   );
 }
 
+// ─── Modal base ───────────────────────────────────────────────────────────────
+
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Casca comum de todos os diálogos: semântica de dialog, foco inicial, foco
+ * preso, Esc para fechar e devolução do foco a quem abriu. Quando recebe
+ * `onSubmit`, o próprio cartão vira <form>, então Enter envia — e os seletores
+ * `.modal-card > p` do CSS continuam valendo.
+ */
+function ModalShell({
+  labelledBy,
+  describedBy,
+  className = "",
+  onClose,
+  onSubmit,
+  dismissible = true,
+  focusKey,
+  initialFocusRef,
+  children,
+}: {
+  labelledBy: string;
+  describedBy?: string;
+  className?: string;
+  onClose: () => void;
+  onSubmit?: () => void;
+  /** O onboarding não pode ser dispensado: não há para onde voltar. */
+  dismissible?: boolean;
+  /** Muda quando o conteúdo troca (ex.: passo do onboarding) para refocar. */
+  focusKey?: string | number;
+  initialFocusRef?: RefObject<HTMLElement | null>;
+  children: ReactNode;
+}) {
+  const dialogRef = useRef<HTMLDivElement | HTMLFormElement>(null);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const target =
+      initialFocusRef?.current
+      ?? dialogRef.current?.querySelector<HTMLElement>('input:not([disabled]), textarea:not([disabled]), select:not([disabled])')
+      ?? dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+    target?.focus();
+    return () => previousFocus?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusKey]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && dismissible) {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (!focusable?.length) return;
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, dismissible]);
+
+  const cardProps = {
+    className: `modal-card ${className}`.trim(),
+    role: "dialog",
+    "aria-modal": true as const,
+    "aria-labelledby": labelledBy,
+    "aria-describedby": describedBy,
+    onClick: (event: MouseEvent<HTMLElement>) => event.stopPropagation(),
+  };
+
+  return (
+    <div className="modal-backdrop" role="presentation" onClick={dismissible ? onClose : undefined}>
+      {onSubmit ? (
+        <form
+          {...cardProps}
+          ref={dialogRef as RefObject<HTMLFormElement>}
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit();
+          }}
+        >
+          {children}
+        </form>
+      ) : (
+        <div {...cardProps} ref={dialogRef as RefObject<HTMLDivElement>}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Onboarding Modal ─────────────────────────────────────────────────────────
 
 function OnboardingModal({ userId, onComplete }: { userId: string; onComplete: () => void }) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [dueDate, setDueDateVal] = useState("");
+  const [dateError, setDateError] = useState<string | null>(null);
   const qc = useQueryClient();
 
   const mutation = useMutation({
@@ -335,24 +446,42 @@ function OnboardingModal({ userId, onComplete }: { userId: string; onComplete: (
     },
   });
 
+  const bounds = getDueDateBounds();
+
+  /** Salva com a data; sem data válida a mensagem explica em vez de ignorar. */
   const finish = () => {
+    if (!dueDate) {
+      setDateError("Escolha a data prevista ou toque em “configurar depois”.");
+      return;
+    }
+    const problem = validateDueDate(dueDate);
+    if (problem) {
+      setDateError(problem);
+      return;
+    }
+    setDateError(null);
+    save(dueDate);
+  };
+
+  const save = (date: string | null) => {
     mutation.mutate({
       displayName: name.trim() || undefined,
-      dueDate: dueDate || null,
+      dueDate: date,
       onboardingComplete: true,
     });
   };
 
   return (
-    <div className="modal-backdrop">
-      <div
-        className="modal-card onboarding-card"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`onboarding-step-${step}-title`}
-        aria-describedby={`onboarding-step-${step}-description`}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalShell
+      className="onboarding-card"
+      labelledBy={`onboarding-step-${step}-title`}
+      describedBy={`onboarding-step-${step}-description`}
+      onClose={() => undefined}
+      onSubmit={() => (step === 1 ? setStep(2) : finish())}
+      dismissible={false}
+      focusKey={step}
+    >
+      <>
         <div className="onboarding-progress">
           <span className={step >= 1 ? "step-active" : ""} />
           <span className={step >= 2 ? "step-active" : ""} />
@@ -367,16 +496,14 @@ function OnboardingModal({ userId, onComplete }: { userId: string; onComplete: (
             <label className="modal-label">
               NOME OU APELIDO
               <input
-                autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && setStep(2)}
                 placeholder="ex.: Ana, Duda, Mãe da Lara…"
                 data-testid="input-onboarding-name"
               />
             </label>
             <div className="onboarding-actions">
-              <button type="button" className="primary-button" onClick={() => setStep(2)} data-testid="button-onboarding-next">
+              <button type="submit" className="primary-button" data-testid="button-onboarding-next">
                 Continuar <ChevronRight size={15} />
               </button>
               <button type="button" className="text-action" onClick={() => setStep(2)} data-testid="button-onboarding-skip-name">
@@ -398,29 +525,34 @@ function OnboardingModal({ userId, onComplete }: { userId: string; onComplete: (
               <input
                 type="date"
                 value={dueDate}
-                onChange={(e) => setDueDateVal(e.target.value)}
+                min={bounds.min}
+                max={bounds.max}
+                aria-invalid={dateError ? true : undefined}
+                aria-describedby={dateError ? "onboarding-due-date-error" : undefined}
+                onChange={(e) => { setDueDateVal(e.target.value); setDateError(null); }}
                 className="date-input"
                 data-testid="input-onboarding-due-date"
               />
             </label>
+            {dateError && <p className="field-error" role="alert" id="onboarding-due-date-error">{dateError}</p>}
+            {mutation.isError && <p className="field-error" role="alert">{getFriendlyErrorMessage(mutation.error)}</p>}
             <div className="onboarding-actions">
               <button
-                type="button"
+                type="submit"
                 className="primary-button"
-                onClick={finish}
                 disabled={mutation.isPending}
                 data-testid="button-onboarding-finish"
               >
                 {mutation.isPending ? "Salvando…" : "Entrar no meu ninho"}
               </button>
-              <button type="button" className="text-action" onClick={finish} disabled={mutation.isPending} data-testid="button-onboarding-skip-date">
+              <button type="button" className="text-action" onClick={() => save(null)} disabled={mutation.isPending} data-testid="button-onboarding-skip-date">
                 configurar depois
               </button>
             </div>
           </>
         )}
-      </div>
-    </div>
+      </>
+    </ModalShell>
   );
 }
 
@@ -1251,54 +1383,17 @@ function RecommendationLinkModal({
   onLink: (item: ChecklistItem) => void;
   isPending: boolean;
 }) {
-  const dialogRef = useRef<HTMLDivElement>(null);
   const createButtonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    const previousFocus = document.activeElement as HTMLElement | null;
-    createButtonRef.current?.focus();
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab") return;
-
-      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
-      if (!focusable?.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      previousFocus?.focus();
-    };
-  }, [onClose]);
-
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div
-        ref={dialogRef}
-        className="modal-card recommendation-link-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`recommendation-link-title-${recommendation.id}`}
-        aria-describedby={`recommendation-link-description-${recommendation.id}`}
-        onClick={(event) => event.stopPropagation()}
-      >
+    <ModalShell
+      className="recommendation-link-modal"
+      labelledBy={`recommendation-link-title-${recommendation.id}`}
+      describedBy={`recommendation-link-description-${recommendation.id}`}
+      onClose={onClose}
+      initialFocusRef={createButtonRef}
+    >
+      <>
         <div className="modal-top">
           <div><span className="card-kicker">PARA A SUA LISTA</span><h2 id={`recommendation-link-title-${recommendation.id}`}>Como salvar esta inspiração?</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-recommendation-modal"><X size={17} /></TinyButton>
@@ -1319,8 +1414,8 @@ function RecommendationLinkModal({
           ))}
         </div>
         <p className="recommendation-link-note">A inspiração fica ligada ao item, mas você continua comprando onde preferir.</p>
-      </div>
-    </div>
+      </>
+    </ModalShell>
   );
 }
 
@@ -1486,8 +1581,13 @@ function GiftReservationModal({
   });
 
   return (
-    <div className="modal-backdrop" onClick={onClose} role="presentation">
-      <div className="modal-card gift-reservation-modal" role="dialog" aria-modal="true" aria-labelledby="reserve-gift-title" onClick={(event) => event.stopPropagation()}>
+    <ModalShell
+      className="gift-reservation-modal"
+      labelledBy="reserve-gift-title"
+      onClose={onClose}
+      onSubmit={() => !mutation.isPending && mutation.mutate()}
+    >
+      <>
         <div className="modal-top">
           <div><span className="card-kicker">UM PRESENTE COM CARINHO</span><h2 id="reserve-gift-title">{item.name}</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-gift-reservation"><X size={17} /></TinyButton>
@@ -1495,7 +1595,7 @@ function GiftReservationModal({
         <p>Você está reservando {item.qty > 1 ? `${item.qty} unidades` : "este item"} para que ele não se repita.</p>
         <label className="modal-label">
           SEU NOME <small>(opcional)</small>
-          <input autoFocus value={guestName} maxLength={120} onChange={(event) => setGuestName(event.target.value)} placeholder="Como a família vai reconhecer você?" data-testid="input-gift-guest-name" />
+          <input value={guestName} maxLength={120} onChange={(event) => setGuestName(event.target.value)} placeholder="Como a família vai reconhecer você?" data-testid="input-gift-guest-name" />
         </label>
         <fieldset className="gift-status-picker">
           <legend>COMO VOCÊ QUER MARCAR?</legend>
@@ -1506,12 +1606,12 @@ function GiftReservationModal({
             já presenteei
           </button>
         </fieldset>
-        {mutation.isError && <p className="gift-share-error" role="alert">{getAuthErrorMessage(mutation.error)}</p>}
-        <button type="button" className="primary-button" onClick={() => mutation.mutate()} disabled={mutation.isPending} data-testid="button-confirm-gift-reservation">
+        {mutation.isError && <p className="gift-share-error" role="alert">{getFriendlyErrorMessage(mutation.error)}</p>}
+        <button type="submit" className="primary-button" disabled={mutation.isPending} data-testid="button-confirm-gift-reservation">
           <Gift size={15} /> {mutation.isPending ? "reservando…" : "confirmar reserva"}
         </button>
-      </div>
-    </div>
+      </>
+    </ModalShell>
   );
 }
 function DesktopSidebar({ location, go }: { location: string; go: (path: string, panel?: number) => void }) {
@@ -2084,354 +2184,37 @@ function Workspace({ userId: uid }: { userId: string }) {
   );
 }
 
-/*
-function Workspace({ userId: uid }: { userId: string }) {
-  const qc = useQueryClient();
-
-  // When the signed-in user changes (e.g. same browser, different account),
-  // remove all workspace cache entries so the new user starts fresh.
-  useEffect(() => {
-    return () => {
-      qc.removeQueries({ queryKey: ["workspace"] });
-    };
-  }, [uid, qc]);
-
-  // Scope every cache entry by userId so different accounts in the same
-  // browser session can never share cached workspace data.
-  const wqKey = ["workspace", uid] as const;
-
-  const workspaceQuery = useQuery({
-    queryKey: wqKey,
-    queryFn: fetchWorkspace,
-    staleTime: 60_000,
-  });
-  const shareQuery = useQuery({
-    queryKey: ["gift-share", uid],
-    queryFn: getGiftShare,
-    staleTime: Infinity,
-  });
-
-  const [location, setLocation] = useLocation();
-  const [desktopView, setDesktopView] = useState(() => window.matchMedia("(min-width: 901px)").matches);
-  const [activePanel, setActivePanel] = useState(location === "/checklist" ? 1 : location === "/milestones" ? 2 : 0);
-  const [addOpen, setAddOpen] = useState(false);
-  const [addCategory, setAddCategory] = useState<CategoryKey>("Roupas");
-
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 901px)");
-    const sync = () => setDesktopView(media.matches);
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
-
-  // ── Mutations ────────────────────────────────────────────────────────────
-
-  const profileMutation = useMutation({
-    mutationFn: updateProfile,
-    onSuccess: (profile) => {
-      qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, profile } : old);
-    },
-  });
-
-  const addItemMutation = useMutation({
-    mutationFn: createChecklistItem,
-    onSuccess: (item) => {
-      qc.setQueryData<Workspace>(wqKey, (old) =>
-        old ? { ...old, items: [...old.items, item] } : old,
-      );
-    },
-  });
-
-  const updateItemMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { status?: ItemStatus; qty?: number } }) =>
-      updateChecklistItem(id, data),
-    onMutate: async ({ id, data }) => {
-      await qc.cancelQueries({ queryKey: wqKey });
-      const prev = qc.getQueryData<Workspace>(wqKey);
-      qc.setQueryData<Workspace>(wqKey, (old) =>
-        old ? { ...old, items: old.items.map((i) => i.id === id ? { ...i, ...data } : i) } : old,
-      );
-      return { prev };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
-  });
-
-  const deleteItemMutation = useMutation({
-    mutationFn: deleteChecklistItem,
-    onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: wqKey });
-      const prev = qc.getQueryData<Workspace>(wqKey);
-      qc.setQueryData<Workspace>(wqKey, (old) =>
-        old ? { ...old, items: old.items.filter((i) => i.id !== id) } : old,
-      );
-      return { prev };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
-  });
-
-  const createShareMutation = useMutation({
-    mutationFn: createGiftShare,
-    onSuccess: (share) => {
-      qc.setQueryData(["gift-share", uid], share);
-    },
-  });
-
-  const revokeShareMutation = useMutation({
-    mutationFn: revokeGiftShare,
-    onSuccess: () => {
-      qc.setQueryData(["gift-share", uid], null);
-    },
-  });
-
-  const updateGiftReservationMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: GiftReservationStatus }) =>
-      updateGiftReservation(id, { status }),
-    onSuccess: (reservation) => {
-      qc.setQueryData<Workspace>(wqKey, (old) => old
-        ? {
-          ...old,
-          giftReservations: old.giftReservations.map((current) =>
-            current.id === reservation.id ? reservation : current,
-          ),
-        }
-        : old);
-    },
-  });
-
-  const deleteGiftReservationMutation = useMutation({
-    mutationFn: deleteGiftReservation,
-    onSuccess: (_result, id) => {
-      qc.setQueryData<Workspace>(wqKey, (old) => old
-        ? { ...old, giftReservations: old.giftReservations.filter((reservation) => reservation.id !== id) }
-        : old);
-    },
-  });
-
-  const milestoneMutation = useMutation({
-    mutationFn: ({ id, completed }: { id: number; completed: boolean }) => toggleMilestone(id, completed),
-    onMutate: async ({ id, completed }) => {
-      await qc.cancelQueries({ queryKey: wqKey });
-      const prev = qc.getQueryData<Workspace>(wqKey);
-      qc.setQueryData<Workspace>(wqKey, (old) =>
-        old ? { ...old, milestones: old.milestones.map((m) => m.id === id ? { ...m, completed } : m) } : old,
-      );
-      return { prev };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
-  });
-
-  const budgetMutation = useMutation({
-    mutationFn: (categories: Array<{ category: string; planned: number }>) =>
-      updateBudget({ categories }),
-    onSuccess: (budget) => {
-      qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, budget } : old);
-    },
-  });
-
-  const profileSaveState: "idle" | "saving" | "error" | "success" = profileMutation.isPending
-    ? "saving"
-    : profileMutation.isError
-      ? "error"
-      : profileMutation.isSuccess
-        ? "success"
-        : "idle";
-  const profileSaveError = profileMutation.error instanceof Error ? profileMutation.error.message : null;
-
-  // ── Loading / Error states ───────────────────────────────────────────────
-
-  if (workspaceQuery.isLoading) {
-    return (
-      <div className="ninho-app" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (workspaceQuery.isError || !workspaceQuery.data) {
-    return (
-      <div className="ninho-app" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <ErrorState message="Não foi possível carregar seus dados. Verifique sua conexão." onRetry={() => workspaceQuery.refetch()} />
-      </div>
-    );
-  }
-
-  const { profile, items: rawItems, milestones: miles, budget, giftReservations } = workspaceQuery.data;
-  const reservationsByItem = new Map(giftReservations.map((reservation) => [reservation.checklistItemId, reservation]));
-  const items = rawItems.map((item) => adaptItem(item, reservationsByItem.get(item.id) ?? null));
-
-  // ── Onboarding ──────────────────────────────────────────────────────────
-
-  if (!profile.onboardingComplete) {
-    return (
-      <div className="ninho-app">
-        <OnboardingModal userId={uid} onComplete={() => qc.invalidateQueries({ queryKey: wqKey })} />
-      </div>
-    );
-  }
-
-  // ── Navigation helpers ───────────────────────────────────────────────────
-
-  const go = (path: string, panel?: number) => {
-    if (panel !== undefined) setActivePanel(panel);
-    setLocation(path);
-  };
-
-  const openAdd = (cat: CategoryKey) => { setAddCategory(cat); setAddOpen(true); };
-
-  const handleAddItem = (name: string, cat: CategoryKey) => {
-    addItemMutation.mutate({ name, category: cat });
-    setAddOpen(false);
-  };
-
-  const handleToggle = (id: number, status: ItemStatus) => {
-    updateItemMutation.mutate({ id, data: { status } });
-  };
-
-  const handleDelete = (id: number) => {
-    deleteItemMutation.mutate(id);
-  };
-
-  const handleMilestoneToggle = (id: number, completed: boolean) => {
-    milestoneMutation.mutate({ id, completed });
-  };
-
-  const handleProfileSave = (data: UpdateProfileInput) => {
-    profileMutation.reset();
-    profileMutation.mutate(data);
-  };
-
-  const handleBudgetSave = (cats: Array<{ category: string; planned: number }>) => {
-    budgetMutation.mutate(cats);
-  };
-
-  const handleReleaseGiftReservation = (reservationId: number) => {
-    deleteGiftReservationMutation.mutate(reservationId);
-  };
-
-  const handleUpdateGiftReservation = (reservationId: number, status: GiftReservationStatus) => {
-    updateGiftReservationMutation.mutate({ id: reservationId, status });
-  };
-
-  // ── Panel content ────────────────────────────────────────────────────────
-
-  const overviewPanel = (
-    <OverviewPanel items={items} profile={profile} milestones={miles} budget={budget}
-      setLocation={(p) => go(p, p === "/checklist" ? 1 : p === "/milestones" ? 2 : 0)}
-    />
-  );
-  const checklistPanel = (
-    <ChecklistPanel
-      items={items}
-      onToggle={handleToggle}
-      onAdd={openAdd}
-      onDelete={handleDelete}
-      onReleaseGiftReservation={handleReleaseGiftReservation}
-      onUpdateGiftReservation={handleUpdateGiftReservation}
-    />
-  );
-  const milestonePanel = (
-    <TimelinePanel milestones={miles} profile={profile} onToggle={handleMilestoneToggle} />
-  );
-  const budgetPanel = <BudgetPanel items={items} budget={budget} onSave={handleBudgetSave} />;
-  const profilePanel = (
-    <ProfilePanel
-      profile={profile}
-      onSave={handleProfileSave}
-      saveState={profileSaveState}
-      saveError={profileSaveError}
-      share={shareQuery.data}
-      onCreateShare={() => {
-        createShareMutation.reset();
-        createShareMutation.mutate();
-      }}
-      onRevokeShare={() => {
-        revokeShareMutation.reset();
-        revokeShareMutation.mutate();
-      }}
-      shareLoading={createShareMutation.isPending || revokeShareMutation.isPending}
-      shareError={
-        createShareMutation.isError ? getAuthErrorMessage(createShareMutation.error)
-          : revokeShareMutation.isError ? getAuthErrorMessage(revokeShareMutation.error)
-            : null
-      }
-    />
-  );
-  const recommendationsPanel = <RecommendationsPanel items={items} />;
-
-  const desktopContent = location === "/checklist" ? checklistPanel
-    : location === "/milestones" ? milestonePanel
-    : location === "/recommendations" ? recommendationsPanel
-    : location === "/budget" ? budgetPanel
-    : location === "/profile" ? profilePanel
-    : overviewPanel;
-
-  // ── Desktop layout ───────────────────────────────────────────────────────
-
-  if (desktopView) {
-    return (
-      <div className="ninho-app">
-        <DesktopWorkspace location={location} go={go} items={items} milestones={miles} profile={profile} budget={budget} content={desktopContent} />
-        {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} />}
-      </div>
-    );
-  }
-
-  // ── Mobile layout ────────────────────────────────────────────────────────
-
-  const panelOne = location === "/budget" ? budgetPanel : location === "/profile" ? profilePanel : location === "/recommendations" ? recommendationsPanel : overviewPanel;
-  const panelTwo = checklistPanel;
-  const panelThree = milestonePanel;
-
-  return (
-    <div className="ninho-app">
-      <div className="stage-toolbar">
-        <div className="toolbar-left">
-          <Brand />
-          <span className="toolbar-divider" />
-          <span className="toolbar-caption">gestão de enxoval</span>
-        </div>
-        <div className="toolbar-actions"><AccountControl /></div>
-      </div>
-      <div className="phone-stage">
-        <Phone title="Ninho" activeRoute={location} setLocation={go} activePanel={activePanel} onPanel={setActivePanel}>
-          {panelOne}
-        </Phone>
-        <Phone title="Registro rápido" activeRoute={location} setLocation={go} activePanel={activePanel} onPanel={setActivePanel}>
-          {panelTwo}
-        </Phone>
-        <Phone title="Sua jornada" activeRoute={location} setLocation={go} activePanel={activePanel} onPanel={setActivePanel}>
-          {panelThree}
-        </Phone>
-      </div>
-      {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} />}
-    </div>
-  );
-}
-*/
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
 
 type AuthMode = "signin" | "signup";
 
-function getAuthErrorMessage(error: unknown): string {
+/**
+ * Mensagem para a usuária. A API manda um texto pronto em pt-BR na maioria dos
+ * casos; quando não manda, o status vira uma frase — nunca "HTTP 400 Bad
+ * Request", que já apareceu na tela.
+ */
+function getFriendlyErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "data" in error) {
     const data = (error as { data?: unknown }).data;
     if (data && typeof data === "object" && "error" in data && typeof data.error === "string") {
       return data.error;
     }
   }
-  return "Não foi possível continuar agora. Tente novamente.";
+  const status = error && typeof error === "object" && "status" in error
+    ? Number((error as { status?: unknown }).status)
+    : undefined;
+
+  if (status === 401) return "Sua sessão expirou. Entre de novo para continuar.";
+  if (status === 404) return "Não encontramos esse item. Atualize a página e tente de novo.";
+  if (status === 409) return "Esse item já está na sua lista.";
+  if (status === 429) return "Muitas tentativas seguidas. Aguarde alguns minutos.";
+  if (status && status >= 500) return "Nosso servidor tropeçou. Tente de novo em instantes.";
+  if (!status) return "Não conseguimos falar com o Ninho. Confira sua conexão.";
+  return "Não foi possível concluir agora. Tente novamente.";
 }
+
+const getAuthErrorMessage = getFriendlyErrorMessage;
 
 function AuthLayout({ children }: { children: ReactNode }) {
   return (
