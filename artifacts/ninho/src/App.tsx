@@ -81,7 +81,7 @@ import {
   resetPassword,
   type AuthSession,
 } from "@/lib/api";
-import { calcSpent } from "@/lib/budget";
+import { calcSpent, calcSpentByCategory } from "@/lib/budget";
 import {
   calcGestation,
   calcGestationalWeek,
@@ -678,13 +678,15 @@ function MobileUtilityLinks({ location, onBudget, onProfile }: { location: strin
 
 // ─── Panels ───────────────────────────────────────────────────────────────────
 
-function getNextMilestone(miles: ServerMilestone[], week: number | null): ServerMilestone | undefined {
-  const pending = miles
+/**
+ * O primeiro marco pendente, mesmo que a semana dele já tenha passado: pular
+ * atrasados escondia justamente o que precisa de atenção.
+ */
+function getNextMilestone(miles: ServerMilestone[], _week: number | null): ServerMilestone | undefined {
+  return miles
     .filter((milestone) => !milestone.completed)
     .slice()
-    .sort((first, second) => first.week - second.week);
-
-  return pending.find((milestone) => week === null || milestone.week >= week);
+    .sort((first, second) => first.week - second.week)[0];
 }
 
 function OverviewPanel({
@@ -918,6 +920,23 @@ function ChecklistPanel({
   );
 }
 
+/** Depois da data prevista o app não sabe se o bebê nasceu — então pergunta. */
+function ArrivalNotice() {
+  const [, setLocation] = useLocation();
+  return (
+    <div className="arrival-notice" role="status">
+      <Heart size={15} aria-hidden />
+      <div>
+        <strong>A chegada pode ser a qualquer momento.</strong>
+        <p>Se o bebê já nasceu, você pode ajustar a data no seu perfil.</p>
+      </div>
+      <button type="button" className="text-action" onClick={() => setLocation("/profile")} data-testid="button-arrival-notice-profile">
+        abrir perfil
+      </button>
+    </div>
+  );
+}
+
 function TimelinePanel({
   milestones: miles, profile, onToggle, isActionPending,
 }: {
@@ -926,9 +945,10 @@ function TimelinePanel({
   onToggle: (id: number, completed: boolean) => void;
   isActionPending: boolean;
 }) {
-  const week = calcGestationalWeek(profile.dueDate);
+  const gestation = calcGestation(profile.dueDate);
+  const week = gestation?.week ?? null;
   const name = profile.displayName || "você";
-  const displayWeek = week ? Math.min(40, week) : null;
+  const displayWeek = week;
   const progress = displayWeek ? Math.round((displayWeek / 40) * 100) : 0;
   const trackProgress = Math.min(100, Math.max(0, progress));
 
@@ -939,6 +959,8 @@ function TimelinePanel({
         <span>{week ? `${displayWeek} / 40` : "—"}</span>
       </div>
       <h1 className="phone-heading">Os próximos<br /><strong>pequenos marcos.</strong></h1>
+
+      {gestation?.isOverdue && <ArrivalNotice />}
 
       {!profile.dueDate ? (
         <div className="empty-timeline">
@@ -976,7 +998,7 @@ function TimelinePanel({
         <div className="week-overview">
           <div className="week-overview-top">
             <span>JORNADA DE 40 SEMANAS</span>
-            <strong>{week > 40 ? "data prevista alcançada" : `semana ${displayWeek}`}</strong>
+            <strong>{gestation ? formatGestation(gestation) : ""}</strong>
           </div>
           <ol className="week-grid" aria-label="Semanas da gestação">
             {GESTATION_WEEKS.map((weekNumber) => {
@@ -1003,7 +1025,10 @@ function TimelinePanel({
           const Icon = m.week <= 20 ? Sparkles : m.week <= 28 ? ClipboardCheck : m.week <= 32 ? Gift : Heart;
           const past = week !== null && m.week < (week ?? 0);
             const current = week !== null && m.week === week;
-            const state = m.completed ? "completed" : past ? "past" : current ? "current" : "future";
+            // Atrasado é diferente de concluído: antes ficava esmaecido, com
+            // cara de resolvido.
+            const late = past && !m.completed;
+            const state = m.completed ? "completed" : late ? "late" : current ? "current" : "future";
           return (
             <button
               type="button"
@@ -1013,12 +1038,12 @@ function TimelinePanel({
                 disabled={isActionPending}
                 aria-pressed={m.completed}
                 aria-current={current ? "step" : undefined}
-                aria-label={`${m.title}, semana ${m.week}. ${m.completed ? "Concluído. Toque para marcar como pendente." : "Pendente. Toque para marcar como concluído."}`}
+                aria-label={`${m.title}, semana ${m.week}. ${m.completed ? "Concluído. Toque para marcar como pendente." : late ? "Atrasado e pendente. Toque para marcar como concluído." : "Pendente. Toque para marcar como concluído."}`}
               data-testid={`button-phone-milestone-${m.week}`}
             >
               <span className="milestone-icon"><Icon size={14} /></span>
               <span className="milestone-text">
-                <small>SEMANA {m.week} · {m.note}</small>
+                <small>SEMANA {m.week} · {late ? "atrasado" : m.note}</small>
                 <strong>{m.title}</strong>
               </span>
               {m.completed ? <CheckCircle2 size={16} /> : <ChevronRight size={15} />}
@@ -1079,18 +1104,34 @@ function BudgetPanel({
       </div>
       <div className="white-card budget-list" aria-busy={saveState === "saving"} data-testid="budget-edit-card">
         <div className="card-head"><h2>Por categoria</h2><span className="card-kicker">EDITÁVEL</span></div>
-        {CATEGORIES.map((cat) => (
-          <label className="budget-row" key={cat}>
-            <span>{cat}</span>
-            <input
-              type="number"
-              value={planned[cat] ?? 0}
-              onChange={(e) => handleChange(cat, Number(e.target.value) || 0)}
-              disabled={saveState === "saving"}
-              data-testid={`input-phone-budget-${cat.toLowerCase()}`}
-            />
-          </label>
-        ))}
+        {CATEGORIES.map((cat) => {
+          const spentHere = calcSpentByCategory(items, cat);
+          const plannedHere = planned[cat] ?? 0;
+          return (
+            <label className="budget-row" key={cat}>
+              <span className="budget-row-label">
+                {cat}
+                <small>{money(spentHere)} de {money(plannedHere)}</small>
+                <Progress value={plannedHere > 0 ? (spentHere / plannedHere) * 100 : 0} />
+              </span>
+              <span className="price-input budget-price-input">
+                <span aria-hidden>R$</span>
+                <input
+                  inputMode="decimal"
+                  value={formatPriceInput(plannedHere)}
+                  aria-label={`Orçamento planejado para ${cat}, em reais`}
+                  onChange={(e) => {
+                    const parsed = parsePriceInput(e.target.value);
+                    if (parsed !== null) handleChange(cat, parsed);
+                  }}
+                  disabled={saveState === "saving"}
+                  placeholder="0,00"
+                  data-testid={`input-phone-budget-${cat.toLowerCase()}`}
+                />
+              </span>
+            </label>
+          );
+        })}
         {saveState === "success" && !dirty && (
           <div className="budget-save-message budget-save-success" role="status">
             <CheckCircle2 size={14} /> Orçamento salvo.
@@ -1112,6 +1153,31 @@ function BudgetPanel({
   );
 }
 
+/** Confirmação para ações que quebram algo que já foi compartilhado. */
+function ConfirmDialog({
+  title, description, confirmLabel, onConfirm, onClose,
+}: {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <ModalShell labelledBy="confirm-dialog-title" onClose={onClose} onSubmit={() => { onConfirm(); onClose(); }}>
+      <>
+        <div className="modal-top">
+          <div><span className="card-kicker">CONFIRMAR</span><h2 id="confirm-dialog-title">{title}</h2></div>
+          <TinyButton onClick={onClose} label="Fechar" testId="button-close-confirm"><X size={17} /></TinyButton>
+        </div>
+        <p>{description}</p>
+        <button type="submit" className="primary-button" data-testid="button-confirm-action">{confirmLabel}</button>
+        <button type="button" className="text-action confirm-cancel" onClick={onClose} data-testid="button-cancel-action">cancelar</button>
+      </>
+    </ModalShell>
+  );
+}
+
 function GiftShareCard({
   share, onCreate, onRevoke, isLoading, error,
 }: {
@@ -1122,6 +1188,7 @@ function GiftShareCard({
   error: string | null;
 }) {
   const [copied, setCopied] = useState(false);
+  const [confirming, setConfirming] = useState<"regenerate" | "revoke" | null>(null);
   const [copyError, setCopyError] = useState(false);
   const link = share ? `${window.location.origin}${basePath}/gift/${share.token}` : "";
 
@@ -1167,21 +1234,39 @@ function GiftShareCard({
             <button type="button" className="primary-button gift-share-primary" onClick={copyLink} disabled={isLoading} data-testid="button-copy-gift-link">
               {copied ? <><Check size={15} /> link copiado</> : <><Copy size={15} /> copiar link</>}
             </button>
-            <button type="button" className="gift-share-secondary" onClick={onCreate} disabled={isLoading} data-testid="button-regenerate-gift-link">
+            <button type="button" className="gift-share-secondary" onClick={() => setConfirming("regenerate")} disabled={isLoading} data-testid="button-regenerate-gift-link">
               <RefreshCw size={14} /> gerar novo
             </button>
-            <button type="button" className="gift-share-revoke" onClick={onRevoke} disabled={isLoading} data-testid="button-revoke-gift-link">
+            <button type="button" className="gift-share-revoke" onClick={() => setConfirming("revoke")} disabled={isLoading} data-testid="button-revoke-gift-link">
               revogar link
             </button>
           </div>
         </>
       ) : (
-        <button type="button" className="primary-button gift-share-primary" onClick={onCreate} disabled={isLoading} data-testid="button-create-gift-link">
+        <button type="button" className="primary-button gift-share-primary gift-share-create" onClick={onCreate} disabled={isLoading} data-testid="button-create-gift-link">
           <Gift size={15} /> {isLoading ? "criando link…" : "criar link para presentes"}
         </button>
       )}
       {copyError && <p className="gift-share-error" role="alert">Não foi possível copiar automaticamente. Selecione o endereço acima e copie manualmente.</p>}
       {error && <p className="gift-share-error" role="alert">{error}</p>}
+      {confirming === "regenerate" && (
+        <ConfirmDialog
+          title="Gerar um link novo?"
+          description="O link atual para de funcionar na hora. Quem já recebeu o antigo vai precisar do novo endereço."
+          confirmLabel="gerar link novo"
+          onConfirm={onCreate}
+          onClose={() => setConfirming(null)}
+        />
+      )}
+      {confirming === "revoke" && (
+        <ConfirmDialog
+          title="Revogar o link?"
+          description="A lista sai do ar para todo mundo que tem o endereço. As reservas já feitas continuam salvas no seu ninho."
+          confirmLabel="revogar link"
+          onConfirm={onRevoke}
+          onClose={() => setConfirming(null)}
+        />
+      )}
     </section>
   );
 }
@@ -1198,7 +1283,7 @@ function ProfilePanel({
   shareLoading: boolean;
   shareError: string | null;
 }) {
-  const [editing, setEditing] = useState(false);
+  const dueDateBounds = getDueDateBounds();
   const [name, setName] = useState(profile.displayName || "");
   const [city, setCity] = useState(profile.city || "");
   const [babyName, setBabyName] = useState(profile.babyName || "");
@@ -1219,9 +1304,17 @@ function ProfilePanel({
     setPersonalNotes(profile.personalNotes || "");
   }, [profile]);
 
-  useEffect(() => {
-    if (saveState === "success") setEditing(false);
-  }, [saveState]);
+  // Os campos ficam sempre abertos: o lápis de 28px escondia a edição inteira
+  // atrás de um alvo difícil de achar. O botão de salvar aparece quando muda algo.
+  const isDirty =
+    name !== (profile.displayName || "")
+    || city !== (profile.city || "")
+    || babyName !== (profile.babyName || "")
+    || dueDate !== (profile.dueDate || "")
+    || hospital !== (profile.hospital || "")
+    || supportPerson !== (profile.supportPerson || "")
+    || personalNotes !== (profile.personalNotes || "");
+  const dueDateError = dueDate ? validateDueDate(dueDate) : null;
 
   const save = () => {
     onSave({
@@ -1236,23 +1329,26 @@ function ProfilePanel({
   };
 
   const initials = (profile.displayName || "?").slice(0, 2).toUpperCase();
-  const week = calcGestationalWeek(profile.dueDate);
-  const canSave = editing && saveState !== "saving";
+  const gestation = calcGestation(profile.dueDate);
+  const week = gestation?.week ?? null;
+  const canSave = isDirty && !dueDateError && saveState !== "saving";
 
   return (
     <div className="phone-content flow profile-content">
       <div className="eyebrow-row">
         <span>SEU ESPAÇO</span>
-        <TinyButton onClick={() => editing ? canSave && save() : setEditing(true)} label={editing ? "Salvar" : "Editar"} testId="button-phone-edit-profile">
-          {editing ? (saveState === "saving" ? <span className="profile-save-dot" /> : <Check size={15} />) : <Pencil size={14} />}
-        </TinyButton>
+        {isDirty && (
+          <TinyButton onClick={() => canSave && save()} label="Salvar perfil" testId="button-phone-edit-profile">
+            {saveState === "saving" ? <span className="profile-save-dot" /> : <Check size={15} />}
+          </TinyButton>
+        )}
       </div>
        <h1 className="phone-heading">Seu espaço,<br /><strong>do seu jeito.</strong></h1>
       <div className="profile-card">
         <div className="avatar">{initials}</div>
         <div>
           <h2>{profile.displayName || "Meu perfil"}</h2>
-          <p>{week ? `semana ${week} de 40` : "data prevista não configurada"}</p>
+          <p>{gestation ? `${formatGestation(gestation)} de 40` : "data prevista não configurada"}</p>
         </div>
         <Sparkles size={16} />
       </div>
@@ -1265,11 +1361,11 @@ function ProfilePanel({
            <p className="profile-section-copy">Conte só o que fizer sentido para você.</p>
           <label>
             NOME OU APELIDO
-            <input value={name} onChange={(e) => setName(e.target.value)} disabled={!editing} placeholder="Como você prefere ser chamada?" data-testid="input-phone-profile-name" />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Como você prefere ser chamada?" data-testid="input-phone-profile-name" />
           </label>
           <label>
             CIDADE
-            <input value={city} onChange={(e) => setCity(e.target.value)} disabled={!editing} placeholder="Onde você está?" data-testid="input-phone-profile-city" />
+            <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Onde você está?" data-testid="input-phone-profile-city" />
           </label>
         </section>
 
@@ -1281,14 +1377,25 @@ function ProfilePanel({
            <p className="profile-section-copy">Nome, apelido ou nada por enquanto — tudo bem.</p>
           <label>
             NOME OU APELIDO DO BEBÊ
-            <input value={babyName} onChange={(e) => setBabyName(e.target.value)} disabled={!editing} placeholder="Como vocês chamam o bebê?" data-testid="input-phone-profile-baby-name" />
+            <input value={babyName} onChange={(e) => setBabyName(e.target.value)} placeholder="Como vocês chamam o bebê?" data-testid="input-phone-profile-baby-name" />
           </label>
           <label>
             DATA PREVISTA DO PARTO
-            <input type={editing ? "date" : "text"} value={editing ? dueDate : (profile.dueDate ? formatDate(profile.dueDate) : "Não configurada")} onChange={(e) => setDueDateVal(e.target.value)} disabled={!editing} className="date-input" data-testid="input-phone-profile-due-date" />
+            <input
+              type="date"
+              value={dueDate}
+              min={dueDateBounds.min}
+              max={dueDateBounds.max}
+              aria-invalid={dueDateError ? true : undefined}
+              aria-describedby={dueDateError ? "profile-due-date-error" : undefined}
+              onChange={(e) => setDueDateVal(e.target.value)}
+              className="date-input"
+              data-testid="input-phone-profile-due-date"
+            />
+            {dueDateError && <span className="field-error" role="alert" id="profile-due-date-error">{dueDateError}</span>}
           </label>
           {week && (
-            <div className="profile-week"><CalendarDays size={15} /><span>semana gestacional<strong>semana {week} de 40</strong></span></div>
+            <div className="profile-week"><CalendarDays size={15} /><span>semana gestacional<strong>{gestation ? `${formatGestation(gestation)} de 40` : "—"}</strong></span></div>
           )}
         </section>
 
@@ -1300,15 +1407,15 @@ function ProfilePanel({
            <p className="profile-section-copy">Anote o que ajudar a organizar a chegada, no seu tempo.</p>
           <label>
             MATERNIDADE OU HOSPITAL
-            <input value={hospital} onChange={(e) => setHospital(e.target.value)} disabled={!editing} placeholder="Onde você imagina a chegada?" data-testid="input-phone-profile-hospital" />
+            <input value={hospital} onChange={(e) => setHospital(e.target.value)} placeholder="Onde você imagina a chegada?" data-testid="input-phone-profile-hospital" />
           </label>
           <label>
             PESSOA DE APOIO
-            <input value={supportPerson} onChange={(e) => setSupportPerson(e.target.value)} disabled={!editing} placeholder="Quem estará com você?" data-testid="input-phone-profile-support-person" />
+            <input value={supportPerson} onChange={(e) => setSupportPerson(e.target.value)} placeholder="Quem estará com você?" data-testid="input-phone-profile-support-person" />
           </label>
           <label className="profile-notes-label">
             OBSERVAÇÕES PESSOAIS
-            <textarea value={personalNotes} onChange={(e) => setPersonalNotes(e.target.value)} disabled={!editing} placeholder="Anote algo importante para lembrar depois." rows={3} data-testid="input-phone-profile-notes" />
+            <textarea value={personalNotes} onChange={(e) => setPersonalNotes(e.target.value)} placeholder="Anote algo importante para lembrar depois." rows={3} data-testid="input-phone-profile-notes" />
           </label>
         </section>
 
@@ -1317,12 +1424,12 @@ function ProfilePanel({
             Não foi possível salvar agora. {saveError || "Tente novamente em instantes."}
           </div>
         )}
-        {saveState === "success" && !editing && (
+        {saveState === "success" && !isDirty && (
           <div className="profile-save-message profile-save-success" role="status">
-            <CheckCircle2 size={14} /> Perfil salvo com carinho.
+            <CheckCircle2 size={14} /> Perfil salvo.
           </div>
         )}
-        {editing && (
+        {isDirty && (
           <button type="button" className="primary-button" style={{ marginTop: 12 }} onClick={save} disabled={!canSave} data-testid="button-save-profile">
             {saveState === "saving" ? "salvando…" : <><Check size={14} /> salvar perfil</>}
           </button>
@@ -1998,6 +2105,9 @@ function Workspace({ userId: uid }: { userId: string }) {
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
   const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
 
+  // Um aviso é sobre a tela onde aconteceu: ao trocar de rota ele sai.
+  useEffect(() => { setActionFeedback(null); }, [location]);
+
   const showActionFeedback = (feedback: ActionFeedback) => {
     setActionFeedback(feedback);
     if (feedback.tone === "success") {
@@ -2149,11 +2259,11 @@ function Workspace({ userId: uid }: { userId: string }) {
   const budgetMutation = useMutation({
     mutationFn: (categories: Array<{ category: string; planned: number }>) =>
       updateBudget({ categories }),
+    // A confirmação e o erro aparecem dentro do próprio card do orçamento
+    // (BudgetPanel), junto dos valores: um aviso só, no lugar certo.
     onSuccess: (budget) => {
       qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, budget } : old);
-      showActionFeedback({ tone: "success", message: "Orçamento salvo com sucesso." });
     },
-    onError: () => showActionFeedback({ tone: "error", message: "Não foi possível salvar o orçamento. Seus valores continuam disponíveis para tentar novamente." }),
   });
 
   const profileSaveState: "idle" | "saving" | "error" | "success" = profileMutation.isPending

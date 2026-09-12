@@ -810,6 +810,23 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #cf7f9
 .price-input:focus-within { outline: 2px solid #a453d1; outline-offset: -1px; }
 .price-input input:focus { outline: none; }
 
+.arrival-notice {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+  padding: 14px 16px; border: 1px solid #e2cdf0; border-radius: 16px;
+  color: #5c4a6b; background: #faf4fe;
+}
+.arrival-notice strong { display: block; font-size: 14px; }
+.arrival-notice p { margin: 2px 0 0; font-size: 12px; line-height: 1.4; }
+.arrival-notice > div { flex: 1; min-width: 0; }
+.arrival-notice .text-action { flex: none; min-height: 44px; }
+
+.budget-row { align-items: flex-start; gap: 16px; }
+.budget-row-label { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; }
+.budget-row-label small { color: #6b6573; font-size: 12px; }
+.budget-row-label .progress-line { max-width: 220px; }
+.budget-price-input { flex: none; width: 128px; }
+.budget-price-input input { width: 100%; min-width: 0; text-align: right; }
+
 .action-feedback-action {
   border: 0; border-radius: 8px; padding: 5px 10px; margin-left: 4px;
   color: #6c3f88; background: rgba(152, 81, 208, .12);
@@ -858,7 +875,11 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #cf7f9
 
 /* ─── Milestone past state ───────────────────────────────────────────────── */
 
-.milestone-past { opacity: .55; }
+/* Atrasado não é concluído: cor de aviso em vez de esmaecer, que fazia o
+   marco pendente parecer resolvido. */
+.milestone-late { border-color: #e6c9a8; background: #fffaf4; }
+.milestone-late .milestone-text small { color: #99622a; font-weight: 700; }
+.milestone-late .milestone-icon { color: #99622a; background: #fbeedd; }
 
 /* ─── Profile form ───────────────────────────────────────────────────────── */
 
@@ -937,6 +958,20 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #cf7f9
 }
 .gift-share-secondary { color: #81519e; background: rgba(255,255,255,.75); }
 .gift-share-revoke { margin-left: auto; color: #a1596a; background: transparent; }
+/* Sem isto o botão de criar caía na coluna do ícone, desalinhado do texto. */
+.gift-share-create { grid-column: 1 / -1; justify-self: start; }
+.system-page { display: grid; min-height: 100dvh; place-items: center; padding: 24px; background: #f8f5fa; }
+.system-card {
+  display: grid; gap: 12px; justify-items: center; width: min(100%, 420px);
+  padding: 32px 28px; border: 1px solid #ece5f1; border-radius: 24px;
+  color: #4a4552; background: #fff; box-shadow: 0 20px 46px rgba(60, 42, 80, .1); text-align: center;
+}
+.system-card h1 { margin: 0; color: #24202a; font-size: 22px; letter-spacing: -.03em; }
+.system-card p { margin: 0; font-size: 14px; line-height: 1.5; }
+.system-card .primary-button { width: auto; padding-inline: 22px; }
+.system-card-details { max-width: 100%; overflow-x: auto; margin: 0; padding: 12px; border-radius: 12px; background: #f4f1f7; font-family: var(--app-font-mono); font-size: 12px; text-align: left; }
+
+.confirm-cancel { justify-content: center; width: 100%; margin-top: 10px; min-height: 44px; }
 .gift-share-error { grid-column: 1 / -1; margin: 0; padding: 8px; border-radius: 9px; color: #a2475a; background: #fbedf0; font-size: 12px; line-height: 1.4; }
 
 /* ─── Public gift list ─────────────────────────────────────────────────────── */
