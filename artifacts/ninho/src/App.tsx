@@ -34,6 +34,8 @@ import {
   EyeOff,
 } from "lucide-react";
 import {
+  MutationCache,
+  QueryCache,
   QueryClient,
   QueryClientProvider,
   useMutation,
@@ -151,7 +153,32 @@ type ActionFeedback = RecommendationFeedback & {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
+/**
+ * Sessão expirada é tratada em um lugar só: sem isto, o 401 virava "verifique
+ * sua conexão" e a tela ficava oferecendo "tentar novamente" para sempre.
+ */
+function isUnauthorized(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && "status" in error
+    && Number((error as { status?: unknown }).status) === 401);
+}
+
+function handleExpiredSession(client: QueryClient, error: unknown): void {
+  if (!isUnauthorized(error)) return;
+  const signInPath = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/sign-in?expirou=1`;
+  if (window.location.pathname + window.location.search === signInPath) return;
+  client.clear();
+  window.location.assign(signInPath);
+}
+
+const queryClient: QueryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => !isUnauthorized(error) && failureCount < 1,
+    },
+  },
+  queryCache: new QueryCache({ onError: (error) => handleExpiredSession(queryClient, error) }),
+  mutationCache: new MutationCache({ onError: (error) => handleExpiredSession(queryClient, error) }),
+});
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const loginHeroImage = `${basePath}/login-pregnancy.png`;
 
@@ -250,6 +277,9 @@ function PasswordField({
   placeholder,
   testId,
   toggleTestId,
+  id,
+  invalid,
+  describedBy,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -258,6 +288,9 @@ function PasswordField({
   placeholder: string;
   testId: string;
   toggleTestId: string;
+  id?: string;
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [visible, setVisible] = useState(false);
@@ -280,10 +313,13 @@ function PasswordField({
     <span className="auth-password-wrap">
       <input
         ref={inputRef}
+        id={id}
         type={visible ? "text" : "password"}
         autoComplete={autoComplete}
         autoFocus={autoFocus}
         value={value}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         data-testid={testId}
@@ -2460,6 +2496,10 @@ function AuthLayout({ children }: { children: ReactNode }) {
   );
 }
 
+type AuthFieldErrors = { email?: string; password?: string; confirmation?: string };
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function AuthPage({ mode }: { mode: AuthMode }) {
   const isSignup = mode === "signup";
   const [, setLocation] = useLocation();
@@ -2467,7 +2507,9 @@ function AuthPage({ mode }: { mode: AuthMode }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
+  const emailRef = useRef<HTMLInputElement>(null);
+  const sessionExpired = !isSignup && new URLSearchParams(window.location.search).get("expirou") === "1";
   const mutation = useMutation({
     mutationFn: () => isSignup ? register({ email, password }) : login({ email, password }),
     onSuccess: (session) => {
@@ -2477,22 +2519,33 @@ function AuthPage({ mode }: { mode: AuthMode }) {
     },
   });
 
+  /**
+   * Valida todos os campos de uma vez e marca cada um: antes, um e-mail
+   * inválido junto de senhas diferentes mostrava só um erro por vez, no rodapé.
+   * No login não checamos o tamanho da senha — quem decide é o servidor, para
+   * não travar contas antigas com uma mensagem enganosa.
+   */
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const errors: AuthFieldErrors = {};
     const normalizedEmail = email.trim();
-    if (!normalizedEmail) {
-      setValidationError("Digite seu e-mail para continuar.");
+
+    if (!normalizedEmail) errors.email = "Digite seu e-mail para continuar.";
+    else if (!EMAIL_PATTERN.test(normalizedEmail)) errors.email = "Confira o e-mail: parece faltar algo.";
+
+    if (!password) errors.password = "Digite sua senha.";
+    else if (isSignup && password.length < 8) errors.password = "A senha precisa ter pelo menos 8 caracteres.";
+
+    if (isSignup && password && password !== confirmation) {
+      errors.confirmation = "As senhas não são iguais.";
+    }
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      if (errors.email) emailRef.current?.focus();
+      else document.querySelector<HTMLInputElement>(errors.password ? "#auth-password" : "#auth-confirmation")?.focus();
       return;
     }
-    if (password.length < 8) {
-      setValidationError("A senha precisa ter pelo menos 8 caracteres.");
-      return;
-    }
-    if (isSignup && password !== confirmation) {
-      setValidationError("A confirmação de senha não corresponde.");
-      return;
-    }
-    setValidationError(null);
     mutation.mutate();
   };
 
@@ -2504,28 +2557,42 @@ function AuthPage({ mode }: { mode: AuthMode }) {
             <h2>{isSignup ? "Crie seu ninho" : "Que bom ter você de volta"}</h2>
             <p>{isSignup ? "Comece a organizar a chegada com leveza." : "Entre para continuar preparando com calma."}</p>
           </div>
+          {sessionExpired && (
+            <p className="auth-notice" role="status">Sua sessão expirou. Entre de novo para continuar de onde parou.</p>
+          )}
           <div className="auth-fields">
             <label className="auth-field">
               E-MAIL
               <input
+                ref={emailRef}
                 type="email"
-                autoComplete="username"
+                autoComplete={isSignup ? "email" : "username"}
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                aria-invalid={fieldErrors.email ? true : undefined}
+                aria-describedby={fieldErrors.email ? "auth-email-error" : undefined}
+                onChange={(event) => { setEmail(event.target.value); setFieldErrors((current) => ({ ...current, email: undefined })); }}
                 placeholder="voce@email.com"
                 data-testid="input-auth-email"
               />
+              {fieldErrors.email && <span className="field-error" role="alert" id="auth-email-error">{fieldErrors.email}</span>}
             </label>
             <label className="auth-field">
               SENHA
               <PasswordField
+                id="auth-password"
                 autoComplete={isSignup ? "new-password" : "current-password"}
                 value={password}
-                onChange={setPassword}
-                placeholder="Pelo menos 8 caracteres"
+                onChange={(value) => { setPassword(value); setFieldErrors((current) => ({ ...current, password: undefined })); }}
+                placeholder={isSignup ? "Pelo menos 8 caracteres" : "Sua senha"}
+                invalid={Boolean(fieldErrors.password)}
+                describedBy={fieldErrors.password ? "auth-password-error" : isSignup ? "auth-password-hint" : undefined}
                 testId="input-auth-password"
                 toggleTestId="button-toggle-auth-password"
               />
+              {isSignup && !fieldErrors.password && (
+                <span className="field-hint" id="auth-password-hint">Pelo menos 8 caracteres.</span>
+              )}
+              {fieldErrors.password && <span className="field-error" role="alert" id="auth-password-error">{fieldErrors.password}</span>}
             </label>
             {!isSignup && (
               <button type="button" className="auth-forgot" onClick={() => setLocation("/forgot-password")} data-testid="button-forgot-password">
@@ -2536,18 +2603,22 @@ function AuthPage({ mode }: { mode: AuthMode }) {
               <label className="auth-field">
                 CONFIRME A SENHA
                 <PasswordField
+                  id="auth-confirmation"
                   autoComplete="new-password"
                   value={confirmation}
-                  onChange={setConfirmation}
+                  onChange={(value) => { setConfirmation(value); setFieldErrors((current) => ({ ...current, confirmation: undefined })); }}
                   placeholder="Repita sua senha"
+                  invalid={Boolean(fieldErrors.confirmation)}
+                  describedBy={fieldErrors.confirmation ? "auth-confirmation-error" : undefined}
                   testId="input-auth-confirmation"
                   toggleTestId="button-toggle-auth-confirmation"
                 />
+                {fieldErrors.confirmation && <span className="field-error" role="alert" id="auth-confirmation-error">{fieldErrors.confirmation}</span>}
               </label>
             )}
           </div>
-          {(validationError || mutation.isError) && (
-            <p className="auth-error" role="alert">{validationError || getAuthErrorMessage(mutation.error)}</p>
+          {mutation.isError && (
+            <p className="auth-error" role="alert">{getFriendlyErrorMessage(mutation.error)}</p>
           )}
           <button type="submit" className="primary-button auth-submit" disabled={mutation.isPending} data-testid="button-auth-submit">
             {mutation.isPending ? "Aguarde…" : isSignup ? "Criar minha conta" : "Entrar no meu ninho"}

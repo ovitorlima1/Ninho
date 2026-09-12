@@ -258,7 +258,9 @@
 .auth-error { margin: 0; padding: 10px 12px; border-radius: 12px; color: #a2475a; background: #f9edf2; font-size: 12px; line-height: 1.4; }
 /* Erro ligado a um campo: fica logo abaixo dele, sem caixa, para não empurrar
    o formulário inteiro como a faixa de erro geral fazia. */
-.field-error { margin: 6px 0 0; color: #a2475a; font-size: 12px; line-height: 1.35; }
+.field-error { margin: 6px 0 0; color: #a2475a; font-size: 12px; line-height: 1.35; font-weight: 500; }
+.field-hint { margin: 6px 0 0; color: #6b6573; font-size: 12px; font-weight: 500; }
+.auth-notice { margin: 0 0 14px; padding: 10px 12px; border-radius: 12px; color: #5c4a6b; background: #f1eaf8; font-size: 12px; line-height: 1.4; }
 .field-error::before { content: "! "; font-weight: 700; }
 input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #cf7f92 !important; }
 .auth-submit { margin-top: 20px; }
