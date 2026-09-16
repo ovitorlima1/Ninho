@@ -14,8 +14,6 @@ export type Recommendation = {
   reviewedAt: ReviewDate;
   expiresAt: ReviewDate;
   visibility: RecommendationVisibility;
-  image: string;
-  imagePosition?: string;
   featured?: boolean;
 };
 
@@ -45,8 +43,6 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     reviewedAt: "2026-09-11",
     expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/quarto-bebe.jpg",
-    imagePosition: "center 64%",
     featured: true,
   },
   {
@@ -61,8 +57,6 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     reviewedAt: "2026-09-11",
     expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/berco-bebe.jpg",
-    imagePosition: "center 42%",
   },
   {
     id: "kit-higiene",
@@ -76,8 +70,6 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     reviewedAt: "2026-09-11",
     expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/quarto-bebe.jpg",
-    imagePosition: "center 32%",
     featured: true,
   },
   {
@@ -92,8 +84,6 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     reviewedAt: "2026-09-11",
     expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/berco-bebe.jpg",
-    imagePosition: "center 70%",
   },
   {
     id: "mamadeira-anticolica",
@@ -107,8 +97,6 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     reviewedAt: "2026-09-11",
     expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/quarto-bebe.jpg",
-    imagePosition: "right 56%",
     featured: true,
   },
   {
@@ -123,8 +111,6 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     reviewedAt: "2026-09-11",
     expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/berco-bebe.jpg",
-    imagePosition: "left 54%",
   },
   {
     id: "bolsa-maternidade",
@@ -138,8 +124,6 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     reviewedAt: "2026-09-11",
     expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/quarto-bebe.jpg",
-    imagePosition: "center 48%",
     featured: true,
   },
   {
@@ -154,8 +138,6 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     reviewedAt: "2026-09-11",
     expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/berco-bebe.jpg",
-    imagePosition: "center 35%",
   },
 ];
 

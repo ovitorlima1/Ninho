@@ -1,5 +1,6 @@
 import { ArrowUpRight, Check, Plus, Sparkles } from "lucide-react";
-import { basePath, formatDate, money } from "@/lib/format";
+import { CategoryIcon } from "@/components/category-icon";
+import { formatDate, money } from "@/lib/format";
 import { type ChecklistItem } from "@/lib/items";
 import { getRecommendationDisplayState, type Recommendation } from "@/lib/recommendations";
 
@@ -29,15 +30,12 @@ export function RecommendationCard({
 
   return (
     <article className={`recommendation-card ${linkedItem ? "recommendation-card-linked" : ""}`} id={`recommendation-${recommendation.id}`}>
-      <div className="recommendation-image-wrap">
-        <img
-          src={`${basePath}${recommendation.image}`}
-          alt=""
-          className="recommendation-image"
-          style={{ objectPosition: recommendation.imagePosition }}
-        />
+      {/* Sem foto: as imagens antigas eram 2 fotos genéricas de quarto repetidas
+          em todos os cards, que não mostravam o produto. */}
+      <div className="recommendation-visual">
+        <span className="recommendation-visual-icon"><CategoryIcon category={recommendation.category} size={22} /></span>
         <span className="recommendation-category">{recommendation.category}</span>
-        {isRelevant && <span className="recommendation-match"><Sparkles size={11} /> combina com sua lista</span>}
+        {isRelevant && <span className="recommendation-match"><Sparkles size={12} aria-hidden /> combina com sua lista</span>}
       </div>
       <div className="recommendation-copy">
         <span className="eyebrow">{recommendation.use}</span>

@@ -1,17 +1,36 @@
+import { lazy, Suspense, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import { ErrorState, LoadingSpinner } from "@/components/states";
 import { getSession } from "@/lib/api";
 import NotFound from "@/pages/not-found";
-import { AuthPage } from "@/features/auth/auth-page";
-import { PasswordResetPage, PasswordResetRequestPage } from "@/features/auth/password-reset-pages";
-import { PublicGiftPage } from "@/features/gift/public-gift-page";
-import { WorkspacePage } from "@/features/workspace/workspace-page";
+
+// Cada área carrega o próprio código (M8): quem abre o link público de
+// presentes não baixa o workspace, e a tela de login não baixa as telas logadas.
+const AuthPage = lazy(() => import("@/features/auth/auth-page").then((m) => ({ default: m.AuthPage })));
+const PasswordResetRequestPage = lazy(() =>
+  import("@/features/auth/password-reset-pages").then((m) => ({ default: m.PasswordResetRequestPage })));
+const PasswordResetPage = lazy(() =>
+  import("@/features/auth/password-reset-pages").then((m) => ({ default: m.PasswordResetPage })));
+const PublicGiftPage = lazy(() => import("@/features/gift/public-gift-page").then((m) => ({ default: m.PublicGiftPage })));
+const WorkspacePage = lazy(() => import("@/features/workspace/workspace-page").then((m) => ({ default: m.WorkspacePage })));
+
+function FullPageSpinner() {
+  return (
+    <div className="ninho-app" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh" }}>
+      <LoadingSpinner />
+    </div>
+  );
+}
+
+function Lazy({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<FullPageSpinner />}>{children}</Suspense>;
+}
 
 export function AuthenticatedApp({ userId }: { userId: string }) {
   const [location] = useLocation();
   if (location === "/") return <Redirect to="/dashboard" />;
-  return <WorkspacePage userId={userId} />;
+  return <Lazy><WorkspacePage userId={userId} /></Lazy>;
 }
 
 export function AppRouter() {
@@ -24,13 +43,7 @@ export function AppRouter() {
     retry: false,
   });
 
-  if (!isPublicGiftRoute && sessionQuery.isPending) {
-    return (
-      <div className="ninho-app" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh" }}>
-        <LoadingSpinner />
-      </div>
-    );
-  }
+  if (!isPublicGiftRoute && sessionQuery.isPending) return <FullPageSpinner />;
 
   if (!isPublicGiftRoute && sessionQuery.isError) {
     return (
@@ -43,7 +56,7 @@ export function AppRouter() {
   if (isPublicGiftRoute) {
     return (
       <Switch>
-        <Route path="/gift/:token"><PublicGiftPage /></Route>
+        <Route path="/gift/:token"><Lazy><PublicGiftPage /></Lazy></Route>
         <Route><NotFound /></Route>
       </Switch>
     );
@@ -55,10 +68,10 @@ export function AppRouter() {
 
   return (
     <Switch>
-      <Route path="/sign-in"><AuthPage mode="signin" /></Route>
-      <Route path="/sign-up"><AuthPage mode="signup" /></Route>
-      <Route path="/forgot-password"><PasswordResetRequestPage /></Route>
-      <Route path="/reset-password"><PasswordResetPage /></Route>
+      <Route path="/sign-in"><Lazy><AuthPage mode="signin" /></Lazy></Route>
+      <Route path="/sign-up"><Lazy><AuthPage mode="signup" /></Lazy></Route>
+      <Route path="/forgot-password"><Lazy><PasswordResetRequestPage /></Lazy></Route>
+      <Route path="/reset-password"><Lazy><PasswordResetPage /></Lazy></Route>
       <Route path="/"><Redirect to={user ? "/dashboard" : "/sign-in"} /></Route>
       {user ? (
         <Route path="/:rest*"><AuthenticatedApp userId={user.id} /></Route>

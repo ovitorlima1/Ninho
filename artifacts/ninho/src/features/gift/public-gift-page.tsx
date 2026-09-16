@@ -1,14 +1,12 @@
 import { useState } from "react";
-import { CheckCircle2, ClipboardCheck, Gift, Heart, Link2, Sparkles, Utensils } from "lucide-react";
+import { CheckCircle2, Gift, Link2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Brand } from "@/components/brand";
+import { CategoryIcon } from "@/components/category-icon";
 import { LoadingSpinner } from "@/components/states";
-import { fetchPublicGiftList, type CategoryKey, type PublicGiftItem } from "@/lib/api";
+import { fetchPublicGiftList, type PublicGiftItem } from "@/lib/api";
 import { GiftReservationModal } from "@/features/gift/gift-reservation-modal";
-
-const iconForCategory = (cat: CategoryKey) =>
-  cat === "Alimentação" ? Utensils : cat === "Higiene" ? ClipboardCheck : cat === "Acessórios" ? Sparkles : Heart;
 
 export function PublicGiftPage() {
   const [, params] = useRoute("/gift/:token");
@@ -61,10 +59,9 @@ export function PublicGiftPage() {
         {items.length === 0 ? (
           <div className="public-gift-empty"><CheckCircle2 size={27} /><h2>Todos os itens já foram resolvidos.</h2><p>Que bonito ver tanta gente cuidando desta chegada.</p></div>
         ) : items.map((item) => {
-          const Icon = iconForCategory(item.category as CategoryKey);
           return (
             <article className={`public-gift-item ${item.reserved ? "is-reserved" : ""}`} key={item.id}>
-              <span className="public-gift-item-icon"><Icon size={17} /></span>
+              <span className="public-gift-item-icon"><CategoryIcon category={item.category} size={17} /></span>
               <div className="public-gift-item-copy">
                 <small>{item.category} · {item.qty} {item.qty === 1 ? "unidade" : "unidades"}</small>
                 <h2>{item.name}</h2>

@@ -18,11 +18,8 @@ export default tseslint.config(
       // Gerado pelo Orval a partir do OpenAPI.
       "lib/api-client-react/src/generated/**",
       "lib/api-zod/src/generated/**",
-      // Protótipos do Replit e componentes shadcn copiados: fora do app.
+      // Protótipos do Replit: fora do app.
       "artifacts/mockup-sandbox/**",
-      "artifacts/ninho/src/components/ui/**",
-      // Hooks do shadcn, usados só pelos componentes acima (saem no T5 da Fase 3).
-      "artifacts/ninho/src/hooks/**",
     ],
   },
   js.configs.recommended,
