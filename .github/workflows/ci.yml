@@ -1,0 +1,116 @@
+# CI do Ninho: checagens estáticas, testes unitários, build e E2E.
+# Os overrides do pnpm-workspace.yaml removem binários de esbuild/lightningcss
+# (e afins) que não são linux-x64 nem macOS; no ubuntu-latest (linux-x64) está ok.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Sem "packageManager" no package.json; mesma versão usada localmente (lockfile v9).
+  PNPM_VERSION: "11.17.0"
+  NODE_VERSION: "24"
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Testes unitários
+        run: pnpm run test
+
+      - name: Build
+        # O build do front exige PORT e BASE_PATH.
+        env:
+          PORT: "5180"
+          BASE_PATH: /
+        run: pnpm run build
+
+  e2e:
+    name: e2e
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ninho
+          POSTGRES_PASSWORD: ninho
+          POSTGRES_DB: ninho
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ninho -d ninho"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # O globalSetup do E2E cria o ninho_test se não existir.
+      # O E2E só aceita bancos *_test e cria o ninho_test se faltar.
+      E2E_DATABASE_URL: postgres://ninho:ninho@localhost:5432/ninho_test
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Gerar SESSION_SECRET de teste
+        run: echo "E2E_SESSION_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Instalar Chromium do Playwright
+        run: pnpm --filter @workspace/ninho exec playwright install --with-deps chromium
+
+      - name: Testes E2E
+        run: pnpm run test:e2e
+
+      - name: Publicar relatório do Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            artifacts/ninho/playwright-report
+            artifacts/ninho/test-results
+          retention-days: 7
+          if-no-files-found: ignore
