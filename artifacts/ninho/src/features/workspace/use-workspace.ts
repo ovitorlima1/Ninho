@@ -48,7 +48,9 @@ export function useWorkspace(uid: string) {
   const workspaceQuery = useQuery({
     queryKey: wqKey,
     queryFn: fetchWorkspace,
-    staleTime: 60_000,
+    // As gravações atualizam o cache com a resposta da API (M9); o recarregamento
+    // completo fica para erros e para a volta ao app depois de um tempo.
+    staleTime: 5 * 60_000,
   });
   const shareQuery = useQuery({
     queryKey: ["gift-share", uid],
@@ -87,9 +89,9 @@ export function useWorkspace(uid: string) {
 
   const profileMutation = useMutation({
     mutationFn: updateProfile,
+    // A confirmação aparece dentro do próprio perfil ("Perfil salvo."): um aviso só.
     onSuccess: (profile) => {
       qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, profile } : old);
-      showActionFeedback({ tone: "success", message: "Perfil salvo com sucesso." });
     },
     onError: () => showActionFeedback({ tone: "error", message: "Não foi possível salvar o perfil. Revise sua conexão e tente novamente." }),
   });
@@ -122,14 +124,17 @@ export function useWorkspace(uid: string) {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
+      void qc.invalidateQueries({ queryKey: wqKey });
       showActionFeedback({ tone: "error", message: "A alteração não foi salva e o estado anterior foi restaurado." });
     },
-    onSuccess: (_item, { data }) => {
+    onSuccess: (item, { data }) => {
+      qc.setQueryData<Workspace>(wqKey, (old) =>
+        old ? { ...old, items: old.items.map((i) => i.id === item.id ? item : i) } : old,
+      );
       if (!("recommendationId" in data)) {
         showActionFeedback({ tone: "success", message: "Item atualizado na sua lista." });
       }
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
   });
 
   const deleteItemMutation = useMutation({
@@ -144,10 +149,11 @@ export function useWorkspace(uid: string) {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
+      void qc.invalidateQueries({ queryKey: wqKey });
       showActionFeedback({ tone: "error", message: "Não foi possível remover o item. Ele foi restaurado na lista." });
     },
     // O aviso (com "Desfazer") é dado por quem chama, que conhece o item.
-    onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
+    // A remoção otimista já deixou o cache certo; nada a recarregar.
   });
 
   const createShareMutation = useMutation({
@@ -203,13 +209,18 @@ export function useWorkspace(uid: string) {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(wqKey, ctx.prev);
+      void qc.invalidateQueries({ queryKey: wqKey });
       showActionFeedback({ tone: "error", message: "Não foi possível atualizar o marco. O estado anterior foi restaurado." });
     },
-    onSuccess: (_milestone, { completed }) => showActionFeedback({
-      tone: "success",
-      message: completed ? "Marco concluído." : "Marco voltou para pendente.",
-    }),
-    onSettled: () => qc.invalidateQueries({ queryKey: wqKey }),
+    onSuccess: (milestone, { completed }) => {
+      qc.setQueryData<Workspace>(wqKey, (old) =>
+        old ? { ...old, milestones: old.milestones.map((m) => m.id === milestone.id ? milestone : m) } : old,
+      );
+      showActionFeedback({
+        tone: "success",
+        message: completed ? "Marco concluído." : "Marco voltou para pendente.",
+      });
+    },
   });
 
   const budgetMutation = useMutation({

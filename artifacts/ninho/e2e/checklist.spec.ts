@@ -19,6 +19,21 @@ test("status muda direto, sem ciclo escondido", async ({ page }) => {
   await expect(row.getByRole("radio", { name: "ganhei" })).toHaveAttribute("aria-checked", "false");
 });
 
+test("marcar um item faz só o PATCH, sem recarregar o workspace", async ({ page }) => {
+  const workspaceReads: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/me/workspace")) workspaceReads.push(request.url());
+  });
+  const patch = page.waitForResponse((response) =>
+    response.url().includes("/api/me/checklist/") && response.request().method() === "PATCH");
+
+  await itemRow(page, "Toalha com capuz").getByRole("radio", { name: "comprei" }).click();
+  expect((await patch).ok()).toBe(true);
+  await page.waitForLoadState("networkidle");
+  expect(workspaceReads).toEqual([]);
+  await expect(itemRow(page, "Toalha com capuz").getByRole("radio", { name: "comprei" })).toHaveAttribute("aria-checked", "true");
+});
+
 test("adicionar item com quantidade e preço digitados tecla a tecla", async ({ page }) => {
   await page.getByTestId("button-phone-add-list-item").click();
   const dialog = page.getByRole("dialog", { name: "Adicionar item" });
