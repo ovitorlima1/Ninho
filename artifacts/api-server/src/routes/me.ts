@@ -18,7 +18,7 @@ import {
   updateGiftReservationSchema,
 } from "@workspace/db/schema";
 import { requireAuth } from "../middlewares/requireAuth";
-import { initializeUser, getOrCreateProfile } from "../lib/seed";
+import { ensureUserInitialized } from "../lib/seed";
 
 const router = Router();
 
@@ -35,11 +35,10 @@ router.use(requireAuth);
 router.get("/workspace", async (req, res) => {
   const userId = res.locals.userId as string;
   try {
-    // initializeUser atomically creates the profile and seeds default data
-    // for first-time users inside a single transaction. On subsequent calls
-    // it is a no-op (isNew=false) and never re-seeds, so an intentionally
-    // empty checklist stays empty.
-    const { profile } = await initializeUser(userId);
+    // Leitura pura para contas já inicializadas (o seed acontece no cadastro).
+    // Contas antigas sem perfil são inicializadas aqui uma única vez; uma
+    // lista esvaziada de propósito nunca é repovoada.
+    const profile = await ensureUserInitialized(userId);
 
     const [items, userMilestones, budget, reservations] = await Promise.all([
       db.select().from(checklistItems).where(eq(checklistItems.userId, userId)).orderBy(checklistItems.sortOrder, checklistItems.createdAt),
@@ -176,7 +175,8 @@ router.put("/profile", async (req, res) => {
     return;
   }
   try {
-    await getOrCreateProfile(userId);
+    // Antes criava só o perfil, e a conta nunca recebia os itens padrão.
+    await ensureUserInitialized(userId);
     const [updated] = await db
       .update(profiles)
       .set({ ...parsed.data, updatedAt: new Date() })

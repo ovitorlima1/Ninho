@@ -83,26 +83,23 @@ export async function initializeUser(userId: string): Promise<{
 }
 
 /**
- * Gets or creates a user profile without touching any other tables.
- * Use in routes where the workspace has already been initialized
- * (e.g. profile updates).
+ * Returns the user's profile, initializing the workspace only when it does not
+ * exist yet. New accounts are seeded at registration, so the common path is a
+ * single SELECT — reads no longer write (the old INSERT ... ON CONFLICT ran on
+ * every workspace load and burned a sequence value each time).
+ *
+ * Accounts created before seeding moved to registration are initialized here
+ * on first use, with the same atomic guarantees as initializeUser.
  */
-export async function getOrCreateProfile(
+export async function ensureUserInitialized(
   userId: string,
 ): Promise<typeof profiles.$inferSelect> {
-  // Try to insert; if the profile already exists, do nothing and return it.
-  const [inserted] = await db
-    .insert(profiles)
-    .values({ userId })
-    .onConflictDoNothing()
-    .returning();
-
-  if (inserted) return inserted;
-
   const [existing] = await db
     .select()
     .from(profiles)
     .where(eq(profiles.userId, userId));
+  if (existing) return existing;
 
-  return existing!;
+  const { profile } = await initializeUser(userId);
+  return profile;
 }

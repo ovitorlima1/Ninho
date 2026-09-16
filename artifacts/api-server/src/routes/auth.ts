@@ -19,6 +19,7 @@ import {
   passwordResetOriginLimiter,
 } from "../lib/auth";
 import { sendPasswordResetEmail } from "../lib/email";
+import { initializeUser } from "../lib/seed";
 
 const router = Router();
 
@@ -144,6 +145,14 @@ router.post("/register", async (req, res) => {
     if (!user) {
       res.status(500).json({ error: "Não foi possível criar sua conta agora." });
       return;
+    }
+
+    // O workspace nasce no cadastro, e a leitura do workspace passa a ser só
+    // leitura. Se o seed falhar aqui, a primeira leitura tenta de novo.
+    try {
+      await initializeUser(user.id);
+    } catch (err) {
+      req.log.error({ err }, "workspace initialization at registration failed");
     }
 
     res.append("Set-Cookie", sessionCookie(createSessionToken(user.id, user.sessionVersion)));
