@@ -8,6 +8,7 @@ import {
   profiles,
   reserveGiftSchema,
 } from "@workspace/db/schema";
+import { giftReservationLimiter, limiterKey } from "../lib/rate-limit";
 
 const router = Router();
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{40,}$/;
@@ -89,6 +90,18 @@ router.post("/:token/reservations", async (req, res): Promise<void> => {
   const parsed = reserveGiftSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Escolha um item e uma forma de presentear." });
+    return;
+  }
+
+  // A página é pública: um limite por origem evita que alguém esvazie a lista.
+  const origin = req.ip || req.socket.remoteAddress || "unknown";
+  const rateLimit = await giftReservationLimiter.consume([limiterKey("gift-reservation:origin", origin)]);
+  if (!rateLimit.allowed) {
+    res.set("Retry-After", String(rateLimit.retryAfterSeconds));
+    res.status(429).json({
+      error: "Muitas reservas seguidas. Aguarde um pouco antes de tentar de novo.",
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    });
     return;
   }
 

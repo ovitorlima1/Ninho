@@ -10,10 +10,13 @@ import {
   verifyPassword,
   createPasswordResetToken,
   hashPasswordResetToken,
+} from "../lib/auth";
+import {
   authAttemptLimiter,
+  limiterKey,
   passwordResetEmailLimiter,
   passwordResetOriginLimiter,
-} from "../lib/auth";
+} from "../lib/rate-limit";
 import { sendPasswordResetEmail } from "../lib/email";
 import { initializeUser } from "../lib/seed";
 import { createSession, resolveSession, revokeAllSessions, revokeCurrentSession } from "../lib/sessions";
@@ -55,7 +58,7 @@ function getRequestOrigin(req: Request): string {
 }
 
 function getAuthAttemptKeys(scope: "login" | "register", email: string, origin: string): string[] {
-  return [`auth:${scope}:origin:${origin}`, `auth:${scope}:account:${email}`];
+  return [limiterKey(`${scope}:origin`, origin), limiterKey(`${scope}:account`, email)];
 }
 
 /**
@@ -63,7 +66,7 @@ function getAuthAttemptKeys(scope: "login" | "register", email: string, origin: 
  * origin quotas can differ. Each limiter receives a single key.
  */
 function getPasswordResetAttemptKeys(scope: "origin" | "account", value: string): string[] {
-  return [`auth:password-reset:${scope}:${value}`];
+  return [limiterKey(`password-reset:${scope}`, value)];
 }
 
 type RateLimitedRoute = "login" | "register" | "password-reset-request";
@@ -73,13 +76,12 @@ function rejectRateLimitedRequest(
   res: Response,
   route: RateLimitedRoute,
   result: { allowed: false; retryAfterSeconds: number },
-  origin: string,
   message: string = AUTH_RATE_LIMIT_MESSAGE,
 ): void {
+  // Sem IP nem e-mail no log: a rota e o tempo de espera bastam para alertas.
   req.log.warn({
     event: "auth_attempts_rate_limited",
     route,
-    origin,
     retryAfterSeconds: result.retryAfterSeconds,
   }, "authentication attempt rate limit exceeded");
   res.set("Retry-After", String(result.retryAfterSeconds));
@@ -121,9 +123,9 @@ router.post("/register", async (req, res) => {
   const { data } = validated;
   const origin = getRequestOrigin(req);
   const attemptKeys = getAuthAttemptKeys("register", data.email, origin);
-  const rateLimit = authAttemptLimiter.consume(attemptKeys);
+  const rateLimit = await authAttemptLimiter.consume(attemptKeys);
   if (!rateLimit.allowed) {
-    rejectRateLimitedRequest(req, res, "register", rateLimit, origin);
+    rejectRateLimitedRequest(req, res, "register", rateLimit);
     return;
   }
 
@@ -155,7 +157,7 @@ router.post("/register", async (req, res) => {
     res.append("Set-Cookie", sessionCookie(await createSession(user.id, user.sessionVersion)));
     res.status(201).json({ user: publicUser(user) });
   } catch (err) {
-    authAttemptLimiter.release(attemptKeys);
+    await authAttemptLimiter.release(attemptKeys);
     req.log.error({ err }, "registration error");
     res.status(500).json({ error: "Não foi possível criar sua conta agora." });
   }
@@ -171,9 +173,9 @@ router.post("/login", async (req, res) => {
   const { data } = validated;
   const origin = getRequestOrigin(req);
   const attemptKeys = getAuthAttemptKeys("login", data.email, origin);
-  const rateLimit = authAttemptLimiter.consume(attemptKeys);
+  const rateLimit = await authAttemptLimiter.consume(attemptKeys);
   if (!rateLimit.allowed) {
-    rejectRateLimitedRequest(req, res, "login", rateLimit, origin);
+    rejectRateLimitedRequest(req, res, "login", rateLimit);
     return;
   }
 
@@ -185,11 +187,11 @@ router.post("/login", async (req, res) => {
       return;
     }
 
-    authAttemptLimiter.release(attemptKeys);
+    await authAttemptLimiter.release(attemptKeys);
     res.append("Set-Cookie", sessionCookie(await createSession(user.id, user.sessionVersion)));
     res.json({ user: publicUser(user) });
   } catch (err) {
-    authAttemptLimiter.release(attemptKeys);
+    await authAttemptLimiter.release(attemptKeys);
     req.log.error({ err }, "login error");
     res.status(500).json({ error: "Não foi possível entrar agora." });
   }
@@ -231,14 +233,14 @@ router.post("/password-reset/request", async (req, res) => {
   // Both counters are consumed before the account lookup: an address with an
   // account and one without behave exactly the same under the limit.
   const origin = getRequestOrigin(req);
-  const emailRateLimit = passwordResetEmailLimiter.consume(getPasswordResetAttemptKeys("account", email));
+  const emailRateLimit = await passwordResetEmailLimiter.consume(getPasswordResetAttemptKeys("account", email));
   if (!emailRateLimit.allowed) {
-    rejectRateLimitedRequest(req, res, "password-reset-request", emailRateLimit, origin, PASSWORD_RESET_RATE_LIMIT_MESSAGE);
+    rejectRateLimitedRequest(req, res, "password-reset-request", emailRateLimit, PASSWORD_RESET_RATE_LIMIT_MESSAGE);
     return;
   }
-  const originRateLimit = passwordResetOriginLimiter.consume(getPasswordResetAttemptKeys("origin", origin));
+  const originRateLimit = await passwordResetOriginLimiter.consume(getPasswordResetAttemptKeys("origin", origin));
   if (!originRateLimit.allowed) {
-    rejectRateLimitedRequest(req, res, "password-reset-request", originRateLimit, origin, PASSWORD_RESET_RATE_LIMIT_MESSAGE);
+    rejectRateLimitedRequest(req, res, "password-reset-request", originRateLimit, PASSWORD_RESET_RATE_LIMIT_MESSAGE);
     return;
   }
 

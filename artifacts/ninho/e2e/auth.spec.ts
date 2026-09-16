@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { withTestDb } from "./db";
 import { expectAccessible, isoDaysFromToday, PASSWORD, uniqueEmail } from "./support";
 
 test("cadastro valida por campo e o onboarding leva ao Início", async ({ page }) => {
@@ -70,4 +71,12 @@ test("recuperação de senha limita o quarto pedido na mesma hora", async ({ pag
   await page.getByRole("button", { name: "Enviar link de recuperação" }).click();
   await expect(page.getByText("Muitos pedidos de redefinição de senha. Aguarde uma hora antes de tentar novamente.")).toBeVisible();
   await expectAccessible(page);
+
+  // O contador vive no banco (vale entre processos) e sem o e-mail em claro.
+  const keys = await withTestDb(async (db) => {
+    const { rows } = await db.query<{ key: string }>("SELECT key FROM auth_attempts WHERE key LIKE 'password-reset:account:%'");
+    return rows.map((row) => row.key);
+  });
+  expect(keys.length).toBeGreaterThan(0);
+  expect(keys.some((key) => key.includes(email) || key.includes(email.split("@")[0]!))).toBe(false);
 });
