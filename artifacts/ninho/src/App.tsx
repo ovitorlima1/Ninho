@@ -8,6 +8,7 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
+  Circle,
   ClipboardCheck,
   Copy,
   Gift,
@@ -180,7 +181,6 @@ const queryClient: QueryClient = new QueryClient({
   mutationCache: new MutationCache({ onError: (error) => handleExpiredSession(queryClient, error) }),
 });
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const loginHeroImage = `${basePath}/login-pregnancy.png`;
 
 const CATEGORIES: CategoryKey[] = ["Roupas", "Higiene", "Alimentação", "Acessórios"];
 const GESTATION_WEEKS = Array.from({ length: 40 }, (_, index) => index + 1);
@@ -217,7 +217,12 @@ function useRecommendationClock(): Date {
 function Brand() {
   return (
     <div className="brand" data-testid="brand-ninho">
-      <span className="brand-mark"><span /></span>
+      <svg className="brand-mark" viewBox="0 0 128 128" aria-hidden focusable="false">
+        <rect className="brand-mark-bg" width="128" height="128" rx="32" />
+        <ellipse className="brand-mark-egg" cx="64" cy="55" rx="15" ry="19" />
+        <path className="brand-mark-nest" d="M26 66c4 21 19 34 38 34s34-13 38-34" />
+        <path className="brand-mark-weave" d="M36 80c9 5 18 7 28 7s19-2 28-7" />
+      </svg>
       <span className="brand-word">ninho</span>
     </div>
   );
@@ -302,8 +307,32 @@ function Pill({ active, children, onClick, testId }: { active?: boolean; childre
   return <button type="button" className={`pill ${active ? "pill-active" : ""}`} onClick={onClick} data-testid={testId}>{children}</button>;
 }
 
-function Progress({ value, className = "" }: { value: number; className?: string }) {
-  return <div className={`progress-line ${className}`}><span style={{ width: `${Math.min(100, Math.max(0, value))}%` }} /></div>;
+/**
+ * Fita métrica (PRD §4.1): o elemento de progresso do app inteiro. As marcações
+ * de centímetro ficam no CSS; aqui só o valor e a semântica de progressbar.
+ */
+function Progress({
+  value, label, size = "md", tone = "accent", className = "",
+}: {
+  value: number;
+  label: string;
+  size?: "md" | "lg";
+  tone?: "accent" | "brand";
+  className?: string;
+}) {
+  const clamped = Math.round(Math.min(100, Math.max(0, value)));
+  return (
+    <div
+      className={`tape tape-${size} tape-${tone} ${className}`.trim()}
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={clamped}
+    >
+      <span className="tape-fill" style={{ width: `${clamped}%` }} />
+    </div>
+  );
 }
 
 function ActionFeedbackBanner({ feedback, onDismiss }: { feedback: ActionFeedback | null; onDismiss: () => void }) {
@@ -529,9 +558,9 @@ function OnboardingModal({ userId, onComplete }: { userId: string; onComplete: (
         {step === 1 && (
           <>
             <div className="modal-top">
-              <div className="onboarding-intro"><span className="card-kicker">BEM-VINDA</span><h2 id="onboarding-step-1-title">Como posso te chamar?</h2></div>
+              <div className="onboarding-intro"><span className="eyebrow">BEM-VINDA</span><h2 id="onboarding-step-1-title">Como posso te chamar?</h2></div>
             </div>
-            <p className="muted-copy onboarding-description" id="onboarding-step-1-description">Pode ser seu nome, um apelido ou como você gosta de ser chamada.</p>
+            <p className="onboarding-description" id="onboarding-step-1-description">Pode ser seu nome, um apelido ou como você gosta de ser chamada.</p>
             <label className="modal-label">
               NOME OU APELIDO
               <input
@@ -555,10 +584,10 @@ function OnboardingModal({ userId, onComplete }: { userId: string; onComplete: (
         {step === 2 && (
           <>
             <div className="modal-top">
-              <div className="onboarding-intro"><span className="card-kicker">CHEGADA</span><h2 id="onboarding-step-2-title">Qual é a data prevista?</h2></div>
+              <div className="onboarding-intro"><span className="eyebrow">CHEGADA</span><h2 id="onboarding-step-2-title">Qual é a data prevista?</h2></div>
               <TinyButton onClick={() => setStep(1)} label="Voltar" testId="button-onboarding-back"><ChevronRight size={17} className="rotate-180" /></TinyButton>
             </div>
-            <p className="muted-copy onboarding-description" id="onboarding-step-2-description">A partir dela, calculamos sua semana e os marcos. Você pode mudar depois.</p>
+            <p className="onboarding-description" id="onboarding-step-2-description">A partir dela, calculamos sua semana e os marcos. Você pode mudar depois.</p>
             <label className="modal-label">
               DATA PREVISTA
               <input
@@ -782,61 +811,118 @@ function OverviewPanel({
 }) {
   const done = items.filter((i) => i.status !== "A comprar").length;
   const score = items.length ? Math.round((done / items.length) * 100) : 0;
-  const name = profile.displayName || "você";
-  const week = calcGestationalWeek(profile.dueDate);
+  const gestation = calcGestation(profile.dueDate);
   const spent = calcSpent(items);
-  const totalPlanned = budget.reduce((s, b) => s + parseFloat(b.planned), 0);
-  const nextMilestone = getNextMilestone(miles, week);
-  const focusCategory = items.filter((i) => i.category === "Roupas" && i.essential);
-  const focusDone = focusCategory.filter((i) => i.status !== "A comprar").length;
+  const totalPlanned = budget.reduce((sum, b) => sum + (parseFloat(b.planned) || 0), 0);
+  const nextMilestone = getNextMilestone(miles, gestation?.week ?? null);
+  const milestoneLate = Boolean(nextMilestone && gestation && nextMilestone.week < gestation.week);
+  const nextItem = items.find((i) => i.status === "A comprar" && i.essential)
+    ?? items.find((i) => i.status === "A comprar");
+  const weeksToGo = gestation ? Math.max(0, Math.ceil(gestation.daysToGo / 7)) : null;
+  const firstName = profile.displayName?.trim().split(/\s+/)[0];
 
   return (
-    <div className="phone-content flow">
-      <div className="eyebrow-row"><span>{todayLabel()}</span><span className="live-dot" /></div>
-      <h2 className="phone-heading">Seu caminho,<br /><strong>um passo de cada vez.</strong></h2>
-      <div className="focus-card">
-        <div className="focus-copy">
-          <span className="card-kicker">PREPARAÇÃO</span>
-          <strong>{score}%</strong>
-          <span>do enxoval já tomou forma</span>
-          <Progress value={score} />
+    <div className="screen overview">
+      <section className="overview-hero" aria-labelledby="overview-week">
+        <p className="overview-greeting">{firstName ? `Olá, ${firstName}` : "Olá"}</p>
+        {gestation ? (
+          <>
+            <h2 className="overview-week" id="overview-week">{formatGestation(gestation)}</h2>
+            <p className="overview-countdown">
+              {gestation.isOverdue
+                ? "A data prevista chegou."
+                : `${weeksToGo === 1 ? "Falta 1 semana" : `Faltam ${weeksToGo} semanas`} para ${formatDate(profile.dueDate!)}.`}
+            </p>
+            <Progress value={(gestation.week / 40) * 100} label={`Gestação: ${formatGestation(gestation)} de 40`} size="lg" />
+          </>
+        ) : (
+          <>
+            <h2 className="overview-week" id="overview-week">Quando o bebê chega?</h2>
+            <p className="overview-countdown">Com a data prevista, o Ninho mostra sua semana e os marcos no tempo certo.</p>
+            <button type="button" className="secondary-button" onClick={() => setLocation("/profile")} data-testid="button-overview-set-due-date">
+              <CalendarDays size={16} aria-hidden /> informar data prevista
+            </button>
+          </>
+        )}
+      </section>
+
+      {gestation?.isOverdue && <ArrivalNotice />}
+
+      <section className="card overview-prep" aria-labelledby="overview-prep-title">
+        <div className="card-header">
+          <h2 className="card-title" id="overview-prep-title">Preparo do enxoval</h2>
+          <button type="button" className="link-button" onClick={() => setLocation("/checklist")} data-testid="button-open-overview-list">
+            ver lista <ChevronRight size={16} aria-hidden />
+          </button>
         </div>
-        <div className="orbit-illustration" aria-label="Referência de quarto do bebê">
-          <img src={`${import.meta.env.BASE_URL}images/quarto-bebe.jpg`} alt="Quarto de bebê claro e acolhedor" />
-          <i /><b />
-          <em><span>{done}</span><small>de {items.length}</small></em>
-        </div>
-      </div>
-      <div className="section-line"><span>Visão geral</span><button type="button" onClick={() => setLocation("/checklist")} data-testid="button-open-overview-list">ver lista <ChevronRight size={13} /></button></div>
-      {focusCategory.length > 0 && (
-        <div className="white-card">
-          <div className="card-head"><div><span className="card-kicker">FOCO DA SEMANA</span><h2>Roupas essenciais</h2></div><div className="round-icon"><Heart size={15} /></div></div>
-          <p className="muted-copy">Peças macias para os primeiros dias, sem excesso.</p>
-          <div className="mini-stat">
-            <span><CheckCircle2 size={14} /> {focusDone} de {focusCategory.length} resolvidos</span>
-            <span>{focusCategory.length ? Math.round((focusDone / focusCategory.length) * 100) : 0}%</span>
-          </div>
-          <Progress value={focusCategory.length ? (focusDone / focusCategory.length) * 100 : 0} />
-        </div>
-      )}
-      <div className="two-stat-grid">
-        <button type="button" className="white-card compact-card" onClick={() => setLocation("/milestones")} data-testid="button-open-overview-milestones">
-          <span className="card-kicker">PRÓXIMO MARCO</span>
-          {nextMilestone ? <><strong>Semana {nextMilestone.week}</strong><span className="muted-copy">{nextMilestone.title}</span></> : <><strong>—</strong><span className="muted-copy">{week ? "todos concluídos" : "configure a data prevista"}</span></>}
-          <ChevronRight size={14} />
+        <p className="overview-score"><strong>{score}%</strong> resolvido · {done} de {items.length} itens</p>
+        <Progress value={score} label="Preparo do enxoval" size="lg" />
+        <ul className="category-progress">
+          {CATEGORIES.map((category) => {
+            const inCategory = items.filter((i) => i.category === category);
+            const resolved = inCategory.filter((i) => i.status !== "A comprar").length;
+            const pct = inCategory.length ? (resolved / inCategory.length) * 100 : 0;
+            return (
+              <li key={category}>
+                <span className="category-progress-name">{category}</span>
+                <span className="category-progress-count">{resolved}/{inCategory.length}</span>
+                <Progress value={pct} label={`${category}: ${resolved} de ${inCategory.length} resolvidos`} />
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      <div className="card-grid">
+        <button type="button" className={`card card-link ${milestoneLate ? "is-late" : ""}`} onClick={() => setLocation("/milestones")} data-testid="button-open-overview-milestones">
+          <span className="eyebrow">{milestoneLate ? "Marco atrasado" : "Próximo marco"}</span>
+          {nextMilestone ? (
+            <>
+              <strong className="card-value">Semana {nextMilestone.week}</strong>
+              <span className="card-note">{nextMilestone.title}</span>
+            </>
+          ) : (
+            <>
+              <strong className="card-value">Tudo em dia</strong>
+              <span className="card-note">{gestation ? "Todos os marcos foram concluídos." : "Informe a data prevista para ver os marcos."}</span>
+            </>
+          )}
+          <ChevronRight className="card-link-arrow" size={18} aria-hidden />
         </button>
-        <button type="button" className="white-card compact-card" onClick={() => setLocation("/budget")} data-testid="button-open-overview-budget">
-          <span className="card-kicker">ORÇAMENTO</span>
-          <strong>{money(spent)}</strong>
-          <span className="muted-copy">investido até aqui</span>
-          <ChevronRight size={14} />
+
+        <button type="button" className="card card-link" onClick={() => setLocation("/budget")} data-testid="button-open-overview-budget">
+          <span className="eyebrow">Orçamento</span>
+          <strong className="card-value">{money(spent)}</strong>
+          <span className="card-note">{totalPlanned > 0 ? `investido de ${money(totalPlanned)} planejados` : "investido até aqui"}</span>
+          {totalPlanned > 0 && (
+            <Progress value={(spent / totalPlanned) * 100} label="Orçamento usado" tone={spent > totalPlanned ? "brand" : "accent"} />
+          )}
+          <ChevronRight className="card-link-arrow" size={18} aria-hidden />
+        </button>
+
+        <button type="button" className="card card-link" onClick={() => setLocation("/checklist")} data-testid="button-overview-next-item">
+          <span className="eyebrow">Próximo item</span>
+          {nextItem ? (
+            <>
+              <strong className="card-value">{nextItem.name}</strong>
+              <span className="card-note">{nextItem.essential ? "Essencial" : "Pendente"} em {nextItem.category.toLowerCase()}</span>
+            </>
+          ) : (
+            <>
+              <strong className="card-value">Lista resolvida</strong>
+              <span className="card-note">Nada pendente por enquanto.</span>
+            </>
+          )}
+          <ChevronRight className="card-link-arrow" size={18} aria-hidden />
+        </button>
+
+        <button type="button" className="card card-link card-soft" onClick={() => setLocation("/recommendations")} data-testid="button-open-recommendations">
+          <span className="eyebrow">Inspirações</span>
+          <strong className="card-value">Ideias para o que falta</strong>
+          <span className="card-note">Sugestões que combinam com os itens pendentes.</span>
+          <ChevronRight className="card-link-arrow" size={18} aria-hidden />
         </button>
       </div>
-      <button type="button" className="soft-action recommendation-prompt" onClick={() => setLocation("/recommendations")} data-testid="button-open-recommendations">
-        <Sparkles size={15} />
-        <span><strong>inspirações para o seu momento</strong><small>uma seleção leve para complementar sua lista</small></span>
-        <ArrowUpRight size={14} />
-      </button>
     </div>
   );
 }
@@ -863,18 +949,20 @@ function ChecklistPanel({
   const allDone = items.filter((i) => i.status !== "A comprar").length;
 
   return (
-    <div className="phone-content flow">
-      <div className="eyebrow-row"><span>LISTA DE PREPARO</span><span className="count-badge">{allDone}/{items.length}</span></div>
-      <h2 className="phone-heading">Tudo no lugar,<br /><strong>na hora certa.</strong></h2>
-      <div className="filter-row">
+    <div className="screen checklist">
+      <div className="screen-intro">
+        <h2 className="screen-title">Tudo no lugar, na hora certa</h2>
+        <p className="screen-lead"><strong>{allDone} de {items.length}</strong> itens resolvidos. Toque em um item para ajustar quantidade e preço.</p>
+      </div>
+      <div className="filter-row" role="group" aria-label="Categorias">
         {CATEGORIES.map((key) => (
           <Pill key={key} active={category === key} onClick={() => setCategory(key)} testId={`button-phone-category-${key.toLowerCase()}`}>{key}</Pill>
         ))}
       </div>
-      <div className="activity-card">
-        <div className="card-head">
-          <div><span className="card-kicker">CHECKLIST ATIVO</span><h2>{category}</h2></div>
-          <TinyButton onClick={() => onAdd(category)} label="Adicionar item" testId="button-phone-add-item"><Plus size={16} /></TinyButton>
+      <section className="card checklist-card" aria-labelledby="checklist-category-title">
+        <div className="card-header">
+          <h2 className="card-title" id="checklist-category-title">{category}</h2>
+          <TinyButton onClick={() => onAdd(category)} label={`Adicionar item em ${category}`} testId="button-phone-add-item"><Plus size={18} /></TinyButton>
         </div>
         <div className="check-list" aria-busy={isActionPending}>
           {visible.length === 0 && (
@@ -988,9 +1076,9 @@ function ChecklistPanel({
           ))}
         </div>
         <button type="button" className="text-action" onClick={() => onAdd(category)} data-testid="button-phone-add-list-item">
-          <Plus size={13} /> adicionar item
+          <Plus size={16} aria-hidden /> adicionar item
         </button>
-      </div>
+      </section>
       <div className="log-card">
         <div className="log-title"><Activity size={15} /> seu progresso</div>
         <div className="log-row"><span className="log-dot" /><span>{allDone} de {items.length} itens resolvidos</span></div>
@@ -1029,58 +1117,32 @@ function TimelinePanel({
 }) {
   const gestation = calcGestation(profile.dueDate);
   const week = gestation?.week ?? null;
-  const name = profile.displayName || "você";
   const displayWeek = week;
-  const progress = displayWeek ? Math.round((displayWeek / 40) * 100) : 0;
-  const trackProgress = Math.min(100, Math.max(0, progress));
+  const trimester = week === null ? null : week <= 13 ? 1 : week <= 27 ? 2 : 3;
 
   return (
-    <div className="phone-content flow timeline-panel">
-      <div className="eyebrow-row">
-        <span>{week ? `JORNADA DE ${name.toUpperCase()}` : "LINHA DO TEMPO"}</span>
-        <span>{week ? `${displayWeek} / 40` : "—"}</span>
+    <div className="screen timeline">
+      <div className="screen-intro">
+        <h2 className="screen-title">Os próximos pequenos marcos</h2>
+        <p className="screen-lead">Cada marco tem uma semana sugerida. Marque quando resolver — sem pressa.</p>
       </div>
-      <h2 className="phone-heading">Os próximos<br /><strong>pequenos marcos.</strong></h2>
 
       {gestation?.isOverdue && <ArrivalNotice />}
 
-      {!profile.dueDate ? (
-        <div className="empty-timeline">
-          <CalendarDays size={28} />
-          <p>Configure a data prevista no seu perfil para ver a linha do tempo personalizada.</p>
+      {!gestation ? (
+        <div className="empty-state">
+          <CalendarDays size={28} aria-hidden />
+          <p>Informe a data prevista no seu perfil para ver sua semana e os marcos no tempo certo.</p>
         </div>
       ) : (
-        <div className="timeline-chart">
-          <div className="chart-top"><span>PROGRESSO DA GESTAÇÃO</span><strong>{progress}%</strong></div>
-          <div className="gestation-visual" role="img" aria-label={`Semana ${displayWeek} de 40, ${progress}% da gestação concluída`}>
-            <div className="gestation-scale">
-              <div className="gestation-rail">
-                <span className="gestation-rail-fill" style={{ width: `${trackProgress}%` }} />
-                <span className="gestation-current" style={{ left: `${trackProgress}%` }}>
-                  <b>{displayWeek}</b>
-                </span>
-              </div>
-              <div className="gestation-ticks" aria-hidden="true">
-                <i />
-                <i />
-                <i />
-                <i />
-              </div>
-            </div>
+        <section className="card gestation-card" aria-labelledby="gestation-title">
+          <div className="card-header">
+            <h2 className="card-title" id="gestation-title">{formatGestation(gestation)}</h2>
+            <span className="card-meta">{trimester}º trimestre</span>
           </div>
-          <div className="chart-foot">
-            <span>sem 1</span>
-            <span>agora · sem {displayWeek}</span>
-            <span>sem 40 · parto</span>
-          </div>
-        </div>
-      )}
-
-      {week && (
-        <div className="week-overview">
-          <div className="week-overview-top">
-            <span>JORNADA DE 40 SEMANAS</span>
-            <strong>{gestation ? formatGestation(gestation) : ""}</strong>
+          <Progress value={(gestation.week / 40) * 100} label={`Gestação: ${formatGestation(gestation)} de 40`} size="lg" />
+          <div className="tape-scale" aria-hidden>
+            <span>semana 1</span><span>semana 20</span><span>semana 40</span>
           </div>
           <ol className="week-grid" aria-label="Semanas da gestação">
             {GESTATION_WEEKS.map((weekNumber) => {
@@ -1090,45 +1152,53 @@ function TimelinePanel({
                 <li
                   key={weekNumber}
                   className={`week-marker ${isPast ? "is-past" : ""} ${isCurrent ? "is-current" : ""}`}
-                  aria-label={`Semana ${weekNumber}${isCurrent ? ", semana atual" : isPast ? ", concluída" : ""}`}
+                  aria-current={isCurrent ? "step" : undefined}
+                  aria-label={`Semana ${weekNumber}${isCurrent ? ", semana atual" : isPast ? ", já passou" : ""}`}
                 >
-                  <span>{weekNumber}</span>
+                  {weekNumber}
                 </li>
               );
             })}
           </ol>
-          <div className="week-overview-foot"><span>1º trimestre</span><span>2º trimestre</span><span>3º trimestre</span></div>
-        </div>
+        </section>
       )}
 
-      <div className="section-line"><span>Sua linha do tempo</span></div>
+      <h2 className="section-title">Sua linha do tempo</h2>
       <div className="milestone-list">
         {miles.map((m) => {
           const Icon = m.week <= 20 ? Sparkles : m.week <= 28 ? ClipboardCheck : m.week <= 32 ? Gift : Heart;
-          const past = week !== null && m.week < (week ?? 0);
-            const current = week !== null && m.week === week;
-            // Atrasado é diferente de concluído: antes ficava esmaecido, com
-            // cara de resolvido.
-            const late = past && !m.completed;
-            const state = m.completed ? "completed" : late ? "late" : current ? "current" : "future";
+          const past = week !== null && m.week < week;
+          const current = week !== null && m.week === week;
+          // Atrasado é diferente de concluído: antes ficava esmaecido, com cara de resolvido.
+          const late = past && !m.completed;
+          const state = m.completed ? "completed" : late ? "late" : current ? "current" : "future";
+          // As notas do seed ("seu momento", "a seguir") são fixas e erravam o
+          // tempo; o rótulo agora vem da semana atual.
+          const statusLabel = m.completed ? "concluído"
+            : late ? "atrasado"
+              : current ? "nesta semana"
+                : week !== null ? `daqui a ${m.week - week} ${m.week - week === 1 ? "semana" : "semanas"}`
+                  : m.note;
           return (
             <button
               type="button"
-                className={`milestone-item milestone-${state} ${m.completed ? "milestone-done" : ""}`}
+              className={`milestone-item milestone-${state}`}
               key={m.id}
               onClick={() => onToggle(m.id, !m.completed)}
-                disabled={isActionPending}
-                aria-pressed={m.completed}
-                aria-current={current ? "step" : undefined}
-                aria-label={`${m.title}, semana ${m.week}. ${m.completed ? "Concluído. Toque para marcar como pendente." : late ? "Atrasado e pendente. Toque para marcar como concluído." : "Pendente. Toque para marcar como concluído."}`}
+              disabled={isActionPending}
+              aria-pressed={m.completed}
+              aria-current={current ? "step" : undefined}
+              aria-label={`${m.title}, semana ${m.week}, ${statusLabel}. ${m.completed ? "Toque para marcar como pendente." : "Toque para marcar como concluído."}`}
               data-testid={`button-phone-milestone-${m.week}`}
             >
-              <span className="milestone-icon"><Icon size={14} /></span>
+              <span className="milestone-icon" aria-hidden><Icon size={18} /></span>
               <span className="milestone-text">
-                <small>SEMANA {m.week} · {late ? "atrasado" : m.note}</small>
+                <span className="milestone-meta">Semana {m.week} · {statusLabel}</span>
                 <strong>{m.title}</strong>
               </span>
-              {m.completed ? <CheckCircle2 size={16} /> : <ChevronRight size={15} />}
+              <span className="milestone-check" aria-hidden>
+                {m.completed ? <CheckCircle2 size={22} /> : <Circle size={22} />}
+              </span>
             </button>
           );
         })}
@@ -1175,17 +1245,19 @@ function BudgetPanel({
   };
 
   return (
-    <div className="phone-content flow">
-      <div className="eyebrow-row"><span>CLAREZA SEM PLANILHA</span><WalletCards size={14} /></div>
-      <h2 className="phone-heading">Um olhar calmo<br /><strong>para o orçamento.</strong></h2>
+    <div className="screen budget">
+      <div className="screen-intro">
+        <h2 className="screen-title">Um olhar calmo para o orçamento</h2>
+        <p className="screen-lead">Valores são uma bússola, não uma regra.</p>
+      </div>
       <div className="budget-total">
-        <span className="card-kicker">INVESTIDO ATÉ AQUI</span>
+        <span className="eyebrow">Investido até aqui</span>
         <strong>{money(spent)}</strong>
         <small>de {money(total)} planejados</small>
-        <Progress value={total > 0 ? (spent / total) * 100 : 0} />
+        <Progress value={total > 0 ? (spent / total) * 100 : 0} label="Orçamento usado" size="lg" tone={spent > total ? "brand" : "accent"} />
       </div>
-      <div className="white-card budget-list" aria-busy={saveState === "saving"} data-testid="budget-edit-card">
-        <div className="card-head"><h2>Por categoria</h2><span className="card-kicker">EDITÁVEL</span></div>
+      <section className="card budget-list" aria-busy={saveState === "saving"} aria-labelledby="budget-list-title" data-testid="budget-edit-card">
+        <div className="card-header"><h2 className="card-title" id="budget-list-title">Por categoria</h2><span className="card-meta">planejado editável</span></div>
         {CATEGORIES.map((cat) => {
           const spentHere = calcSpentByCategory(items, cat);
           const plannedHere = planned[cat] ?? 0;
@@ -1194,7 +1266,7 @@ function BudgetPanel({
               <span className="budget-row-label">
                 {cat}
                 <small>{money(spentHere)} de {money(plannedHere)}</small>
-                <Progress value={plannedHere > 0 ? (spentHere / plannedHere) * 100 : 0} />
+                <Progress value={plannedHere > 0 ? (spentHere / plannedHere) * 100 : 0} label={`${cat}: gasto em relação ao planejado`} tone={spentHere > plannedHere ? "brand" : "accent"} />
               </span>
               <span className="price-input budget-price-input">
                 <span aria-hidden>R$</span>
@@ -1229,8 +1301,7 @@ function BudgetPanel({
             {saveState === "saving" ? "salvando…" : <><Check size={14} /> salvar orçamento</>}
           </button>
         )}
-      </div>
-      <div className="log-card"><Pencil size={14} /> valores são uma bússola, não uma regra.</div>
+      </section>
     </div>
   );
 }
@@ -1249,7 +1320,7 @@ function ConfirmDialog({
     <ModalShell labelledBy="confirm-dialog-title" onClose={onClose} onSubmit={() => { onConfirm(); onClose(); }}>
       <>
         <div className="modal-top">
-          <div><span className="card-kicker">CONFIRMAR</span><h2 id="confirm-dialog-title">{title}</h2></div>
+          <div><span className="eyebrow">CONFIRMAR</span><h2 id="confirm-dialog-title">{title}</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-confirm"><X size={17} /></TinyButton>
         </div>
         <p>{description}</p>
@@ -1303,7 +1374,7 @@ function GiftShareCard({
     <section className="gift-share-card" aria-labelledby="gift-share-title">
       <div className="gift-share-icon"><Gift size={18} /></div>
       <div className="gift-share-copy">
-        <span className="card-kicker">LISTA PARA PRESENTES</span>
+        <span className="eyebrow">LISTA PARA PRESENTES</span>
         <h2 id="gift-share-title">Deixe quem ama vocês participar.</h2>
         <p>Compartilhe só os itens do enxoval. Seus dados pessoais e orçamento ficam no seu ninho.</p>
       </div>
@@ -1416,29 +1487,22 @@ function ProfilePanel({
   const canSave = isDirty && !dueDateError && saveState !== "saving";
 
   return (
-    <div className="phone-content flow profile-content">
-      <div className="eyebrow-row">
-        <span>SEU ESPAÇO</span>
-        {isDirty && (
-          <TinyButton onClick={() => canSave && save()} label="Salvar perfil" testId="button-phone-edit-profile">
-            {saveState === "saving" ? <span className="profile-save-dot" /> : <Check size={15} />}
-          </TinyButton>
-        )}
+    <div className="screen profile">
+      <div className="screen-intro">
+        <h2 className="screen-title">Seu espaço, do seu jeito</h2>
+        <p className="screen-lead">Preencha só o que fizer sentido. Tudo aqui é opcional.</p>
       </div>
-       <h2 className="phone-heading">Seu espaço,<br /><strong>do seu jeito.</strong></h2>
       <div className="profile-card">
-        <div className="avatar">{initials}</div>
+        <div className="avatar" aria-hidden>{initials}</div>
         <div>
-          <h2>{profile.displayName || "Meu perfil"}</h2>
-          <p>{gestation ? `${formatGestation(gestation)} de 40` : "data prevista não configurada"}</p>
+          <p className="profile-card-name">{profile.displayName || "Seu perfil"}</p>
+          <p className="profile-card-meta">{gestation ? `${formatGestation(gestation)} de 40` : "Data prevista não informada"}</p>
         </div>
-        <Sparkles size={16} />
       </div>
-      <div className="white-card profile-form">
+      <div className="card profile-form">
         <section className="profile-section">
           <div className="profile-section-heading">
-            <div><span className="card-kicker">QUEM ESTÁ PREPARANDO</span><h2>Sobre você</h2></div>
-            <span className="optional-badge">opcional</span>
+            <div><span className="eyebrow">QUEM ESTÁ PREPARANDO</span><h3>Sobre você</h3></div>
           </div>
            <p className="profile-section-copy">Conte só o que fizer sentido para você.</p>
           <label>
@@ -1453,8 +1517,7 @@ function ProfilePanel({
 
         <section className="profile-section">
           <div className="profile-section-heading">
-            <div><span className="card-kicker">A PEQUENA PESSOA</span><h2>Sobre o bebê</h2></div>
-            <span className="optional-badge">opcional</span>
+            <div><span className="eyebrow">A PEQUENA PESSOA</span><h3>Sobre o bebê</h3></div>
           </div>
            <p className="profile-section-copy">Nome, apelido ou nada por enquanto — tudo bem.</p>
           <label>
@@ -1483,8 +1546,7 @@ function ProfilePanel({
 
         <section className="profile-section">
           <div className="profile-section-heading">
-            <div><span className="card-kicker">PARA CHEGAR COM CALMA</span><h2>Organização da chegada</h2></div>
-            <span className="optional-badge">opcional</span>
+            <div><span className="eyebrow">PARA CHEGAR COM CALMA</span><h3>Organização da chegada</h3></div>
           </div>
            <p className="profile-section-copy">Anote o que ajudar a organizar a chegada, no seu tempo.</p>
           <label>
@@ -1540,13 +1602,12 @@ function ProfilePanel({
       >
         <LogOut size={14} /> sair da conta
       </button>
-      <div className="soft-action feedback-link">
-        <Star size={15} />
-        <a href="https://forms.gle/ninho-feedback" target="_blank" rel="noopener noreferrer">
-          deixar feedback do beta
-        </a>
-        <ArrowUpRight size={13} />
-      </div>
+      {/* O cartão inteiro é o link: antes só o texto (19px de altura) era clicável. */}
+      <a className="soft-action feedback-link" href="https://forms.gle/ninho-feedback" target="_blank" rel="noopener noreferrer">
+        <Star size={16} aria-hidden />
+        <span>deixar feedback do beta</span>
+        <ArrowUpRight size={16} aria-hidden />
+      </a>
     </div>
   );
 }
@@ -1588,8 +1649,8 @@ function RecommendationCard({
         {isRelevant && <span className="recommendation-match"><Sparkles size={11} /> combina com sua lista</span>}
       </div>
       <div className="recommendation-copy">
-        <span className="card-kicker">{recommendation.use}</span>
-        <h2>{recommendation.name}</h2>
+        <span className="eyebrow">{recommendation.use}</span>
+        <h3>{recommendation.name}</h3>
         <p>{recommendation.summary}</p>
         <div className="recommendation-footer">
           <div>
@@ -1669,7 +1730,7 @@ function RecommendationLinkModal({
     >
       <>
         <div className="modal-top">
-          <div><span className="card-kicker">PARA A SUA LISTA</span><h2 id={`recommendation-link-title-${recommendation.id}`}>Como salvar esta inspiração?</h2></div>
+          <div><span className="eyebrow">PARA A SUA LISTA</span><h2 id={`recommendation-link-title-${recommendation.id}`}>Como salvar esta inspiração?</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-recommendation-modal"><X size={17} /></TinyButton>
         </div>
         <p className="recommendation-link-description" id={`recommendation-link-description-${recommendation.id}`}>
@@ -1679,7 +1740,7 @@ function RecommendationLinkModal({
           <Plus size={14} /> adicionar como item novo
         </button>
         <div className="recommendation-existing">
-          <span className="card-kicker">VINCULAR A UM ITEM EXISTENTE</span>
+          <span className="eyebrow">VINCULAR A UM ITEM EXISTENTE</span>
           {items.map((item) => (
             <button type="button" className="recommendation-existing-item" key={item.id} onClick={() => onLink(item)} disabled={isPending} data-testid={`button-link-recommendation-${recommendation.id}-${item.id}`}>
               <span><strong>{item.name}</strong><small>{item.qty} un. · {item.status}</small></span>
@@ -1748,13 +1809,11 @@ function RecommendationsPanel({
   }, [category, focusId, now]);
 
   return (
-    <div className="phone-content flow recommendations-content">
-      <div className="eyebrow-row"><span>INSPIRAÇÕES NINHO</span><Sparkles size={14} /></div>
-      <h2 className="phone-heading">Inspirações para<br /><strong>deixar tudo mais leve.</strong></h2>
-      <p className="recommendation-context">
-        <Sparkles size={14} />
-        <span>{hasPersonalizedSuggestions ? "O Ninho seleciona caminhos para as categorias que ainda estão esperando por você." : "Uma seleção editorial do Ninho para inspirar os próximos passos do seu enxoval."}</span>
-      </p>
+    <div className="screen recommendations">
+      <div className="screen-intro">
+        <h2 className="screen-title">Ideias para o que falta</h2>
+        <p className="screen-lead">{hasPersonalizedSuggestions ? "Sugestões para as categorias que ainda têm itens pendentes." : "Uma seleção editorial do Ninho para os próximos passos do enxoval."}</p>
+      </div>
       <div className="filter-row recommendation-filters" aria-label="Filtrar inspirações">
         <Pill active={category === "Para você"} onClick={() => setCategory("Para você")} testId="button-recommendation-for-you">Para você</Pill>
         {CATEGORIES.map((key) => (
@@ -1914,7 +1973,7 @@ function AddItemModal({
     <ModalShell labelledBy="add-item-title" onClose={onClose} onSubmit={submit} returnFocusTestId={returnFocusTestId}>
       <>
         <div className="modal-top">
-          <div><span className="card-kicker">SUA LISTA, SUAS REGRAS</span><h2 id="add-item-title">Adicionar item</h2></div>
+          <div><span className="eyebrow">SUA LISTA, SUAS REGRAS</span><h2 id="add-item-title">Adicionar item</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-add-item"><X size={17} /></TinyButton>
         </div>
         <ItemFields values={values} onChange={setValues} priceError={null} />
@@ -1961,7 +2020,7 @@ function EditItemModal({
     <ModalShell labelledBy="edit-item-title" onClose={onClose} onSubmit={submit} returnFocusTestId={`button-phone-check-${item.id}`}>
       <>
         <div className="modal-top">
-          <div><span className="card-kicker">AJUSTAR ITEM</span><h2 id="edit-item-title">{item.name}</h2></div>
+          <div><span className="eyebrow">AJUSTAR ITEM</span><h2 id="edit-item-title">{item.name}</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-edit-item"><X size={17} /></TinyButton>
         </div>
         <ItemFields values={values} onChange={setValues} priceError={null} />
@@ -2005,7 +2064,7 @@ function GiftReservationModal({
     >
       <>
         <div className="modal-top">
-          <div><span className="card-kicker">UM PRESENTE COM CARINHO</span><h2 id="reserve-gift-title">{item.name}</h2></div>
+          <div><span className="eyebrow">UM PRESENTE COM CARINHO</span><h2 id="reserve-gift-title">{item.name}</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-gift-reservation"><X size={17} /></TinyButton>
         </div>
         <p>Você está reservando {item.qty > 1 ? `${item.qty} unidades` : "este item"} para que ele não se repita.</p>
@@ -2509,19 +2568,19 @@ const getAuthErrorMessage = getFriendlyErrorMessage;
 function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="auth-page">
+      {/* Sem foto: a imagem antiga era a captura de um projeto de terceiros,
+          com a marca e os botões de outro produto. */}
       <div className="auth-mobile-visual">
-        <img src={loginHeroImage} alt="" aria-hidden />
-        <div className="auth-mobile-overlay" aria-hidden />
         <Brand />
-        <p className="auth-mobile-tagline">Prepare a chegada<br /><strong>com leveza.</strong></p>
+        <p className="auth-mobile-tagline">Prepare a chegada <strong>com leveza.</strong></p>
       </div>
       <div className="auth-panel">
         <Brand />
-        <img src={loginHeroImage} alt="" className="auth-hero-image" aria-hidden />
         <div className="auth-copy">
-          <span className="desktop-eyebrow">ORGANIZAÇÃO DE ENXOVAL</span>
+          <span className="eyebrow">Organização de enxoval</span>
           <h1>Prepare a chegada<br /><strong>com leveza.</strong></h1>
-          <p>Checklists, orçamento e linha do tempo — tudo no seu ritmo.</p>
+          <p>Checklist, orçamento e marcos da gestação — tudo no seu ritmo.</p>
+          <div className="auth-tape" aria-hidden><span /></div>
         </div>
       </div>
       <div className="auth-form-panel">{children}</div>
@@ -2586,7 +2645,7 @@ function AuthPage({ mode }: { mode: AuthMode }) {
     <AuthLayout>
       <form className="auth-card" onSubmit={submit} noValidate>
           <div className="auth-card-header">
-            <span className="card-kicker">{isSignup ? "SEU ESPAÇO" : "BEM-VINDA DE VOLTA"}</span>
+            <span className="eyebrow">{isSignup ? "SEU ESPAÇO" : "BEM-VINDA DE VOLTA"}</span>
             <h2>{isSignup ? "Crie seu ninho" : "Que bom ter você de volta"}</h2>
             <p>{isSignup ? "Comece a organizar a chegada com leveza." : "Entre para continuar preparando com calma."}</p>
           </div>
@@ -2689,7 +2748,7 @@ function PasswordResetRequestPage() {
         <div className="auth-card auth-result-card">
           <Mail size={22} className="auth-result-icon" />
           <div className="auth-card-header">
-            <span className="card-kicker">CONFIRA SEU E-MAIL</span>
+            <span className="eyebrow">CONFIRA SEU E-MAIL</span>
             <h2>Se houver uma conta, o link está a caminho.</h2>
             <p>Enviamos instruções para redefinir sua senha. Se a mensagem não aparecer, confira o spam.</p>
           </div>
@@ -2705,7 +2764,7 @@ function PasswordResetRequestPage() {
     <AuthLayout>
       <form className="auth-card" onSubmit={submit} noValidate>
         <div className="auth-card-header">
-          <span className="card-kicker">RECUPERE SEU ESPAÇO</span>
+          <span className="eyebrow">RECUPERE SEU ESPAÇO</span>
           <h2>Esqueceu sua senha?</h2>
           <p>Digite seu e-mail e, se houver uma conta, enviaremos um link temporário para você voltar ao seu ninho.</p>
         </div>
@@ -2773,9 +2832,9 @@ function PasswordResetPage() {
     return (
       <AuthLayout>
         <div className="auth-card auth-result-card">
-          <div className="auth-result-check">✓</div>
+          <div className="auth-result-check" aria-hidden><Check size={22} /></div>
           <div className="auth-card-header">
-            <span className="card-kicker">TUDO PRONTO</span>
+            <span className="eyebrow">TUDO PRONTO</span>
             <h2>Senha redefinida.</h2>
             <p>Suas sessões antigas foram encerradas. Entre novamente com a nova senha.</p>
           </div>
@@ -2791,7 +2850,7 @@ function PasswordResetPage() {
     <AuthLayout>
       <form className="auth-card" onSubmit={submit} noValidate>
         <div className="auth-card-header">
-          <span className="card-kicker">NOVA SENHA</span>
+          <span className="eyebrow">NOVA SENHA</span>
           <h2>Crie uma nova senha</h2>
           <p>Escolha uma senha com pelo menos 8 caracteres para proteger seu ninho.</p>
         </div>
@@ -2946,7 +3005,7 @@ function PublicGiftPage() {
         <Brand />
         <div className="public-gift-invalid">
           <Link2 size={30} />
-          <span className="card-kicker">LINK INDISPONÍVEL</span>
+          <span className="eyebrow">LINK INDISPONÍVEL</span>
           <h1>Esta lista não está mais disponível.</h1>
           <p>Ela pode ter sido revogada ou o endereço não está completo. Peça um novo link para quem compartilhou.</p>
         </div>
@@ -2960,10 +3019,10 @@ function PublicGiftPage() {
     <main className="public-gift-page">
       <header className="public-gift-header">
         <Brand />
-        <span>LISTA COMPARTILHADA COM CARINHO</span>
+        <span className="eyebrow">Lista compartilhada com carinho</span>
       </header>
       <section className="public-gift-hero">
-        <span className="card-kicker">CHEGADA EM PREPARO</span>
+        <span className="eyebrow">CHEGADA EM PREPARO</span>
         <h1>{title}</h1>
         <p>{babyName ? `Para celebrar a chegada de ${babyName}.` : "Uma seleção de itens para cuidar da nova chegada."}</p>
         <div className="public-gift-summary"><Gift size={15} /><span>{available} {available === 1 ? "item disponível" : "itens disponíveis"} para presentear</span></div>
