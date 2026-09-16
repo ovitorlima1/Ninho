@@ -1,0 +1,120 @@
+/*
+ * Tokens do Ninho — a única fonte de cor, tipo, espaço, raio, sombra e movimento.
+ * Direção visual do PRD (§10): ivory, sage e vinho; Fraunces nos títulos e Karla no corpo.
+ * Nenhum outro arquivo de estilo deve declarar cor literal: use estes tokens.
+ * Contrastes medidos estão em .specs/features/fase-2-design-system/design.md.
+ */
+
+:root {
+  /* Superfícies */
+  --color-bg: #f7f2ea;
+  --color-surface: #fffdf9;
+  --color-surface-sunk: #f0e9df;
+  --color-line: #e4dbcf;
+  --color-line-strong: #9a8b7c;
+
+  /* Texto */
+  --color-ink: #2b2521;
+  --color-ink-muted: #6b5f57;
+
+  /* Vinho: a única cor de ação */
+  --color-brand: #7a2e3b;
+  --color-brand-strong: #5e2230;
+  --color-brand-soft: #f3e4e4;
+  --color-on-brand: #ffffff;
+
+  /* Sage: preenchimentos e ícones; texto só na variante strong */
+  --color-accent: #6f8a72;
+  --color-accent-strong: #4f6b53;
+  --color-accent-soft: #e6eee4;
+
+  /* Estados */
+  --color-warning: #8a5a1f;
+  --color-warning-soft: #f6ebdd;
+  --color-danger: #9b3434;
+  --color-danger-soft: #f7e6e3;
+  --color-overlay: rgb(43 37 33 / 0.45);
+  --color-focus: #7a2e3b;
+
+  /* Fita métrica */
+  --tape-track: #efe3cf;
+  --tape-tick: rgb(43 37 33 / 0.28);
+  --tape-tick-on-fill: rgb(255 255 255 / 0.45);
+
+  /* Tipografia */
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-body: "Karla", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --leading-tight: 1.15;
+  --leading-snug: 1.35;
+  --leading-body: 1.5;
+  --tracking-label: 0.08em;
+
+  /* Espaço (múltiplos de 4) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  /* Raio */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+
+  /* Sombra (tom quente, derivado da tinta) */
+  --shadow-sm: 0 1px 2px rgb(43 37 33 / 0.05), 0 2px 8px rgb(43 37 33 / 0.04);
+  --shadow-md: 0 6px 20px rgb(43 37 33 / 0.08);
+  --shadow-lg: 0 24px 56px rgb(43 37 33 / 0.18);
+
+  /* Movimento */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --duration: 180ms;
+
+  /* Medidas de interface */
+  --touch-target: 44px;
+  --nav-height: 64px;
+  --sidebar-width: 232px;
+  --content-max: 1080px;
+  --reading-max: 720px;
+
+  /* Compatibilidade com os componentes shadcn que ainda existem (toaster) */
+  --background: var(--color-bg);
+  --foreground: var(--color-ink);
+  --border: var(--color-line);
+  --input: var(--color-line-strong);
+  --ring: var(--color-focus);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-ink);
+  --primary: var(--color-brand);
+  --primary-foreground: var(--color-on-brand);
+  --muted: var(--color-surface-sunk);
+  --muted-foreground: var(--color-ink-muted);
+}
+
+@theme inline {
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-ink);
+  --color-border: var(--color-line);
+  --color-input: var(--color-line-strong);
+  --color-ring: var(--color-focus);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-ink);
+  --color-primary: var(--color-brand);
+  --color-primary-foreground: var(--color-on-brand);
+  --color-muted: var(--color-surface-sunk);
+  --color-muted-foreground: var(--color-ink-muted);
+  --font-sans: var(--font-body);
+  --font-serif: var(--font-display);
+}

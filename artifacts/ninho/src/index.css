@@ -1,54 +1,23 @@
 @layer theme, base, components, utilities;
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@import "./styles/tokens.css";
 
-@theme inline {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --font-sans: var(--app-font-sans);
-  --font-mono: var(--app-font-mono);
-}
-
+/* Aliases usados pelo CSS antigo enquanto a reescrita por camadas não chega. */
 :root {
-  --background: 250 22% 96%;
-  --foreground: 240 15% 8%;
-  --border: 250 12% 88%;
-  --input: 250 12% 84%;
-  --ring: 276 72% 68%;
-  --card: 0 0% 100%;
-  --card-foreground: 240 15% 8%;
-  --primary: 276 72% 68%;
-  --primary-foreground: 0 0% 100%;
-  --muted: 250 16% 91%;
-  --muted-foreground: 244 8% 43%;
-  --app-font-sans: "Montserrat", ui-sans-serif, sans-serif;
-  --app-font-mono: "Space Mono", monospace;
+  --app-font-sans: var(--font-body);
+  --app-font-mono: var(--font-body);
 }
 
-.dark {
-  --background: 250 22% 12%;
-  --foreground: 250 20% 96%;
-  --border: 250 13% 25%;
-  --input: 250 13% 25%;
-  --ring: 276 72% 72%;
-  --card: 250 16% 17%;
-  --card-foreground: 250 20% 96%;
-  --primary: 276 72% 72%;
-  --primary-foreground: 250 20% 11%;
-  --muted: 250 15% 23%;
-  --muted-foreground: 250 10% 70%;
+/* Movimento reduzido: sem animação nem transição para quem pediu isso ao sistema. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer base {
