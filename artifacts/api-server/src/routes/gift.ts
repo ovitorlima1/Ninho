@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { Router } from "express";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@workspace/db";
@@ -12,10 +11,6 @@ import {
 
 const router = Router();
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{40,}$/;
-
-function createToken(): string {
-  return randomBytes(32).toString("base64url");
-}
 
 function getDatabaseErrorCode(error: unknown): string | undefined {
   const visited = new Set<object>();
@@ -39,15 +34,6 @@ function publicItem(item: typeof checklistItems.$inferSelect, reservation?: type
       ? { status: reservation.status, guestName: reservation.guestName }
       : null,
   };
-}
-
-async function findActiveShare(token: string) {
-  if (!TOKEN_PATTERN.test(token)) return null;
-  const [share] = await db
-    .select()
-    .from(giftShareLinks)
-    .where(and(eq(giftShareLinks.token, token), isNull(giftShareLinks.revokedAt)));
-  return share ?? null;
 }
 
 /** GET /api/gift/:token — deliberately returns only public gift-list fields. */

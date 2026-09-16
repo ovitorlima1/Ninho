@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
   calcSpent,
   calcSpentByCategory,
   calcSpentCents,
   toCents,
   type SpendableItem,
-} from "./budget.js";
+} from "./budget";
 
 const item = (over: Partial<SpendableItem> = {}): SpendableItem => ({
   status: "Comprado",

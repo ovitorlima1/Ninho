@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
   calcGestation,
   calcGestationalWeek,
   formatGestation,
   getDueDateBounds,
   validateDueDate,
-} from "./gestation.js";
+} from "./gestation";
 
 /** Data prevista fixa: 2026-12-20. */
 const due = "2026-12-20";

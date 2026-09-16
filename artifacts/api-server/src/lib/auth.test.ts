@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
   passwordResetEmailLimiter,
   passwordResetOriginLimiter,
   type AuthAttemptLimitResult,
-} from "./auth.js";
+} from "./auth";
 
 const HOUR_MS = 60 * 60 * 1000;
 const START = Date.UTC(2026, 8, 11, 12, 0, 0);

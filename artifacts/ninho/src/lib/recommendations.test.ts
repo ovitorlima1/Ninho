@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
   MAX_RECOMMENDATION_REFRESH_DELAY_MS,
   RECOMMENDATION_CATALOG,
@@ -9,7 +9,7 @@ import {
   isRecommendationAvailable,
   isSafeStoreUrl,
   type Recommendation,
-} from "./recommendations.js";
+} from "./recommendations";
 
 type CatalogDate = Recommendation["expiresAt"];
 

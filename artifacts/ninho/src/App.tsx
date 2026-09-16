@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type MouseEvent, type ReactNode, type RefObject, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { Redirect, Route, Router as WouterRouter, Switch, useLocation, useRoute } from "wouter";
 import {
   Activity,
@@ -19,8 +19,6 @@ import {
   ListChecks,
   LogOut,
   Mail,
-  MapPin,
-  MoreHorizontal,
   Pencil,
   Plus,
   RefreshCw,
@@ -85,7 +83,6 @@ import {
 import { calcSpent, calcSpentByCategory } from "@/lib/budget";
 import {
   calcGestation,
-  calcGestationalWeek,
   formatGestation,
   getDueDateBounds,
   validateDueDate,
@@ -236,7 +233,6 @@ function PasswordField({
   value,
   onChange,
   autoComplete,
-  autoFocus,
   placeholder,
   testId,
   toggleTestId,
@@ -247,7 +243,6 @@ function PasswordField({
   value: string;
   onChange: (value: string) => void;
   autoComplete: "current-password" | "new-password";
-  autoFocus?: boolean;
   placeholder: string;
   testId: string;
   toggleTestId: string;
@@ -279,7 +274,6 @@ function PasswordField({
         id={id}
         type={visible ? "text" : "password"}
         autoComplete={autoComplete}
-        autoFocus={autoFocus}
         value={value}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
@@ -1221,15 +1215,8 @@ function BudgetPanel({
     for (const b of budget) r[b.category] = parseFloat(b.planned) || 0;
     return r;
   });
+  // Sem effect de sincronia: o Workspace remonta este painel (key) quando o orçamento salvo muda.
   const [dirty, setDirty] = useState(false);
-
-  // Sync when budget prop changes (after mutations)
-  useEffect(() => {
-    const r: Record<string, number> = {};
-    for (const b of budget) r[b.category] = parseFloat(b.planned) || 0;
-    setPlanned(r);
-    setDirty(false);
-  }, [budget]);
 
   const spent = calcSpent(items);
   const total = Object.values(planned).reduce((s, v) => s + v, 0);
@@ -1447,16 +1434,7 @@ function ProfilePanel({
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
 
-  useEffect(() => {
-    setName(profile.displayName || "");
-    setCity(profile.city || "");
-    setBabyName(profile.babyName || "");
-    setDueDateVal(profile.dueDate || "");
-    setHospital(profile.hospital || "");
-    setSupportPerson(profile.supportPerson || "");
-    setPersonalNotes(profile.personalNotes || "");
-  }, [profile]);
-
+  // Sem effect de sincronia: o Workspace remonta este painel (key) quando o perfil salvo muda.
   // Os campos ficam sempre abertos: o lápis de 28px escondia a edição inteira
   // atrás de um alvo difícil de achar. O botão de salvar aparece quando muda algo.
   const isDirty =
@@ -1791,17 +1769,22 @@ function RecommendationsPanel({
     return recommendation.category === category;
   });
 
+  // Ao chegar com uma inspiração em foco, a categoria certa é escolhida durante
+  // a renderização (padrão do React para ajustar estado a partir de props).
+  const [categoryFocusId, setCategoryFocusId] = useState<string | null>(null);
+  if (focusId !== categoryFocusId) {
+    setCategoryFocusId(focusId);
+    const target = focusId ? getVisibleRecommendations(now).find((item) => item.id === focusId) : undefined;
+    if (target && category !== target.category) setCategory(target.category);
+  }
+
   useEffect(() => {
     if (!focusId) {
       handledFocusId.current = null;
       return;
     }
     const recommendation = getVisibleRecommendations(now).find((item) => item.id === focusId);
-    if (!recommendation) return;
-    if (category !== recommendation.category) {
-      setCategory(recommendation.category);
-      return;
-    }
+    if (!recommendation || category !== recommendation.category) return;
     if (handledFocusId.current === focusId) return;
     handledFocusId.current = focusId;
     const frame = requestAnimationFrame(() => document.getElementById(`recommendation-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
@@ -2127,7 +2110,11 @@ function Workspace({ userId: uid }: { userId: string }) {
   const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
 
   // Um aviso é sobre a tela onde aconteceu: ao trocar de rota ele sai.
-  useEffect(() => { setActionFeedback(null); }, [location]);
+  const [feedbackLocation, setFeedbackLocation] = useState(location);
+  if (feedbackLocation !== location) {
+    setFeedbackLocation(location);
+    setActionFeedback(null);
+  }
 
   const showActionFeedback = (feedback: ActionFeedback) => {
     setActionFeedback(feedback);
@@ -2466,6 +2453,7 @@ function Workspace({ userId: uid }: { userId: string }) {
   );
   const budgetPanel = (
     <BudgetPanel
+      key={budget.map((b) => `${b.category}:${b.planned}`).join("|")}
       items={items}
       budget={budget}
       onSave={handleBudgetSave}
@@ -2475,6 +2463,7 @@ function Workspace({ userId: uid }: { userId: string }) {
   );
   const profilePanel = (
     <ProfilePanel
+      key={profile.updatedAt}
       profile={profile}
       onSave={handleProfileSave}
       saveState={profileSaveState}
@@ -2774,7 +2763,6 @@ function PasswordResetRequestPage() {
             <input
               type="email"
               autoComplete="email"
-              autoFocus
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="voce@email.com"
@@ -2861,7 +2849,6 @@ function PasswordResetPage() {
             <input
               type="password"
               autoComplete="new-password"
-              autoFocus
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Pelo menos 8 caracteres"
