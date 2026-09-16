@@ -21,7 +21,9 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const [confirmation, setConfirmation] = useState("");
   const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
   const emailRef = useRef<HTMLInputElement>(null);
-  const sessionExpired = !isSignup && new URLSearchParams(window.location.search).get("expirou") === "1";
+  const searchParams = new URLSearchParams(window.location.search);
+  const sessionExpired = !isSignup && searchParams.get("expirou") === "1";
+  const accountDeleted = !isSignup && searchParams.get("conta-excluida") === "1";
   const mutation = useMutation({
     mutationFn: () => isSignup ? register({ email, password }) : login({ email, password }),
     meta: { authFlow: true },
@@ -70,6 +72,9 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             <h2>{isSignup ? "Crie seu ninho" : "Que bom ter você de volta"}</h2>
             <p>{isSignup ? "Comece a organizar a chegada com leveza." : "Entre para continuar preparando com calma."}</p>
           </div>
+          {accountDeleted && (
+            <p className="auth-notice" role="status">Sua conta e todos os seus dados foram excluídos.</p>
+          )}
           {sessionExpired && (
             <p className="auth-notice" role="status">Sua sessão expirou. Entre de novo para continuar de onde parou.</p>
           )}

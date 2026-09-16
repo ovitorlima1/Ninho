@@ -914,7 +914,8 @@
   }
   .profile-week span { display: grid; color: var(--color-ink-muted); }
   .profile-week strong { color: var(--color-ink); font-size: var(--text-base); }
-  .profile .primary-button { position: sticky; bottom: calc(var(--nav-height) + var(--space-3) + env(safe-area-inset-bottom)); }
+  /* Só o "salvar perfil": diálogos abertos no Perfil não herdam o sticky. */
+  .profile-form > .primary-button { position: sticky; bottom: calc(var(--nav-height) + var(--space-3) + env(safe-area-inset-bottom)); }
 
   .gift-share-card {
     display: grid;
@@ -991,7 +992,10 @@
   .account-section p { color: var(--color-ink-muted); font-size: var(--text-sm); }
   .account-section .soft-action { justify-content: flex-start; }
   .account-section .account-danger { color: var(--color-danger); }
-  .account-section .account-error {
+  .primary-button.danger-button,
+  .primary-button.danger-button:hover:not(:disabled) { background: var(--color-danger); }
+  .account-section .account-error,
+  .modal-card .account-error {
     padding: var(--space-3);
     border-radius: var(--radius-md);
     color: var(--color-danger);
