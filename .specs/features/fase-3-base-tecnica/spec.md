@@ -74,10 +74,10 @@ o workspace inteiro (cujo GET ainda faz uma escrita no banco).
 
 | Requisito | Tarefa | Status |
 |---|---|---|
-| F3-R1, R2, R5 | T1 | pendente |
-| F3-R3, R4 | T2 | pendente |
-| F3-R7, R8 | T3 | pendente |
-| F3-R13, R14 | T4 | pendente |
-| F3-R9–R12 | T5 | pendente |
-| F3-R6 | T6 | pendente |
-| — | T7 (validação) | pendente |
+| F3-R1, R2, R5 | T1 | concluído (9f75ec9) |
+| F3-R3, R4 | T2 | concluído (c21866c) |
+| F3-R7, R8 | T3 | concluído (be5699d; E2E 32/32 no commit isolado) |
+| F3-R13, R14 | T4 | concluído (dc934a4, 6efef6c, 0c7ca8d) |
+| F3-R9–R12 | T5 | concluído (85e1a8e) |
+| F3-R6 | T6 | concluído (c21866c) — ainda não executado no GitHub |
+| — | T7 (validação) | concluído (este commit) |

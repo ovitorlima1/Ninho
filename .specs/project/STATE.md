@@ -14,6 +14,10 @@
 | 2026-09-12 | As 334 linhas comentadas do Workspace saíram já na Fase 1, antes da hora (A11 é da Fase 3). | A cópia dobrava o risco de editar o lugar errado. |
 | 2026-09-16 | Identidade do PRD §10: ivory/sage/vinho, Fraunces + Karla, fita métrica. Tokens em `src/styles/tokens.css`; sage nunca é texto pequeno (usar `--color-accent-strong`). | Escolha do usuário. |
 | 2026-09-16 | Cinco destinos (Início, Lista, Marcos, Orçamento, Perfil) numa casca única (`AppShell`, `NAV_ITEMS`); Inspirações é uma aba da Lista; "sair" só no Perfil. | Escolha do usuário (M4). |
+| 2026-09-16 | Fase 3 com Vitest, Playwright + axe e ESLint como dependências de desenvolvimento; Playwright fixado em 1.60.0 (Chromium em cache). | Escolha do usuário. |
+| 2026-09-16 | Inspirações sem foto: bloco com ícone da categoria. | Escolha do usuário (M7). |
+| 2026-09-16 | CI só como arquivo, sem push. | Escolha do usuário. |
+| 2026-09-17 | O seed do workspace acontece no cadastro; `GET /api/me/workspace` é só leitura (`ensureUserInitialized`). | M9. |
 | 2026-09-16 | O login não usa mais `login-pregnancy.png`: era a captura de um projeto de terceiros ("Pregnancy Tracker Logo", com a marca de outro produto). O arquivo continua em `public/`, sem uso. | Risco de direito de uso e de marca. |
 
 ## Bloqueios
@@ -21,6 +25,11 @@
 - **Foto do login:** se o usuário quiser foto no login, precisa de uma imagem licenciada (banco de imagens ou produção própria). Até lá, o painel usa só a identidade.
 
 ## Lições
+
+- Testes de caracterização antes de refatorar pagaram na hora: acharam três bugs que a verificação manual tinha deixado passar (a automação do navegador digitava o texto de uma vez, escondendo o problema do campo de preço).
+- `form.requestSubmit()` e `pressSequentially` são os jeitos confiáveis de simular envio por Enter e digitação real.
+- Rodar o E2E numa `git worktree` com `pnpm install --offline` é rápido e permite validar um commit isolado.
+- Limitadores em memória e E2E: subir a API a cada execução zera os contadores; contas de teste usam X-Forwarded-For próprio (aceito só via proxy local).
 
 - Animação de entrada que começa em `opacity: 0` deixa a tela em branco em abas em segundo plano e em capturas; animar só o deslocamento resolve.
 - Grid com `1fr` cresce até o conteúdo mínimo (a fila de pílulas com rolagem própria gerou rolagem lateral na página): usar `minmax(0, 1fr)`.
@@ -38,7 +47,8 @@
 - [x] Atualizar `replit.md` com a nova regra de "investido" (feito na Fase 0).
 - [ ] O catálogo de inspirações vence em 2026-12-10; o teste começa a falhar em 2026-11-26 pedindo revisão.
 - [ ] Conta de teste local `qa-ninho@teste.local` pode ser apagada do banco de dev quando não for mais útil.
-- [ ] Fases 0, 1 e 2 estão na branch `fase-0-correcoes-urgentes`, sem merge e sem push.
+- [ ] Fases 0–3 estão na branch `fase-0-correcoes-urgentes` (28+ commits), sem merge e sem push. O CI só roda depois do push.
+- [ ] Ajustes pequenos vistos na divisão: plural "que já está" no modal de inspiração; iniciais do avatar do perfil diferentes das do topo; "gerar novo link" usa o mesmo handler de criar.
 - [ ] Decidir o destino de `public/login-pregnancy.png` (sem uso; provável material de terceiros).
 - [ ] Modo escuro: os tokens estão prontos para uma paleta escura, que ficou fora da Fase 2.
 

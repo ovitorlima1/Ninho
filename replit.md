@@ -8,7 +8,10 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - `pnpm --filter @workspace/api-server run dev` — API Express (porta 8080)
 - `pnpm --filter @workspace/db run push` — push do schema Drizzle para o banco (dev)
 - `pnpm --filter @workspace/db run push-force` — push forçado (sem confirmação interativa)
-- `pnpm run typecheck` — typecheck completo em todos os pacotes
+- `pnpm run typecheck` — typecheck completo em todos os pacotes (strict no front)
+- `pnpm lint` — ESLint (TypeScript, hooks do React, acessibilidade)
+- `pnpm test` — testes unitários (Vitest) do front e da API
+- `pnpm test:e2e` — E2E com Playwright + axe num banco `ninho_test` (precisa do Postgres do `docker-compose.dev.yml`)
 - `pnpm run build` — typecheck + build de todos os pacotes
 - `pnpm --filter @workspace/api-spec run codegen` — regenerar hooks e schemas Zod do spec OpenAPI
 - Required env: `DATABASE_URL`, `SESSION_SECRET` (mínimo de 32 caracteres)
@@ -27,7 +30,11 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 
 ## Where things live
 
-- `artifacts/ninho/src/App.tsx` — toda a aplicação frontend (componentes, roteamento, hooks); `AppShell` + `NAV_ITEMS` definem os cinco destinos (Início, Lista, Marcos, Orçamento, Perfil)
+- `artifacts/ninho/src/App.tsx` — só providers e roteador; `app/router.tsx` carrega cada área sob demanda (React.lazy)
+- `artifacts/ninho/src/layout/app-shell.tsx` — `AppShell` + `NAV_ITEMS` (Início, Lista, Marcos, Orçamento, Perfil)
+- `artifacts/ninho/src/features/<área>/` — telas (auth, onboarding, overview, checklist, timeline, budget, profile, recommendations, gift, workspace); `features/workspace/use-workspace.ts` concentra query e mutations
+- `artifacts/ninho/src/components/` — peças reutilizáveis (fita métrica, ModalShell, campo numérico, ícone de categoria); `lib/` — regras puras testadas
+- `artifacts/ninho/e2e/` — testes E2E (Playwright + axe); `.github/workflows/ci.yml` — CI
 - `artifacts/ninho/src/lib/api.ts` — cliente tipado para a API REST
 - `artifacts/ninho/src/index.css` — só importa as camadas de estilo, em ordem
 - `artifacts/ninho/src/styles/tokens.css` — design system (única fonte de cor, tipo, espaço, raio, sombra e movimento; identidade do PRD: ivory, sage, vinho, Fraunces + Karla)
@@ -45,9 +52,9 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 ## Architecture decisions
 
 - **ID próprio como chave de ownership**: contas novas recebem UUIDs próprios, usados em todas as tabelas do workspace. Dados legados de outras identidades não são reutilizados.
-- **Seed automático na primeira entrada**: `seedNewUser()` insere itens de checklist padrão, marcos e orçamento para novos usuários (idempotente — verifica se já existem itens antes de inserir).
+- **Seed no cadastro**: `initializeUser()` cria perfil, itens, marcos e orçamento na mesma requisição do cadastro; `GET /api/me/workspace` é só leitura (`ensureUserInitialized` inicializa apenas contas antigas sem perfil).
 - **Workspace endpoint único**: `GET /api/me/workspace` retorna todo o estado do usuário (profile + items + milestones + budget) em uma só chamada para reduzir round-trips.
-- **Otimismo no cliente**: mutações de checklist e marcos usam `onMutate` do React Query para atualização otimista imediata, com rollback automático em caso de erro.
+- **Otimismo no cliente**: mutações de checklist e marcos usam `onMutate` para atualização otimista e gravam a resposta da API no cache; o workspace só é recarregado em caso de erro.
 - **Onboarding na primeira entrada**: quando `profile.onboardingComplete === false`, o app exibe um modal de onboarding para capturar nome e data prevista antes de entrar no dashboard.
 - **Shower/chá de bebê**: funcionalidade removida do MVP — não há backend. O link foi removido de todos os painéis.
 - **Sessão em cookie HttpOnly**: o navegador envia a sessão JWT automaticamente nas chamadas para `/api`; tokens nunca ficam acessíveis ao JavaScript do cliente.

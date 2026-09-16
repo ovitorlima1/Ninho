@@ -1,95 +1,150 @@
 # TESTING — Ninho
 
-## Estado atual (snapshot de 2026-09-11, ~19h)
+Estado depois da Fase 3 — Base técnica (branch `fase-0-correcoes-urgentes`, até `0c7ca8d`).
+Nada foi enviado ao GitHub; o CI existe só como arquivo.
 
-O repositório está sendo alterado agora pela Fase 0 de correções; o que segue
-vale para o commit `e094dec` + as mudanças ainda não commitadas na árvore.
+## Stack
 
-- **Dois arquivos de teste**, ambos com `node:test` + `node:assert/strict`,
-  sem framework:
-  - `artifacts/ninho/src/lib/recommendations.test.ts` — 6 testes (era 4 antes do
-    `fix(C4)`, que somou o clamp do timer e o alerta de validade < 14 dias);
-  - `artifacts/api-server/src/lib/auth.test.ts` — 5 testes dos limitadores de
-    reset de senha (**não commitado** no momento desta escrita, junto do script
-    `test` em `artifacts/api-server/package.json`).
-- **Não existe** teste de componente React, E2E, cobertura, lint ou CI
-  (`.github/` não existe; `.replit` só define build/deploy/postMerge).
-- `artifacts/ninho/tsconfig.json` **exclui** `**/*.test.ts`, então o typecheck
-  não cobre os testes — quem valida a tipagem deles é o próprio script de teste.
+| Camada | Ferramenta | Onde | Config |
+|---|---|---|---|
+| Unitário front | Vitest 5 (ambiente `node`) | `artifacts/ninho/src/**/*.test.ts` | `artifacts/ninho/vitest.config.ts` (alias `@` → `src`; não usa o `vite.config.ts`, que exige `PORT`/`BASE_PATH`) |
+| Unitário API | Vitest 5 (ambiente `node`) | `artifacts/api-server/src/**/*.test.ts` | `artifacts/api-server/vitest.config.ts` |
+| E2E + acessibilidade | Playwright **1.60.0** (Chromium) + `@axe-core/playwright` | `artifacts/ninho/e2e/` | `artifacts/ninho/playwright.config.ts` |
+| Lint | ESLint 10 flat config: `@eslint/js`, `typescript-eslint`, `react-hooks`, `jsx-a11y` (só em `artifacts/ninho/**`) | repo inteiro | `eslint.config.mjs` (ignora `dist`, gerados do Orval, `artifacts/mockup-sandbox`, `attached_assets`, relatórios do Playwright) |
+| Tipos | TypeScript 5.9, `strict: true` no front | — | `artifacts/ninho/tsconfig.json` (inclui `src`, `e2e`, `vitest.config.ts`, `playwright.config.ts`) |
 
-## Gates que existem hoje (todos executados nesta sessão)
+Os testes agora são tipados pelo `typecheck` (antes o `tsconfig` do front excluía `*.test.ts`).
+O antigo padrão `tsc → /tmp → node --test` saiu; os testes usam `import { test } from "vitest"`
+e `node:assert/strict`.
 
-| Gate | Comando | Resultado |
+## Comandos (na raiz)
+
+| Gate | Comando | O que faz |
 |---|---|---|
-| Typecheck | `pnpm run typecheck` | ✅ ok (~2 s): `tsc --build` das libs + `--noEmit` em ninho, api-server, mockup-sandbox, scripts |
-| Teste do catálogo | `pnpm --filter @workspace/ninho run test:recommendations` | ✅ 6/6 (0 falhas, ~62 ms) |
-| Teste da API (novo) | `pnpm --filter @workspace/api-server run test` | ✅ 5/5 (0 falhas, ~67 ms) |
-| Build web | `PORT=5180 BASE_PATH=/ pnpm --filter @workspace/ninho run build` | ✅ ok: 1775 módulos, `index.js` 417,70 kB (gzip 129,98) e `index.css` 151,82 kB (gzip 28,89) |
-| Build API (extra) | `pnpm --filter @workspace/api-server run build` | ✅ ok (esbuild, ~161 ms) |
+| Typecheck | `pnpm run typecheck` | `tsc --build` das libs + `tsc --noEmit` em `artifacts/*` e `scripts` |
+| Lint | `pnpm lint` | `eslint .` — 0 erros exigidos |
+| Unitários | `pnpm test` | `pnpm -r --if-present run test` → `vitest run` no front e na API; não precisa de banco |
+| E2E | `pnpm test:e2e` | `pnpm --filter @workspace/ninho run test:e2e` → `playwright test`; precisa do Postgres (`pnpm db:up`) |
+| Build | `PORT=5180 BASE_PATH=/ pnpm run build` | typecheck + build de todos os pacotes (o build do front exige as duas variáveis) |
 
-Observações dos gates:
-- `pnpm run build` na raiz = `typecheck` + `build` de todos os pacotes; o build do
-  ninho exige `PORT` e `BASE_PATH` (o `vite.config.ts` lança erro se faltarem).
-- O build emite um aviso benigno de sourcemap em `src/components/ui/tooltip.tsx`.
-- Nenhum gate precisa de banco. Subir a API de verdade precisa de `DATABASE_URL`
-  e `SESSION_SECRET` (`pnpm db:up` + `pnpm dev`).
+Um pacote só: `pnpm --filter @workspace/ninho run test` ou `pnpm --filter @workspace/api-server run test`.
+Um arquivo: `pnpm --filter @workspace/ninho exec vitest run src/lib/budget.test.ts`.
 
-## O script de teste, na íntegra
+## Testes unitários (25)
 
-`artifacts/ninho/package.json`:
+| Arquivo | Casos | Cobre |
+|---|---|---|
+| `artifacts/ninho/src/lib/budget.test.ts` | 7 | "investido" = preço × quantidade só de "Comprado", em centavos; por categoria |
+| `artifacts/ninho/src/lib/gestation.test.ts` | 7 | semana completa (`floor`), virada de semana, horário de verão, trava em 40, data inválida e limites da data prevista |
+| `artifacts/ninho/src/lib/recommendations.test.ts` | 6 | visível/expirada/oculta/URL insegura, item vinculado expirado, fronteira de expiração, atraso do timer ≤ 1 h, **alarme de validade** |
+| `artifacts/api-server/src/lib/auth.test.ts` | 5 | limitadores de reset de senha (3/h por e-mail, 10/h por origem, `retryAfterSeconds`, janela, independência) |
 
-```
-"test:recommendations": "rm -rf /tmp/ninho-recommendation-tests && tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --outDir /tmp/ninho-recommendation-tests src/lib/recommendations.ts src/lib/recommendations.test.ts && node --test /tmp/ninho-recommendation-tests/recommendations.test.js"
-```
+Front: 20. API: 5.
 
-Ou seja: compila **apenas os dois arquivos citados** para `/tmp`, fora do
-`tsconfig.json` do pacote, e roda o runner nativo do Node sobre o `.js` gerado.
+**Teste-alarme proposital** (`recommendations.test.ts:77`): usa a data real e falha quando
+algum item visível do catálogo tem menos de 14 dias de validade. O catálogo vence em
+**2026-12-10**, então o teste passa a falhar a partir de **2026-11-26** — e com ele o `pnpm test`
+e o job `checks` do CI. A correção é renovar a curadoria em `artifacts/ninho/src/lib/recommendations.ts`
+(`reviewedAt`/`expiresAt`), não afrouxar o teste.
 
-O que os 6 testes cobrem (`recommendations.test.ts`): recomendação vigente
-permanece visível; expirada, oculta (`visibility: "hidden"`) e com URL insegura
-(`javascript:`) são filtradas; item expirado já vinculado continua indisponível;
-a URL da loja some ao cruzar a fronteira de expiração; o atraso de refresh é
-limitado a 1 h; e um teste falha quando algum item do catálogo tem menos de
-14 dias de validade. Depois do `fix(C4)` as datas são derivadas do próprio
-catálogo em vez de fixadas no teste.
+## E2E
 
-`artifacts/api-server/src/lib/auth.test.ts` usa o mesmo padrão (script `test` no
-pacote, compila `src/lib/auth.ts` + o teste para `/tmp/ninho-api-server-tests`) e
-cobre os limitadores de reset de senha: 3 pedidos/hora por e-mail, 10/hora por
-origem, `retryAfterSeconds` positivo ao bloquear, liberação após a janela e
-independência entre os dois limitadores. Como os limitadores são singletons de
-processo, cada teste usa chaves próprias em vez de resetar estado global.
+### Ambiente (`playwright.config.ts`, `e2e/env.ts`, `e2e/global-setup.ts`)
 
-## Como adicionar um novo teste unitário puro em `src/lib`
+- **Banco:** `E2E_DATABASE_URL`, padrão `postgres://ninho:ninho@localhost:5460/ninho_test`
+  (o Postgres do `docker-compose.dev.yml`, banco separado). `assertTestDatabase` recusa
+  qualquer banco cujo nome não termine em `_test`.
+- **Segredo:** `E2E_SESSION_SECRET` (padrão fixo só para uso local).
+- **globalSetup:** conecta em `/postgres`, cria o banco se faltar e roda
+  `pnpm --filter @workspace/db run push-force` (`drizzle-kit push --force`) com o `DATABASE_URL` de teste.
+- **Servidores** (`webServer`, `reuseExistingServer: false`, sobem a cada execução para zerar
+  os limitadores em memória): API em **8790** (`tsx src/index.ts`, `NODE_ENV=development`,
+  `LOG_LEVEL=warn`) e Vite em **5190** (`API_PROXY_TARGET` → 8790). Não conflitam com o `pnpm dev` (8787/5180).
+- **Projetos:** `celular` (Pixel 7 em 375×812) e `desktop` (Desktop Chrome em 1280×800).
+  `locale: pt-BR`, `timezoneId: America/Sao_Paulo`, `reducedMotion: "reduce"`, trace só em falha.
+  No CI: `retries: 1`, `workers: 2`, `forbidOnly`, relatório HTML.
 
-Mesmo padrão, um script por módulo:
+### Apoio (`e2e/support.ts`)
 
-1. Criar `src/lib/<modulo>.test.ts` importando com extensão `.js`
-   (`import { calcGestationalWeek } from "./gestation.js";`) — obrigatório por
-   causa de `--module NodeNext`.
-2. O módulo sob teste precisa ser TS puro: sem JSX, sem alias `@/`, sem
-   `import.meta.env`, sem DOM (o alias e o `env` só existem no bundle do Vite).
-   Candidatos atuais: `src/lib/gestation.ts` e funções puras extraídas de `App.tsx`.
-3. Adicionar em `artifacts/ninho/package.json`:
-   ```
-   "test:gestation": "rm -rf /tmp/ninho-gestation-tests && tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --outDir /tmp/ninho-gestation-tests src/lib/gestation.ts src/lib/gestation.test.ts && node --test /tmp/ninho-gestation-tests/gestation.test.js"
-   ```
-4. Rodar com `pnpm --filter @workspace/ninho run test:gestation`.
+- `createAccount(page, { displayName, dueDate })` cria a conta **pela API** (register → GET
+  workspace → PUT profile com `onboardingComplete: true`), deixando a sessão no navegador.
+  Cada cadastro manda um `X-Forwarded-For` aleatório (`10.x.x.x`): o limitador de cadastro é
+  por IP, e sem isso as dezenas de contas da suíte bateriam no limite. Funciona porque a API
+  só confia no XFF vindo de loopback (`app.set("trust proxy", "loopback")`,
+  `artifacts/api-server/src/app.ts:10`) — ou seja, via proxy do Vite; um cliente direto não
+  consegue forjar.
+- `uniqueEmail`, `isoDaysFromToday`, `itemRow(page, nome)` (linha `.check-item-row`), `PASSWORD`.
+- `expectAccessible(page)`: axe com as tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`,
+  `wcag22aa`; falha só com violações `serious` ou `critical`. Chamado em 10 pontos da suíte.
 
-Melhoria óbvia (ainda não feita): um único `test:unit` que compile `src/lib/*.ts`
-para uma pasta temporária e rode `node --test <dir>` — evita um script por módulo.
-Testes com data devem receber o `now` por parâmetro (como o catálogo já faz) para
-não quebrarem com a passagem do tempo.
+### Cenários (17 × 2 projetos = 34)
 
-## `api-server`: runner recém-introduzido, cobertura mínima
+`e2e/auth.spec.ts` (3)
+1. cadastro valida por campo e o onboarding leva ao Início
+2. login mostra erro por campo sem travar senha curta
+3. recuperação de senha limita o quarto pedido na mesma hora
 
-Antes da Fase 0 o pacote não tinha nenhum teste; hoje tem o script `test`
-(mesmo padrão tsc→`/tmp`→`node --test`, sem framework, sem dependência nova).
-Só `src/lib/auth.ts` é coberto. Próximos alvos **puros** (não precisam de banco):
-`createSessionToken`/`verifySessionToken`, `hashPassword`/`verifyPassword`,
-`parseCookieHeader`, `sessionCookie` (`src/lib/auth.ts`).
+`e2e/checklist.spec.ts` (8; `beforeEach` cria conta e abre `/checklist`)
+1. status muda direto, sem ciclo escondido
+2. marcar um item faz só o PATCH, sem recarregar o workspace (M9)
+3. adicionar item com quantidade e preço digitados tecla a tecla
+4. editar preço e quantidade de um item existente
+5. remover mostra desfazer e o desfazer devolve o item
+6. Esc fecha o diálogo e devolve o foco ao botão de origem
+7. orçamento soma só o que foi comprado, preço × quantidade
+8. aba Inspirações dentro da Lista
 
-Teste de rota exige Postgres: `@workspace/db` lança na importação se
-`DATABASE_URL` não estiver definido (`lib/db/src/index.ts`) — usar o
-`docker-compose.dev.yml` (porta 5460) + `SESSION_SECRET` de teste. Alternativa
-sem compilar: `tsx --test` (o `tsx` já é devDependency do pacote).
+`e2e/workspace.spec.ts` (6)
+1. cinco destinos, com o mesmo nome na navegação e no título
+2. marcos mostram atrasado com a data real
+3. data prevista no passado trava em 40 e pergunta sobre a chegada
+4. perfil sempre editável, com salvar só quando muda algo
+5. sessão expirada leva ao login com aviso (`context.clearCookies()`)
+6. página pública de presentes reserva um item sem conta
+
+**Resultado:** a última execução registrada na validação da Fase 3 foi **34/34 passando**
+(17 cenários contados nos arquivos × 2 projetos). A suíte é de caracterização: a mesma rodou
+antes e depois da divisão do `App.tsx` (32/32 em `be5699d`, antes do cenário de PATCH único).
+
+## Como escrever um teste novo
+
+**Unitário (front):** só para código puro de `src/lib/` (sem React/DOM).
+1. Criar `src/lib/<modulo>.test.ts` ao lado do módulo; importar com `@/lib/...` ou caminho relativo.
+2. `import { test } from "vitest"; import assert from "node:assert/strict";`
+3. Datas entram por parâmetro (`now`), nunca `new Date()` dentro do teste — exceto o alarme do catálogo.
+4. Rodar `pnpm test`. Não há nada para registrar: o `include` pega `src/**/*.test.ts`.
+
+**Unitário (API):** mesmo padrão em `artifacts/api-server/src/**`. Código que importa
+`@workspace/db` lança sem `DATABASE_URL`; mantenha o alvo puro (ex.: `lib/auth.ts`) ou use o
+banco de teste. Limitadores são singletons de processo: use chaves únicas por teste.
+
+**E2E:**
+1. Criar ou editar `artifacts/ninho/e2e/<area>.spec.ts`; importar de `./support`.
+2. Começar com `await createAccount(page)` (conta nova por teste → sem ordem nem limpeza).
+3. Localizar por papel/nome (`getByRole`) ou `data-testid`; esperar estado, não tempo.
+4. Digitação real com `pressSequentially`; envio por Enter com `form.requestSubmit()`.
+5. Terminar cada tela nova com `await expectAccessible(page)`.
+6. `pnpm db:up && pnpm test:e2e` (os dois projetos rodam por padrão; `--project=celular` para um só).
+
+## CI (`.github/workflows/ci.yml`)
+
+Dispara em `push` (qualquer branch) e `pull_request`; cancela execuções antigas da mesma ref;
+`permissions: contents: read`; Node 24, pnpm 11.17.0 (fixado em `PNPM_VERSION`).
+
+- **`checks`** (ubuntu, 20 min): `pnpm install --frozen-lockfile` → `pnpm run typecheck` →
+  `pnpm run lint` → `pnpm run test` → `pnpm run build` com `PORT=5180 BASE_PATH=/`.
+- **`e2e`** (`needs: checks`, 30 min): serviço `postgres:16` (ninho/ninho, porta 5432, health-check);
+  `E2E_DATABASE_URL=postgres://ninho:ninho@localhost:5432/ninho_test`; `E2E_SESSION_SECRET`
+  gerado com `openssl rand -hex 32`; `playwright install --with-deps chromium`;
+  `pnpm run test:e2e`; em falha publica `playwright-report` e `test-results` por 7 dias.
+
+**O workflow nunca rodou no GitHub** (nenhum push). Torná-lo obrigatório na `main` é
+configuração do dono do repositório — passo a passo em
+`.specs/features/fase-3-base-tecnica/ci.md`.
+
+## Lacunas conhecidas
+
+- Sem teste de componente React (a cobertura de UI é toda pelo E2E).
+- Sem teste de rota da API isolado; as rotas são exercitadas só pelo E2E.
+- Sem medição de cobertura nem Lighthouse automatizado.
+- O E2E depende de Docker local (Postgres na 5460).

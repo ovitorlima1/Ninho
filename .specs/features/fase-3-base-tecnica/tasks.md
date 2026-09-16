@@ -46,14 +46,25 @@ T1 Vitest + ESLint + strict ──► T2 E2E de caracterização ──► T3 di
 - **What:** os 7 critérios de aceite; atualizar `.specs/codebase/TESTING.md`, `STRUCTURE.md`, `CONCERNS.md`, STATE, ROADMAP, SUMMARY e `replit.md`.
 - **Commit:** `docs: fecha Fase 3`
 
+## Desvios da execução
+
+- **Bugs encontrados pelo E2E antes da divisão (0a79581):** preço digitado tecla a tecla virava
+  outro valor, o login recusava senha curta com a regra do cadastro, e senha errada disparava o
+  fluxo de "sessão expirada". Corrigidos antes do T3 para o E2E de caracterização passar.
+- **T6 saiu junto com o T2 (c21866c):** o workflow depende dos scripts criados no T1/T2.
+- **T3 validado depois:** o Docker Desktop parou durante a divisão; com o Docker reiniciado, a
+  suíte original rodou numa worktree temporária no commit `be5699d` isolado (32/32).
+- **Bug latente corrigido no T4:** `PUT /api/me/profile` criava perfil sem os itens padrão.
+- **`sharp` não entrou:** as inspirações passaram a usar ícone, então não havia imagem a converter.
+
 ## Status
 
 | Tarefa | Status | Commit |
 |---|---|---|
-| T1 | pendente | |
-| T2 | pendente | |
-| T3 | pendente | |
-| T4 | pendente | |
-| T5 | pendente | |
-| T6 | pendente | |
-| T7 | pendente | |
+| T1 | concluído | 9f75ec9 |
+| T2 | concluído | c21866c |
+| T3 | concluído | be5699d |
+| T4 | concluído | dc934a4, 6efef6c |
+| T5 | concluído | 85e1a8e |
+| T6 | concluído | c21866c |
+| T7 | concluído | (este commit) |
