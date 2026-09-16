@@ -3,6 +3,7 @@
 @import "tw-animate-css";
 
 @import "./styles/tokens.css";
+@import "./styles/layout.css";
 
 /* Aliases usados pelo CSS antigo enquanto a reescrita por camadas não chega. */
 :root {

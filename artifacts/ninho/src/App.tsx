@@ -223,48 +223,6 @@ function Brand() {
   );
 }
 
-function AccountControl({ onProfile }: { onProfile?: () => void }) {
-  const qc = useQueryClient();
-  const [, setLocation] = useLocation();
-  const { data } = useQuery({ queryKey: ["auth-session"], queryFn: getSession, staleTime: Infinity });
-  const name = data?.user?.email.split("@")[0] || "Você";
-  const initials = name.slice(0, 2).toUpperCase();
-  const handleSignOut = async () => {
-    // Clear all cached workspace data before redirecting so the next user
-    // that signs in on this device cannot see stale data from this session.
-    try {
-      await logout();
-    } finally {
-      qc.clear();
-      setLocation("/sign-in");
-    }
-  };
-  const handleProfile = () => {
-    if (onProfile) {
-      onProfile();
-      return;
-    }
-    setLocation("/profile");
-  };
-  return (
-    <div className="account-control">
-      <button
-        type="button"
-        className="toolbar-avatar toolbar-avatar-button"
-        onClick={handleProfile}
-        aria-label="Abrir Meu perfil"
-        title="Meu perfil"
-        data-testid="button-open-profile-avatar"
-      >
-        {initials}
-      </button>
-      <button type="button" onClick={handleSignOut} className="account-signout" data-testid="button-sign-out">
-        <LogOut size={14} /> sair
-      </button>
-    </div>
-  );
-}
-
 function TinyButton({ children, onClick, label, testId }: { children: ReactNode; onClick: () => void; label?: string; testId: string }) {
   return <button type="button" className="icon-button" onClick={onClick} aria-label={label} data-testid={testId}>{children}</button>;
 }
@@ -639,57 +597,163 @@ function OnboardingModal({ userId, onComplete }: { userId: string; onComplete: (
 
 // ─── Phone shell ──────────────────────────────────────────────────────────────
 
-function Phone({ children, title, activeRoute, setLocation, activePanel, onPanel }: {
-  children: ReactNode; title: string; activeRoute: string;
-  setLocation: (path: string) => void; activePanel: number; onPanel: (index: number) => void;
-}) {
-  const tabs = [
-    { path: "/dashboard", label: "Início", testId: "inicio", icon: Home, panel: 0 },
-    { path: "/checklist", label: "Lista", testId: "lista", icon: ListChecks, panel: 1 },
-    { path: "/milestones", label: "Marcos", testId: "marcos", icon: History, panel: 2 },
-    { path: "/recommendations", label: "Inspirações", testId: "inspiracoes", icon: Sparkles, panel: 0 },
-  ];
-  const panelIdx = title === "Ninho" ? 0 : title === "Registro rápido" ? 1 : 2;
+type NavPath = "/dashboard" | "/checklist" | "/milestones" | "/budget" | "/profile";
+
+/**
+ * Os cinco destinos do app. A mesma lista alimenta a barra inferior, a barra
+ * lateral, o h1 e o título da aba — antes a mesma tela tinha até três nomes.
+ */
+const NAV_ITEMS: { path: NavPath; label: string; icon: typeof Home; testId: string }[] = [
+  { path: "/dashboard", label: "Início", icon: Home, testId: "inicio" },
+  { path: "/checklist", label: "Lista", icon: ListChecks, testId: "lista" },
+  { path: "/milestones", label: "Marcos", icon: History, testId: "marcos" },
+  { path: "/budget", label: "Orçamento", icon: WalletCards, testId: "orcamento" },
+  { path: "/profile", label: "Perfil", icon: UserRound, testId: "perfil" },
+];
+
+/** Inspirações mora dentro da Lista; rotas desconhecidas caem no Início. */
+function navPathFor(location: string): NavPath {
+  if (location === "/recommendations") return "/checklist";
+  return NAV_ITEMS.find((item) => item.path === location)?.path ?? "/dashboard";
+}
+
+function initialsFor(name: string | null | undefined): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  const first = parts[0]!.charAt(0);
+  const last = parts.length > 1 ? parts[parts.length - 1]!.charAt(0) : parts[0]!.charAt(1);
+  return `${first}${last}`.toUpperCase();
+}
+
+function NavLinks({ current, go, variant }: { current: NavPath; go: (path: string) => void; variant: "tabbar" | "sidebar" }) {
   return (
-    <section className={`phone phone-${panelIdx} ${activePanel === panelIdx ? "is-mobile-active" : ""}`} aria-label={title}>
-      <div className="phone-screen">
-        {children}
-        <nav className="phone-tabs" aria-label="Navegação do Ninho">
-          {tabs.map(({ path, label, testId, icon: Icon, panel }) => {
-            const selected = activeRoute === path;
-            return (
-              <button type="button" key={path} onClick={() => { onPanel(panel); setLocation(path); }} className={`phone-tab ${selected ? "tab-active" : ""}`} aria-current={selected ? "page" : undefined} data-testid={`button-phone-tab-${testId}`}>
-                <Icon size={16} strokeWidth={selected ? 2 : 1.5} /><span>{label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-    </section>
+    <ul className={`nav-list nav-list-${variant}`}>
+      {NAV_ITEMS.map(({ path, label, icon: Icon, testId }) => {
+        const selected = current === path;
+        return (
+          <li key={path}>
+            <a
+              href={path}
+              className={`nav-link ${selected ? "is-current" : ""}`}
+              aria-current={selected ? "page" : undefined}
+              onClick={(event) => {
+                // Mantém abrir em nova aba com Ctrl/Cmd; o resto navega sem recarregar.
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+                event.preventDefault();
+                go(path);
+              }}
+              data-testid={variant === "tabbar" ? `button-phone-tab-${testId}` : `button-sidebar-${testId}`}
+            >
+              <span className="nav-icon" aria-hidden><Icon size={20} strokeWidth={selected ? 2.2 : 1.7} /></span>
+              <span>{label}</span>
+            </a>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
-function MobileUtilityLinks({ location, onBudget, onProfile }: { location: string; onBudget: () => void; onProfile: () => void }) {
+/** Casca única: barra inferior abaixo de 900px, barra lateral a partir dela. */
+function AppShell({
+  location, go, profile, children,
+}: {
+  location: string;
+  go: (path: string) => void;
+  profile: ServerProfile;
+  children: ReactNode;
+}) {
+  const current = navPathFor(location);
+  const currentLabel = NAV_ITEMS.find((item) => item.path === current)!.label;
+  const mainRef = useRef<HTMLElement>(null);
+  const firstRender = useRef(true);
+
+  useEffect(() => {
+    document.title = `${location === "/recommendations" ? "Inspirações" : currentLabel} · Ninho`;
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    // Ao trocar de tela, começa do topo e o leitor de tela é levado ao conteúdo novo.
+    window.scrollTo({ top: 0 });
+    mainRef.current?.focus({ preventScroll: true });
+  }, [location, currentLabel]);
+
   return (
-    <div className="mobile-utility-links" aria-label="Atalhos de organização">
-      <button
-        type="button"
-        className={`mobile-budget-link ${location === "/budget" ? "is-current" : ""}`}
-        onClick={onBudget}
-        aria-current={location === "/budget" ? "page" : undefined}
-        data-testid="button-mobile-nav-orcamento"
-      >
-        <WalletCards size={14} /><span>Orçamento</span>
-      </button>
-      <button
-        type="button"
-        className={`mobile-budget-link ${location === "/profile" ? "is-current" : ""}`}
-        onClick={onProfile}
-        aria-current={location === "/profile" ? "page" : undefined}
-        data-testid="button-mobile-nav-perfil"
-      >
-        <UserRound size={14} /><span>Perfil</span>
-      </button>
+    <div className="app-shell">
+      <a className="skip-link" href="#conteudo">Pular para o conteúdo</a>
+      <aside className="app-sidebar">
+        <Brand />
+        <nav aria-label="Navegação principal">
+          <NavLinks current={current} go={go} variant="sidebar" />
+        </nav>
+        <p className="app-sidebar-note">Um passo de cada vez, sem pressa, sem excesso.</p>
+      </aside>
+      <div className="app-body">
+        <header className="app-header">
+          <span className="app-header-brand"><Brand /></span>
+          <div className="app-header-title">
+            <span className="app-header-date">{todayLabel()}</span>
+            <h1>{currentLabel}</h1>
+          </div>
+          <button
+            type="button"
+            className="app-avatar"
+            onClick={() => go("/profile")}
+            aria-label="Abrir perfil"
+            data-testid="button-open-profile-avatar"
+          >
+            {initialsFor(profile.displayName)}
+          </button>
+        </header>
+        <main id="conteudo" className="app-main" ref={mainRef} tabIndex={-1}>
+          {children}
+        </main>
+      </div>
+      <nav className="app-tabbar" aria-label="Navegação principal">
+        <NavLinks current={current} go={go} variant="tabbar" />
+      </nav>
+    </div>
+  );
+}
+
+/** Lista com duas abas: os itens e as inspirações que combinam com eles. */
+function ListScreen({ tab, onTab, children }: { tab: "itens" | "inspiracoes"; onTab: (tab: "itens" | "inspiracoes") => void; children: ReactNode }) {
+  const tabs = [
+    { id: "itens" as const, label: "Itens" },
+    { id: "inspiracoes" as const, label: "Inspirações" },
+  ];
+  return (
+    <div className="list-screen">
+      <div className="segmented" role="tablist" aria-label="Seções da lista">
+        {tabs.map(({ id, label }) => (
+          <button
+            type="button"
+            key={id}
+            role="tab"
+            id={`list-tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls="list-tabpanel"
+            tabIndex={tab === id ? 0 : -1}
+            className={`segmented-option ${tab === id ? "is-selected" : ""}`}
+            onClick={() => onTab(id)}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+                event.preventDefault();
+                const next = id === "itens" ? "inspiracoes" : "itens";
+                onTab(next);
+                requestAnimationFrame(() => document.getElementById(`list-tab-${next}`)?.focus());
+              }
+            }}
+            data-testid={`button-list-tab-${id}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id="list-tabpanel" aria-labelledby={`list-tab-${tab}`}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -729,7 +793,7 @@ function OverviewPanel({
   return (
     <div className="phone-content flow">
       <div className="eyebrow-row"><span>{todayLabel()}</span><span className="live-dot" /></div>
-      <h1 className="phone-heading">Seu caminho,<br /><strong>um passo de cada vez.</strong></h1>
+      <h2 className="phone-heading">Seu caminho,<br /><strong>um passo de cada vez.</strong></h2>
       <div className="focus-card">
         <div className="focus-copy">
           <span className="card-kicker">PREPARAÇÃO</span>
@@ -801,7 +865,7 @@ function ChecklistPanel({
   return (
     <div className="phone-content flow">
       <div className="eyebrow-row"><span>LISTA DE PREPARO</span><span className="count-badge">{allDone}/{items.length}</span></div>
-      <h1 className="phone-heading">Tudo no lugar,<br /><strong>na hora certa.</strong></h1>
+      <h2 className="phone-heading">Tudo no lugar,<br /><strong>na hora certa.</strong></h2>
       <div className="filter-row">
         {CATEGORIES.map((key) => (
           <Pill key={key} active={category === key} onClick={() => setCategory(key)} testId={`button-phone-category-${key.toLowerCase()}`}>{key}</Pill>
@@ -976,7 +1040,7 @@ function TimelinePanel({
         <span>{week ? `JORNADA DE ${name.toUpperCase()}` : "LINHA DO TEMPO"}</span>
         <span>{week ? `${displayWeek} / 40` : "—"}</span>
       </div>
-      <h1 className="phone-heading">Os próximos<br /><strong>pequenos marcos.</strong></h1>
+      <h2 className="phone-heading">Os próximos<br /><strong>pequenos marcos.</strong></h2>
 
       {gestation?.isOverdue && <ArrivalNotice />}
 
@@ -1113,7 +1177,7 @@ function BudgetPanel({
   return (
     <div className="phone-content flow">
       <div className="eyebrow-row"><span>CLAREZA SEM PLANILHA</span><WalletCards size={14} /></div>
-      <h1 className="phone-heading">Um olhar calmo<br /><strong>para o orçamento.</strong></h1>
+      <h2 className="phone-heading">Um olhar calmo<br /><strong>para o orçamento.</strong></h2>
       <div className="budget-total">
         <span className="card-kicker">INVESTIDO ATÉ AQUI</span>
         <strong>{money(spent)}</strong>
@@ -1361,7 +1425,7 @@ function ProfilePanel({
           </TinyButton>
         )}
       </div>
-       <h1 className="phone-heading">Seu espaço,<br /><strong>do seu jeito.</strong></h1>
+       <h2 className="phone-heading">Seu espaço,<br /><strong>do seu jeito.</strong></h2>
       <div className="profile-card">
         <div className="avatar">{initials}</div>
         <div>
@@ -1686,7 +1750,7 @@ function RecommendationsPanel({
   return (
     <div className="phone-content flow recommendations-content">
       <div className="eyebrow-row"><span>INSPIRAÇÕES NINHO</span><Sparkles size={14} /></div>
-      <h1 className="phone-heading">Inspirações para<br /><strong>deixar tudo mais leve.</strong></h1>
+      <h2 className="phone-heading">Inspirações para<br /><strong>deixar tudo mais leve.</strong></h2>
       <p className="recommendation-context">
         <Sparkles size={14} />
         <span>{hasPersonalizedSuggestions ? "O Ninho seleciona caminhos para as categorias que ainda estão esperando por você." : "Uma seleção editorial do Ninho para inspirar os próximos passos do seu enxoval."}</span>
@@ -1966,126 +2030,6 @@ function GiftReservationModal({
     </ModalShell>
   );
 }
-function DesktopSidebar({ location, go }: { location: string; go: (path: string, panel?: number) => void }) {
-  const links = [
-    { path: "/dashboard", label: "Visão geral", icon: Home, panel: 0 },
-    { path: "/checklist", label: "Minha lista", icon: ListChecks, panel: 1 },
-    { path: "/milestones", label: "Linha do tempo", icon: History, panel: 2 },
-  ];
-  return (
-    <aside className="desktop-sidebar">
-      <div className="desktop-sidebar-brand"><Brand /><span>gestão de enxoval</span></div>
-      <div className="desktop-nav-label">SEU NINHO</div>
-      <nav className="desktop-nav" aria-label="Navegação principal">
-        {links.map(({ path, label, icon: Icon, panel }) => {
-          const selected = location === path;
-          return (
-            <button type="button" key={path} className={`desktop-nav-item ${selected ? "selected" : ""}`} onClick={() => go(path, panel)} data-testid={`button-desktop-nav-${label.toLowerCase().replaceAll(" ", "-")}`}>
-              <Icon size={17} /><span>{label}</span>{selected && <span className="desktop-nav-indicator" />}
-            </button>
-          );
-        })}
-      </nav>
-      <div className="desktop-nav-label desktop-secondary-label">ORGANIZAÇÃO</div>
-      <nav className="desktop-nav">
-      <button type="button" className={`desktop-nav-item ${location === "/recommendations" ? "selected" : ""}`} onClick={() => go("/recommendations", 0)} data-testid="button-desktop-nav-inspiracoes"><Sparkles size={17} /><span>Inspirações</span>{location === "/recommendations" && <span className="desktop-nav-indicator" />}</button>
-        <button type="button" className={`desktop-nav-item ${location === "/budget" ? "selected" : ""}`} onClick={() => go("/budget", 0)} data-testid="button-desktop-nav-orcamento"><WalletCards size={17} /><span>Orçamento</span></button>
-        <button type="button" className={`desktop-nav-item ${location === "/profile" ? "selected" : ""}`} onClick={() => go("/profile", 0)} data-testid="button-desktop-nav-perfil"><UserRound size={17} /><span>Meu perfil</span></button>
-      </nav>
-      <div className="desktop-sidebar-footer"><div className="desktop-footer-orbit"><Sparkles size={15} /></div><div><strong>Um passo de cada vez.</strong><span>sem pressa, sem excesso</span></div></div>
-    </aside>
-  );
-}
-
-function DesktopSideSummary({ items, milestones: miles, profile, go }: { items: ChecklistItem[]; milestones: ServerMilestone[]; profile: ServerProfile; go: (path: string, panel?: number) => void }) {
-  const done = items.filter((i) => i.status !== "A comprar").length;
-  const score = items.length ? Math.round((done / items.length) * 100) : 0;
-  const week = calcGestationalWeek(profile.dueDate);
-  const nextMilestone = getNextMilestone(miles, week);
-  const nextItem = items.find((i) => i.status === "A comprar" && i.essential);
-
-  return (
-    <aside className="desktop-side">
-      <div className="desktop-side-card desktop-next-card">
-        <div className="desktop-side-card-top"><span className="card-kicker">PRÓXIMO PASSO</span><span className="desktop-side-icon"><ChevronRight size={15} /></span></div>
-        {nextItem ? (
-          <>
-            <h3>{nextItem.name}</h3>
-            <p>Item essencial pendente em {nextItem.category}.</p>
-          </>
-        ) : nextMilestone ? (
-          <>
-            <h3>Semana {nextMilestone.week}</h3>
-            <p>{nextMilestone.title}</p>
-          </>
-        ) : (
-          <>
-            <h3>Você está em dia!</h3>
-            <p>Todos os itens essenciais estão resolvidos.</p>
-          </>
-        )}
-        <Progress value={score} />
-        <button type="button" className="desktop-text-button" onClick={() => go("/checklist", 1)} data-testid="button-desktop-next-step">abrir checklist <ArrowUpRight size={14} /></button>
-      </div>
-      <div className="desktop-side-card">
-        <div className="desktop-side-card-top"><span className="card-kicker">SEU PROGRESSO</span><span className="desktop-progress-number">{score}%</span></div>
-        <div className="desktop-progress-row"><strong>{done}</strong><span>itens já resolvidos<br />de {items.length} no total</span></div>
-        <div className="desktop-mini-bars">
-          <i style={{ height: "58%" }} /><i style={{ height: "73%" }} />
-          <i className="current" style={{ height: `${Math.max(35, score)}%` }} />
-          <i style={{ height: "44%" }} /><i style={{ height: "64%" }} />
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-function DesktopWorkspace({ location, go, items, milestones: miles, profile, budget, content }: {
-  location: string; go: (path: string, panel?: number) => void;
-  items: ChecklistItem[]; milestones: ServerMilestone[];
-  profile: ServerProfile; budget: ServerBudgetCategory[];
-  content: ReactNode;
-}) {
-  const titles: Record<string, string> = { "/dashboard": "Visão geral", "/checklist": "Minha lista", "/milestones": "Linha do tempo", "/recommendations": "Inspirações", "/budget": "Orçamento", "/profile": "Meu perfil" };
-  const title = titles[location] ?? "Ninho";
-  const isOverview = location === "/dashboard";
-  const routeClass = `desktop-route-${location.slice(1) || "dashboard"}`;
-  const done = items.filter((i) => i.status !== "A comprar").length;
-  const score = items.length ? Math.round((done / items.length) * 100) : 0;
-  const name = profile.displayName || "você";
-
-  return (
-    <div className="desktop-workspace">
-      <DesktopSidebar location={location} go={go} />
-      <main className="desktop-main">
-        <header className="desktop-header">
-          <div><span className="desktop-greeting">{todayLabel()}</span><h1>{title}</h1></div>
-          <div className="desktop-header-actions">
-            <button type="button" className="desktop-help-button"><Sparkles size={15} /> seu espaço, do seu jeito</button>
-            <AccountControl onProfile={() => go("/profile", 0)} />
-          </div>
-        </header>
-        {isOverview && (
-          <section className="desktop-welcome">
-            <div>
-              <span className="desktop-eyebrow">BEM-VINDA DE VOLTA, {name.toUpperCase()}</span>
-              <h2>Seu caminho está tomando forma.</h2>
-              <p>Uma visão tranquila do que já foi resolvido e do que vem a seguir.</p>
-            </div>
-            <div className="desktop-welcome-score">
-              <span>PREPARAÇÃO</span><strong>{score}%</strong><small>do enxoval resolvido</small>
-            </div>
-          </section>
-        )}
-        <div className={`desktop-content-grid ${routeClass} ${isOverview ? "" : "desktop-content-grid-single"}`}>
-          <section className="desktop-primary"><div className="desktop-panel-surface">{content}</div></section>
-          {isOverview && <DesktopSideSummary items={items} milestones={miles} profile={profile} go={go} />}
-        </div>
-      </main>
-    </div>
-  );
-}
-
 // ─── Workspace (authenticated shell) ─────────────────────────────────────────
 
 function Workspace({ userId: uid }: { userId: string }) {
@@ -2115,8 +2059,6 @@ function Workspace({ userId: uid }: { userId: string }) {
   });
 
   const [location, setLocation] = useLocation();
-  const [desktopView, setDesktopView] = useState(() => window.matchMedia("(min-width: 901px)").matches);
-  const [activePanel, setActivePanel] = useState(location === "/checklist" ? 1 : location === "/milestones" ? 2 : 0);
   const [addOpen, setAddOpen] = useState(false);
   const [addCategory, setAddCategory] = useState<CategoryKey>("Roupas");
   const [addTrigger, setAddTrigger] = useState<string | null>(null);
@@ -2138,14 +2080,6 @@ function Workspace({ userId: uid }: { userId: string }) {
       }, feedback.action ? 8000 : 3200);
     }
   };
-
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 901px)");
-    const sync = () => setDesktopView(media.matches);
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
 
   // ── Mutations ────────────────────────────────────────────────────────────
 
@@ -2329,10 +2263,7 @@ function Workspace({ userId: uid }: { userId: string }) {
 
   // ── Navigation helpers ───────────────────────────────────────────────────
 
-  const go = (path: string, panel?: number) => {
-    if (panel !== undefined) setActivePanel(panel);
-    setLocation(path);
-  };
+  const go = (path: string) => setLocation(path);
 
   const openAdd = (cat: CategoryKey) => {
     setAddTrigger(document.activeElement?.getAttribute("data-testid") ?? null);
@@ -2453,7 +2384,7 @@ function Workspace({ userId: uid }: { userId: string }) {
 
   const overviewPanel = (
     <OverviewPanel items={items} profile={profile} milestones={miles} budget={budget}
-      setLocation={(p) => go(p, p === "/checklist" ? 1 : p === "/milestones" ? 2 : 0)}
+      setLocation={go}
     />
   );
   const checklistPanel = (
@@ -2463,7 +2394,7 @@ function Workspace({ userId: uid }: { userId: string }) {
       onAdd={openAdd}
       onEdit={setEditingItem}
       onDelete={handleDelete}
-      onOpenRecommendation={(id) => { setRecommendationFocusId(id); go("/recommendations", 0); }}
+      onOpenRecommendation={(id) => { setRecommendationFocusId(id); go("/recommendations"); }}
       onUnlinkRecommendation={handleUnlinkRecommendation}
       onReleaseGiftReservation={handleReleaseGiftReservation}
       onUpdateGiftReservation={handleUpdateGiftReservation}
@@ -2511,70 +2442,38 @@ function Workspace({ userId: uid }: { userId: string }) {
       items={items}
       onAddRecommendation={handleAddRecommendation}
       onLinkRecommendation={handleLinkRecommendation}
-      onOpenLinkedItem={(_item) => go("/checklist", 1)}
+      onOpenLinkedItem={(_item) => go("/checklist")}
       isActionPending={addItemMutation.isPending || updateItemMutation.isPending}
       feedback={recommendationFeedback}
       focusId={recommendationFocusId}
     />
   );
 
-  const desktopContent = location === "/checklist" ? checklistPanel
+  const isListRoute = location === "/checklist" || location === "/recommendations";
+  const content = isListRoute ? (
+    <ListScreen
+      tab={location === "/recommendations" ? "inspiracoes" : "itens"}
+      onTab={(tab) => go(tab === "itens" ? "/checklist" : "/recommendations")}
+    >
+      {location === "/recommendations" ? recommendationsPanel : checklistPanel}
+    </ListScreen>
+  )
     : location === "/milestones" ? milestonePanel
-    : location === "/recommendations" ? recommendationsPanel
     : location === "/budget" ? budgetPanel
     : location === "/profile" ? profilePanel
     : overviewPanel;
 
-  // ── Desktop layout ───────────────────────────────────────────────────────
-
-  if (desktopView) {
-    return (
-      <div className="ninho-app">
-        <DesktopWorkspace location={location} go={go} items={items} milestones={miles} profile={profile} budget={budget} content={desktopContent} />
-        {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} returnFocusTestId={addTrigger ?? undefined} />}
-        {editingItem && <EditItemModal item={editingItem} onClose={() => setEditingItem(null)} onSave={handleEditItem} />}
-        <ActionFeedbackBanner feedback={actionFeedback} onDismiss={() => setActionFeedback(null)} />
-      </div>
-    );
-  }
-
-  // ── Mobile layout ────────────────────────────────────────────────────────
-
-  const panelOne = location === "/budget" ? budgetPanel : location === "/profile" ? profilePanel : location === "/recommendations" ? recommendationsPanel : overviewPanel;
-  const panelTwo = checklistPanel;
-  const panelThree = milestonePanel;
-
   return (
     <div className="ninho-app">
-      <div className="stage-toolbar">
-        <div className="toolbar-left">
-          <Brand />
-          <span className="toolbar-divider" />
-          <span className="toolbar-caption">gestão de enxoval</span>
-        </div>
-        <div className="toolbar-actions">
-          <MobileUtilityLinks location={location} onBudget={() => go("/budget", 0)} onProfile={() => go("/profile", 0)} />
-          <span className="mobile-account-control"><AccountControl onProfile={() => go("/profile", 0)} /></span>
-        </div>
-      </div>
-      <div className="phone-stage">
-        <Phone title="Ninho" activeRoute={location} setLocation={go} activePanel={activePanel} onPanel={setActivePanel}>
-          {panelOne}
-        </Phone>
-        <Phone title="Registro rápido" activeRoute={location} setLocation={go} activePanel={activePanel} onPanel={setActivePanel}>
-          {panelTwo}
-        </Phone>
-        <Phone title="Sua jornada" activeRoute={location} setLocation={go} activePanel={activePanel} onPanel={setActivePanel}>
-          {panelThree}
-        </Phone>
-      </div>
+      <AppShell location={location} go={go} profile={profile}>
+        {content}
+      </AppShell>
       {addOpen && <AddItemModal onClose={() => setAddOpen(false)} onAdd={handleAddItem} category={addCategory} returnFocusTestId={addTrigger ?? undefined} />}
-        {editingItem && <EditItemModal item={editingItem} onClose={() => setEditingItem(null)} onSave={handleEditItem} />}
+      {editingItem && <EditItemModal item={editingItem} onClose={() => setEditingItem(null)} onSave={handleEditItem} />}
       <ActionFeedbackBanner feedback={actionFeedback} onDismiss={() => setActionFeedback(null)} />
     </div>
   );
 }
-
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
 
