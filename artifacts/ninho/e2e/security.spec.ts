@@ -46,3 +46,23 @@ test("corpo que não é JSON é recusado com mensagem em português", async ({ p
   expect(broken.status()).toBe(400);
   expect(await broken.json()).toEqual({ error: "Não conseguimos ler os dados enviados." });
 });
+
+test("orçamento só aceita as quatro categorias conhecidas", async ({ page }) => {
+  await createAccount(page);
+  const unknown = await page.request.put("/api/me/budget", {
+    data: { categories: [{ category: "Carro", planned: 100 }] },
+  });
+  expect(unknown.status()).toBe(400);
+  expect(await unknown.json()).toEqual({ error: "Escolha uma das categorias da lista." });
+
+  const repeated = await page.request.put("/api/me/budget", {
+    data: { categories: [{ category: "Roupas", planned: 1 }, { category: "Roupas", planned: 2 }] },
+  });
+  expect(repeated.status()).toBe(400);
+
+  const tooMany = await page.request.put("/api/me/budget", {
+    data: { categories: Array.from({ length: 500 }, () => ({ category: "Roupas", planned: 1 })) },
+  });
+  expect(tooMany.status()).toBe(400);
+  expect(await tooMany.json()).toEqual({ error: "São no máximo quatro categorias." });
+});

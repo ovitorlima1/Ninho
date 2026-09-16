@@ -2,8 +2,16 @@ import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { authUsers, passwordResetTokens } from "@workspace/db/schema";
 import {
+  authUsers,
+  loginSchema,
+  passwordResetCompleteSchema,
+  passwordResetRequestSchema,
+  passwordResetTokens,
+  registerSchema,
+} from "@workspace/db/schema";
+import {
+  dummyPasswordHash,
   expiredSessionCookie,
   hashPassword,
   sessionCookie,
@@ -18,36 +26,17 @@ import {
   passwordResetOriginLimiter,
 } from "../lib/rate-limit";
 import { sendPasswordResetEmail } from "../lib/email";
+import { firstIssueMessage } from "../lib/validation";
 import { initializeUser } from "../lib/seed";
 import { createSession, resolveSession, revokeAllSessions, revokeCurrentSession } from "../lib/sessions";
 
 const router = Router();
 
-type Credentials = { email: string; password: string };
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 const PASSWORD_RESET_RESPONSE_MIN_MS = 400;
 const GENERIC_RESET_MESSAGE = "Se houver uma conta com este e-mail, enviaremos um link para redefinir sua senha.";
 const AUTH_RATE_LIMIT_MESSAGE = "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.";
 const PASSWORD_RESET_RATE_LIMIT_MESSAGE = "Muitos pedidos de redefinição de senha. Aguarde uma hora antes de tentar novamente.";
-
-/**
- * No cadastro a senha precisa ter 8+ caracteres. No login não: recusar ali uma
- * senha curta com essa mensagem vazaria a regra e confundiria contas antigas —
- * o login responde sempre com a mensagem genérica de credenciais inválidas.
- */
-function validateCredentials(body: unknown, mode: "register" | "login"): { data: Credentials } | { error: string } {
-  if (!body || typeof body !== "object") return { error: "Confira os dados informados." };
-  const values = body as Record<string, unknown>;
-  const email = typeof values.email === "string" ? values.email.trim().toLowerCase() : "";
-  const password = typeof values.password === "string" ? values.password : "";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) {
-    return { error: "Digite um e-mail válido." };
-  }
-  if (mode === "login" && password.length === 0) return { error: "Digite sua senha." };
-  if (mode === "register" && password.length < 8) return { error: "A senha precisa ter pelo menos 8 caracteres." };
-  if (password.length > 128) return { error: "A senha deve ter no máximo 128 caracteres." };
-  return { data: { email, password } };
-}
 
 function publicUser(user: typeof authUsers.$inferSelect) {
   return { id: user.id, email: user.email };
@@ -115,12 +104,12 @@ async function waitForMinimumResponseTime(startedAt: number): Promise<void> {
 
 /** POST /api/auth/register — creates a new Ninho account and its session. */
 router.post("/register", async (req, res) => {
-  const validated = validateCredentials(req.body, "register");
-  if ("error" in validated) {
-    res.status(400).json({ error: validated.error });
+  const parsed = registerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: firstIssueMessage(parsed.error) });
     return;
   }
-  const { data } = validated;
+  const { data } = parsed;
   const origin = getRequestOrigin(req);
   const attemptKeys = getAuthAttemptKeys("register", data.email, origin);
   const rateLimit = await authAttemptLimiter.consume(attemptKeys);
@@ -132,6 +121,8 @@ router.post("/register", async (req, res) => {
   try {
     const [existing] = await db.select({ id: authUsers.id }).from(authUsers).where(eq(authUsers.email, data.email));
     if (existing) {
+      // Mesmo trabalho de hash do caminho de sucesso: o tempo não denuncia a conta.
+      await hashPassword(data.password);
       res.status(400).json({ error: "Não foi possível criar a conta. Confira os dados e tente novamente." });
       return;
     }
@@ -165,12 +156,12 @@ router.post("/register", async (req, res) => {
 
 /** POST /api/auth/login — authenticates with a generic failure message. */
 router.post("/login", async (req, res) => {
-  const validated = validateCredentials(req.body, "login");
-  if ("error" in validated) {
-    res.status(400).json({ error: validated.error });
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: firstIssueMessage(parsed.error) });
     return;
   }
-  const { data } = validated;
+  const { data } = parsed;
   const origin = getRequestOrigin(req);
   const attemptKeys = getAuthAttemptKeys("login", data.email, origin);
   const rateLimit = await authAttemptLimiter.consume(attemptKeys);
@@ -181,7 +172,8 @@ router.post("/login", async (req, res) => {
 
   try {
     const [user] = await db.select().from(authUsers).where(eq(authUsers.email, data.email));
-    const valid = user ? await verifyPassword(data.password, user.passwordHash) : false;
+    // Sem conta, compara com um hash fictício: o tempo de resposta é o mesmo.
+    const valid = await verifyPassword(data.password, user?.passwordHash ?? await dummyPasswordHash());
     if (!valid || !user) {
       res.status(401).json({ error: "E-mail ou senha inválidos." });
       return;
@@ -219,16 +211,14 @@ router.get("/session", async (req, res) => {
 /** POST /api/auth/password-reset/request — always returns the same response. */
 router.post("/password-reset/request", async (req, res) => {
   const startedAt = Date.now();
-  const rawEmail = req.body && typeof req.body === "object" && "email" in req.body
-    ? (req.body as Record<string, unknown>).email
-    : "";
-  const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) {
+  const parsed = passwordResetRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
     // Malformed addresses are rejected before any counter moves, so a typo
     // never costs the caller one of its hourly attempts.
-    res.status(400).json({ error: "Digite um e-mail válido." });
+    res.status(400).json({ error: firstIssueMessage(parsed.error) });
     return;
   }
+  const { email } = parsed.data;
 
   // Both counters are consumed before the account lookup: an address with an
   // account and one without behave exactly the same under the limit.
@@ -275,21 +265,12 @@ router.post("/password-reset/request", async (req, res) => {
 
 /** POST /api/auth/password-reset/complete — consumes one reset token. */
 router.post("/password-reset/complete", async (req, res) => {
-  const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
-  const token = typeof body.token === "string" ? body.token : "";
-  const password = typeof body.password === "string" ? body.password : "";
-  if (token.length < 40 || token.length > 128) {
-    res.status(400).json({ error: "Este link de recuperação é inválido ou expirou." });
+  const parsed = passwordResetCompleteSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: firstIssueMessage(parsed.error) });
     return;
   }
-  if (password.length < 8) {
-    res.status(400).json({ error: "A senha precisa ter pelo menos 8 caracteres." });
-    return;
-  }
-  if (password.length > 128) {
-    res.status(400).json({ error: "A senha deve ter no máximo 128 caracteres." });
-    return;
-  }
+  const { token, password } = parsed.data;
 
   try {
     const now = new Date();

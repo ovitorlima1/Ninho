@@ -1,7 +1,7 @@
 import express, { type Express } from "express";
 import pinoHttp from "pino-http";
 import router from "./routes";
-import { logger } from "./lib/logger";
+import { errSerializer, logger } from "./lib/logger";
 import {
   errorHandler,
   noStore,
@@ -21,6 +21,7 @@ app.use(
   pinoHttp({
     logger,
     serializers: {
+      err: errSerializer,
       req(req) {
         return {
           id: req.id,

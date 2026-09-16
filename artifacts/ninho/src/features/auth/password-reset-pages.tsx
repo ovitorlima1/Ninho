@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Check, Mail } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -80,6 +80,13 @@ export function PasswordResetRequestPage() {
 export function PasswordResetPage() {
   const [, setLocation] = useLocation();
   const [token] = useState(() => new URLSearchParams(window.location.search).get("token") || "");
+  // O token fica só na memória: sai da barra de endereço e do histórico, para
+  // não ser copiado, sincronizado entre aparelhos nem enviado como Referer.
+  useEffect(() => {
+    if (window.location.search) {
+      window.history.replaceState(window.history.state, "", window.location.pathname);
+    }
+  }, []);
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);

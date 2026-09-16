@@ -1,4 +1,5 @@
 import { index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { z } from "zod/v4";
 
 /**
  * Ninho-owned accounts. This table intentionally does not reference the
@@ -57,3 +58,44 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 export type AuthSession = typeof authSessions.$inferSelect;
 export type AuthAttempt = typeof authAttempts.$inferSelect;
+
+// ─── Validação das rotas de acesso ───────────────────────────────────────────
+
+const INVALID_BODY = "Confira os dados informados.";
+const INVALID_EMAIL = "Digite um e-mail válido.";
+const INVALID_RESET_LINK = "Este link de recuperação é inválido ou expirou.";
+
+const emailField = z
+  .string({ error: INVALID_EMAIL })
+  .trim()
+  .toLowerCase()
+  .max(320, INVALID_EMAIL)
+  .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, INVALID_EMAIL);
+
+const newPasswordField = z
+  .string({ error: "A senha precisa ter pelo menos 8 caracteres." })
+  .min(8, "A senha precisa ter pelo menos 8 caracteres.")
+  .max(128, "A senha deve ter no máximo 128 caracteres.");
+
+/**
+ * No login a senha só precisa existir: recusar ali uma senha curta com a regra
+ * do cadastro vazaria a regra e confundiria contas antigas.
+ */
+const currentPasswordField = z
+  .string({ error: "Digite sua senha." })
+  .min(1, "Digite sua senha.")
+  .max(128, "A senha deve ter no máximo 128 caracteres.");
+
+export const registerSchema = z.object({ email: emailField, password: newPasswordField }, { error: INVALID_BODY });
+export const loginSchema = z.object({ email: emailField, password: currentPasswordField }, { error: INVALID_BODY });
+export const passwordResetRequestSchema = z.object({ email: emailField }, { error: INVALID_EMAIL });
+export const passwordResetCompleteSchema = z.object({
+  token: z.string({ error: INVALID_RESET_LINK }).min(40, INVALID_RESET_LINK).max(128, INVALID_RESET_LINK),
+  password: newPasswordField,
+}, { error: INVALID_BODY });
+
+export const DELETE_ACCOUNT_CONFIRMATION = "EXCLUIR";
+export const deleteAccountSchema = z.object({
+  password: currentPasswordField,
+  confirmation: z.literal(DELETE_ACCOUNT_CONFIRMATION, { error: "Digite EXCLUIR para confirmar." }),
+}, { error: INVALID_BODY });

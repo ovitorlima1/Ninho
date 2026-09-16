@@ -1,6 +1,7 @@
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { withTestDb } from "./db";
-import { expectAccessible, isoDaysFromToday, PASSWORD, uniqueEmail } from "./support";
+import { createAccount, expectAccessible, isoDaysFromToday, PASSWORD, randomClientIp, uniqueEmail } from "./support";
 
 test("cadastro valida por campo e o onboarding leva ao Início", async ({ page }) => {
   await page.goto("/sign-up");
@@ -79,4 +80,43 @@ test("recuperação de senha limita o quarto pedido na mesma hora", async ({ pag
   });
   expect(keys.length).toBeGreaterThan(0);
   expect(keys.some((key) => key.includes(email) || key.includes(email.split("@")[0]!))).toBe(false);
+});
+
+test("redefinir a senha tira o token da URL e derruba as sessões abertas", async ({ page, browser, baseURL }) => {
+  const { email } = await createAccount(page);
+  const token = randomBytes(32).toString("base64url");
+  await withTestDb(async (db) => {
+    const { rows } = await db.query<{ id: string }>("SELECT id FROM auth_users WHERE email = $1", [email]);
+    await db.query(
+      "INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at) VALUES ($1, $2, $3, now() + interval '1 hour')",
+      [randomUUID(), rows[0]!.id, createHash("sha256").update(token).digest("hex")],
+    );
+  });
+
+  // Quem abre o link é outro navegador; a sessão da página continua aberta.
+  const other = await browser.newContext({ baseURL });
+  const resetPage = await other.newPage();
+  await resetPage.goto(`/reset-password?token=${token}`);
+  await expect(resetPage.getByRole("heading", { name: "Crie uma nova senha" })).toBeVisible();
+  await expect(resetPage).toHaveURL(/\/reset-password$/);
+  await expectAccessible(resetPage);
+
+  const newPassword = "OutraSenhaForte2026!";
+  await resetPage.getByTestId("input-new-password").fill(newPassword);
+  await resetPage.getByTestId("input-new-password-confirmation").fill(newPassword);
+  await resetPage.getByTestId("button-complete-reset").click();
+  await expect(resetPage.getByRole("heading", { name: "Senha redefinida." })).toBeVisible();
+  await other.close();
+
+  expect((await page.request.get("/api/me/workspace")).status()).toBe(401);
+  const oldLogin = await page.request.post("/api/auth/login", {
+    data: { email, password: PASSWORD },
+    headers: { "x-forwarded-for": randomClientIp() },
+  });
+  expect(oldLogin.status()).toBe(401);
+  const newLogin = await page.request.post("/api/auth/login", {
+    data: { email, password: newPassword },
+    headers: { "x-forwarded-for": randomClientIp() },
+  });
+  expect(newLogin.status()).toBe(200);
 });

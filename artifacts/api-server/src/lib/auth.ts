@@ -74,6 +74,17 @@ export async function verifyPassword(password: string, storedHash: string): Prom
   }
 }
 
+let dummyHash: Promise<string> | undefined;
+
+/**
+ * Hash de uma senha aleatória, calculado uma vez. O login compara com ele
+ * quando o e-mail não existe, para a resposta levar o mesmo tempo nos dois casos.
+ */
+export function dummyPasswordHash(): Promise<string> {
+  dummyHash ??= hashPassword(randomBytes(32).toString("base64url"));
+  return dummyHash;
+}
+
 export function createSessionToken(userId: string, sessionId: string, sessionVersion = 0): string {
   const now = Math.floor(Date.now() / 1000);
   const header = base64Url(JSON.stringify({ alg: JWT_ALGORITHM, typ: "JWT" }));

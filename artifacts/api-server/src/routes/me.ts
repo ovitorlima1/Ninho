@@ -19,6 +19,7 @@ import {
 } from "@workspace/db/schema";
 import { requireAuth } from "../middlewares/requireAuth";
 import { ensureUserInitialized } from "../lib/seed";
+import { firstIssueMessage } from "../lib/validation";
 
 const router = Router();
 
@@ -49,8 +50,8 @@ router.get("/workspace", async (req, res) => {
 
     res.json({ profile, items, milestones: userMilestones, budget, giftReservations: reservations });
   } catch (err) {
-    console.error("workspace error", err);
-    res.status(500).json({ error: "Internal server error" });
+    req.log.error({ err }, "workspace error");
+    res.status(500).json({ error: "Não foi possível carregar seu ninho agora." });
   }
 });
 
@@ -128,7 +129,7 @@ router.delete("/share", async (req, res): Promise<void> => {
 router.patch("/gift-reservations/:id", async (req, res): Promise<void> => {
   const userId = res.locals.userId as string;
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (isNaN(id)) { res.status(400).json({ error: "Item inválido." }); return; }
   const parsed = updateGiftReservationSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Dados de reserva inválidos." });
@@ -151,7 +152,7 @@ router.patch("/gift-reservations/:id", async (req, res): Promise<void> => {
 router.delete("/gift-reservations/:id", async (req, res): Promise<void> => {
   const userId = res.locals.userId as string;
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (isNaN(id)) { res.status(400).json({ error: "Item inválido." }); return; }
   try {
     const [deleted] = await db.delete(giftReservations)
       .where(and(eq(giftReservations.id, id), eq(giftReservations.userId, userId)))
@@ -171,7 +172,7 @@ router.put("/profile", async (req, res) => {
   const userId = res.locals.userId as string;
   const parsed = updateProfileSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    res.status(400).json({ error: "Confira os dados informados." });
     return;
   }
   try {
@@ -184,8 +185,8 @@ router.put("/profile", async (req, res) => {
       .returning();
     res.json(updated);
   } catch (err) {
-    console.error("profile update error", err);
-    res.status(500).json({ error: "Internal server error" });
+    req.log.error({ err }, "profile update error");
+    res.status(500).json({ error: "Não foi possível salvar o perfil agora." });
   }
 });
 
@@ -196,7 +197,7 @@ router.post("/checklist", async (req, res) => {
   const userId = res.locals.userId as string;
   const parsed = createChecklistItemSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    res.status(400).json({ error: "Confira os dados informados." });
     return;
   }
   try {
@@ -230,8 +231,8 @@ router.post("/checklist", async (req, res) => {
       res.status(409).json({ error: "Esta recomendação já está na sua lista." });
       return;
     }
-    req.log.error({ err }, "Checklist post error");
-    res.status(500).json({ error: "Internal server error" });
+    req.log.error({ err }, "checklist post error");
+    res.status(500).json({ error: "Não foi possível adicionar o item agora." });
   }
 });
 
@@ -239,11 +240,11 @@ router.post("/checklist", async (req, res) => {
 router.patch("/checklist/:id", async (req, res) => {
   const userId = res.locals.userId as string;
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (isNaN(id)) { res.status(400).json({ error: "Item inválido." }); return; }
 
   const parsed = updateChecklistItemSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    res.status(400).json({ error: "Confira os dados informados." });
     return;
   }
   try {
@@ -253,7 +254,7 @@ router.patch("/checklist/:id", async (req, res) => {
       .where(and(eq(checklistItems.id, id), eq(checklistItems.userId, userId)))
       .limit(1);
     if (!currentItem) {
-      res.status(404).json({ error: "Item not found" });
+      res.status(404).json({ error: "Não encontramos esse item. Atualize a página e tente de novo." });
       return;
     }
     if (parsed.data.recommendationId) {
@@ -282,15 +283,15 @@ router.patch("/checklist/:id", async (req, res) => {
       .set(update)
       .where(and(eq(checklistItems.id, id), eq(checklistItems.userId, userId)))
       .returning();
-    if (!updated) { res.status(404).json({ error: "Item not found" }); return; }
+    if (!updated) { res.status(404).json({ error: "Não encontramos esse item. Atualize a página e tente de novo." }); return; }
     res.json(updated);
   } catch (err) {
     if (isUniqueViolation(err)) {
       res.status(409).json({ error: "Esta recomendação já está vinculada a outro item." });
       return;
     }
-    req.log.error({ err }, "Checklist patch error");
-    res.status(500).json({ error: "Internal server error" });
+    req.log.error({ err }, "checklist patch error");
+    res.status(500).json({ error: "Não foi possível atualizar o item agora." });
   }
 });
 
@@ -298,7 +299,7 @@ router.patch("/checklist/:id", async (req, res) => {
 router.delete("/checklist/:id", async (req, res) => {
   const userId = res.locals.userId as string;
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (isNaN(id)) { res.status(400).json({ error: "Item inválido." }); return; }
 
   try {
     const deleted = await db.transaction(async (tx) => {
@@ -314,11 +315,11 @@ router.delete("/checklist/:id", async (req, res) => {
       }
       return item;
     });
-    if (!deleted) { res.status(404).json({ error: "Item not found" }); return; }
+    if (!deleted) { res.status(404).json({ error: "Não encontramos esse item. Atualize a página e tente de novo." }); return; }
     res.status(204).send();
   } catch (err) {
-    console.error("checklist delete error", err);
-    res.status(500).json({ error: "Internal server error" });
+    req.log.error({ err }, "checklist delete error");
+    res.status(500).json({ error: "Não foi possível remover o item agora." });
   }
 });
 
@@ -328,11 +329,11 @@ router.delete("/checklist/:id", async (req, res) => {
 router.patch("/milestones/:id", async (req, res) => {
   const userId = res.locals.userId as string;
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (isNaN(id)) { res.status(400).json({ error: "Item inválido." }); return; }
 
   const parsed = toggleMilestoneSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    res.status(400).json({ error: "Confira os dados informados." });
     return;
   }
   try {
@@ -344,11 +345,11 @@ router.patch("/milestones/:id", async (req, res) => {
       })
       .where(and(eq(milestones.id, id), eq(milestones.userId, userId)))
       .returning();
-    if (!updated) { res.status(404).json({ error: "Milestone not found" }); return; }
+    if (!updated) { res.status(404).json({ error: "Não encontramos esse marco. Atualize a página e tente de novo." }); return; }
     res.json(updated);
   } catch (err) {
-    console.error("milestones patch error", err);
-    res.status(500).json({ error: "Internal server error" });
+    req.log.error({ err }, "milestones patch error");
+    res.status(500).json({ error: "Não foi possível atualizar o marco agora." });
   }
 });
 
@@ -359,7 +360,7 @@ router.put("/budget", async (req, res) => {
   const userId = res.locals.userId as string;
   const parsed = upsertBudgetSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    res.status(400).json({ error: firstIssueMessage(parsed.error) });
     return;
   }
   try {
@@ -380,8 +381,8 @@ router.put("/budget", async (req, res) => {
     });
     res.json(result);
   } catch (err) {
-    console.error("budget put error", err);
-    res.status(500).json({ error: "Internal server error" });
+    req.log.error({ err }, "budget put error");
+    res.status(500).json({ error: "Não foi possível salvar o orçamento agora." });
   }
 });
 
