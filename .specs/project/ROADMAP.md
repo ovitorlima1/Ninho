@@ -19,4 +19,4 @@ Códigos entre parênteses = achados da auditoria.
 - **M-2 — Design system** ✅ 2026-09-16 (fim da Fase 2): zero cores fora de tokens, contraste AA medido em todas as telas. Lighthouse ainda não rodado (Fase 3, com CI).
 - **M-4 — Dados protegidos e sob controle da usuária** ✅ 2026-09-16 (fim da Fase 4): sessões revogáveis,
   limites persistentes, cabeçalhos e CSP, exportação e exclusão de conta.
-- **M-3 — CI obrigatório** (fim da Fase 3): workflow pronto e suíte verde localmente ✅; tornar obrigatório depende do push e da configuração do repositório no GitHub.
+- **M-3 — CI obrigatório** ✅ 2026-09-16: CI verde no GitHub e exigido na `main` (ruleset `main protegida`).

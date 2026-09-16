@@ -32,7 +32,19 @@ no topo do workflow.
 Os `overrides` do `pnpm-workspace.yaml` removem binários de plataforma que não são
 linux-x64/macOS; como o runner é linux-x64, isso não atrapalha.
 
-## Como tornar o CI obrigatório na `main`
+## CI obrigatório na `main` — ativo desde 2026-09-16
+
+Configurado pela API como o ruleset **`main protegida`** (id 23568536, Settings → Rules →
+Rulesets), sem ninguém liberado para contorná-lo:
+
+- merge na `main` só por pull request (sem exigir aprovação: o dono não pode aprovar o próprio PR);
+- `checks` e `e2e` (GitHub Actions) precisam passar, com a branch atualizada em relação à `main`;
+- force push e exclusão da `main` bloqueados.
+
+Consequência: push direto na `main` é recusado — todo trabalho sai de uma branch com PR.
+Para conferir: `gh api repos/ovitorlima1/Ninho/rules/branches/main`.
+
+## Como foi (ou como refazer) pela interface
 
 Só o dono do repositório consegue fazer isso, pela interface do GitHub. Os checks só aparecem
 na lista depois que o workflow rodar pelo menos uma vez (basta um push).

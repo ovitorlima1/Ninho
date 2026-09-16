@@ -21,6 +21,7 @@
 | 2026-09-16 | Sessões registradas (`auth_sessions`): "sair" encerra só o aparelho; "sair de todos" e a redefinição de senha revogam tudo. Tokens antigos (sem `sid`) deixam de valer no deploy. | Escolha do usuário (M10). |
 | 2026-09-16 | Exclusão de conta imediata, com senha e a palavra EXCLUIR, numa transação sobre as 9 tabelas (sem FKs); exportação em JSON sem o token do link. | Escolha do usuário (LGPD). |
 | 2026-09-16 | Limites de tentativa no Postgres (`auth_attempts`), chaves = escopo + HMAC; o global setup do E2E zera a tabela. Cabeçalhos por middleware próprio (sem helmet); CSP do front por `<meta>`, só no build. | Fase 4 (A9, M10). |
+| 2026-09-16 | `main` protegida por ruleset: só PR, `checks` e `e2e` verdes com a branch em dia, sem force push nem exclusão, sem exceção para admin. | Pedido do usuário (M-3). |
 | 2026-09-16 | O login não usa mais `login-pregnancy.png`: era a captura de um projeto de terceiros ("Pregnancy Tracker Logo", com a marca de outro produto). O arquivo continua em `public/`, sem uso. | Risco de direito de uso e de marca. |
 
 ## Bloqueios
@@ -53,7 +54,7 @@
 - [x] Atualizar `replit.md` com a nova regra de "investido" (feito na Fase 0).
 - [ ] O catálogo de inspirações vence em 2026-12-10; o teste começa a falhar em 2026-11-26 pedindo revisão.
 - [ ] Conta de teste local `qa-ninho@teste.local` pode ser apagada do banco de dev quando não for mais útil.
-- [ ] Fases 0–4 estão na branch `fase-0-correcoes-urgentes` (35+ commits), sem merge e sem push. O CI só roda depois do push.
+- [x] Fases 0–4 na `main` (PR #1); actions em Node 24 (PR #2); CI obrigatório na `main` pelo ruleset `main protegida` (2026-09-16).
 - [ ] Deploy da Fase 4: `db push` em produção (2 tabelas novas); todos precisarão entrar de novo; conferir `ALLOWED_ORIGINS` se houver outro domínio.
 - [ ] Política de privacidade e termos de uso (texto jurídico) — decisão do dono.
 - [ ] Ajustes pequenos vistos na divisão: plural "que já está" no modal de inspiração; iniciais do avatar do perfil diferentes das do topo; "gerar novo link" usa o mesmo handler de criar.

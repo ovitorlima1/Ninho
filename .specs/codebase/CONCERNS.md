@@ -59,8 +59,8 @@ Resíduos frágeis dos resolvidos:
   a partir de **2026-11-26** e derruba `pnpm test` e o CI até a curadoria ser renovada.
 - **A11:** `features/workspace/use-workspace.ts` tem 446 linhas (hook com todas as mutations) —
   candidato a dividir se crescer. CSS continua global por classe (`styles/components.css`, 1.387 linhas).
-- **A12:** o CI (`.github/workflows/ci.yml`) **nunca rodou** — nada foi enviado ao GitHub — e ainda
-  não é obrigatório na `main` (passo a passo em `.specs/features/fase-3-base-tecnica/ci.md`).
+- **A12:** o CI roda no GitHub desde 2026-09-16 e é obrigatório na `main` (ruleset
+  `main protegida`, detalhes em `.specs/features/fase-3-base-tecnica/ci.md`).
 
 ## Parciais
 
