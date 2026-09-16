@@ -27,11 +27,11 @@ test("marcar um item faz só o PATCH, sem recarregar o workspace", async ({ page
   const patch = page.waitForResponse((response) =>
     response.url().includes("/api/me/checklist/") && response.request().method() === "PATCH");
 
-  await itemRow(page, "Toalha com capuz").getByRole("radio", { name: "comprei" }).click();
+  await itemRow(page, "Cueiro leve").getByRole("radio", { name: "comprei" }).click();
   expect((await patch).ok()).toBe(true);
   await page.waitForLoadState("networkidle");
   expect(workspaceReads).toEqual([]);
-  await expect(itemRow(page, "Toalha com capuz").getByRole("radio", { name: "comprei" })).toHaveAttribute("aria-checked", "true");
+  await expect(itemRow(page, "Cueiro leve").getByRole("radio", { name: "comprei" })).toHaveAttribute("aria-checked", "true");
 });
 
 test("adicionar item com quantidade e preço digitados tecla a tecla", async ({ page }) => {
