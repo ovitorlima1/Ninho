@@ -1,3 +1,7 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Ninho: um ovo acolhido por um ninho trançado, na paleta do PRD (vinho, ivory, sage). -->
+  <rect width="128" height="128" rx="32" fill="#7A2E3B"/>
+  <ellipse cx="64" cy="55" rx="15" ry="19" fill="#F7F2EA"/>
+  <path d="M26 66c4 21 19 34 38 34s34-13 38-34" stroke="#F7F2EA" stroke-width="8" stroke-linecap="round"/>
+  <path d="M36 80c9 5 18 7 28 7s19-2 28-7" stroke="#B7C9B6" stroke-width="5" stroke-linecap="round"/>
 </svg>

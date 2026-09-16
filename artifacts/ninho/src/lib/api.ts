@@ -112,6 +112,22 @@ export async function logout(): Promise<void> {
   return customFetch<void>(`${AUTH_API}/logout`, { method: "POST" });
 }
 
+/** Encerra a conta em todos os aparelhos, inclusive este. */
+export async function logoutEverywhere(): Promise<void> {
+  return customFetch<void>(`${API}/sessions/revoke-all`, { method: "POST" });
+}
+
+/** Arquivo JSON com todos os dados da conta (baixado por link, com o cookie). */
+export const EXPORT_DATA_URL = `${API}/export`;
+
+/** Exclui a conta na hora. Exige a senha e a palavra EXCLUIR. */
+export async function deleteAccount(data: { password: string; confirmation: string }): Promise<void> {
+  return customFetch<void>(`${API}/account`, {
+    method: "DELETE",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function requestPasswordReset(data: { email: string }): Promise<{ message: string }> {
   return customFetch<{ message: string }>(`${AUTH_API}/password-reset/request`, {
     method: "POST",

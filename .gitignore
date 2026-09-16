@@ -37,6 +37,10 @@ yarn-error.log
 testem.log
 /typings
 
+# Local environment
+.env
+.env.local
+
 # System Files
 .DS_Store
 Thumbs.db
@@ -47,3 +51,8 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/

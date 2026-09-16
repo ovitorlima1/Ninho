@@ -1,0 +1,84 @@
+/* Base: reset, tipografia, foco e movimento. Só tokens — nenhuma cor literal. */
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  html, body, #root { min-height: 100%; }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    color: var(--color-ink);
+    background: var(--color-bg);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: var(--leading-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    margin: 0;
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: var(--leading-tight);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  p { margin: 0; }
+
+  a { color: var(--color-brand); text-underline-offset: 3px; }
+
+  button, input, select, textarea {
+    color: inherit;
+    font: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+
+  /* 16px em todo campo: abaixo disso o iOS dá zoom ao focar (Fase 0). */
+  input, textarea, select { font-size: var(--text-base); }
+
+  img { max-width: 100%; display: block; }
+
+  svg { flex: none; }
+
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  ::placeholder { color: var(--color-ink-muted); opacity: 1; }
+
+  ::selection { color: var(--color-on-brand); background: var(--color-brand); }
+
+  .ninho-app { min-height: 100dvh; }
+
+  /* Utilitário ainda usado pelo botão "voltar" do onboarding. */
+  .rotate-180 { transform: rotate(180deg); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* Só deslocamento: o conteúdo nunca fica invisível esperando a animação. */
+  @keyframes rise {
+    from { transform: translateY(6px); }
+    to { transform: none; }
+  }
+
+  /* Movimento reduzido: o único uso aceito de !important (spec F2-R4). */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

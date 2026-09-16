@@ -1,7 +1,7 @@
 import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
@@ -19,6 +19,10 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+// Outside Replit there is no shared proxy routing /api to the API server, so
+// local development forwards it explicitly (e.g. http://localhost:8787).
+const apiProxyTarget = process.env.API_PROXY_TARGET;
+
 const basePath = process.env.BASE_PATH;
 
 if (!basePath) {
@@ -27,10 +31,44 @@ if (!basePath) {
   );
 }
 
+// Política de conteúdo da página. O app é servido como estático (sem
+// cabeçalhos próprios), então ela vai por <meta>; `frame-ancestors` não
+// funciona assim. Só entra no build: o Vite de desenvolvimento injeta
+// scripts inline para o HMR.
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ');
+
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'ninho-content-security-policy',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler: () => [
+        {
+          tag: 'meta',
+          attrs: { 'http-equiv': 'Content-Security-Policy', content: CONTENT_SECURITY_POLICY },
+          injectTo: 'head-prepend',
+        },
+      ],
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
+    contentSecurityPolicy(),
     tailwindcss({ optimize: false }),
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== 'production' &&
@@ -72,10 +110,17 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    ...(apiProxyTarget
+      ? { proxy: { '/api': { target: apiProxyTarget, changeOrigin: true } } }
+      : {}),
   },
   preview: {
     port,
     host: '0.0.0.0',
     allowedHosts: true,
+    // Permite conferir o build (com a CSP) contra a API local.
+    ...(apiProxyTarget
+      ? { proxy: { '/api': { target: apiProxyTarget, changeOrigin: true } } }
+      : {}),
   },
 });

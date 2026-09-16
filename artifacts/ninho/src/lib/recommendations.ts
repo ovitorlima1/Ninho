@@ -14,8 +14,6 @@ export type Recommendation = {
   reviewedAt: ReviewDate;
   expiresAt: ReviewDate;
   visibility: RecommendationVisibility;
-  image: string;
-  imagePosition?: string;
   featured?: boolean;
 };
 
@@ -42,11 +40,9 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     price: null,
     store: "Amazon",
     url: searchLink("kit body bebê algodão manga curta"),
-    reviewedAt: "2026-08-25",
-    expiresAt: "2026-09-24",
+    reviewedAt: "2026-09-11",
+    expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/quarto-bebe.jpg",
-    imagePosition: "center 64%",
     featured: true,
   },
   {
@@ -58,11 +54,9 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     price: null,
     store: "Amazon",
     url: searchLink("cueiro musselina bebê kit"),
-    reviewedAt: "2026-08-25",
-    expiresAt: "2026-09-24",
+    reviewedAt: "2026-09-11",
+    expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/berco-bebe.jpg",
-    imagePosition: "center 42%",
   },
   {
     id: "kit-higiene",
@@ -73,11 +67,9 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     price: null,
     store: "Amazon",
     url: searchLink("kit higiene bebê cuidados recém nascido"),
-    reviewedAt: "2026-08-25",
-    expiresAt: "2026-09-24",
+    reviewedAt: "2026-09-11",
+    expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/quarto-bebe.jpg",
-    imagePosition: "center 32%",
     featured: true,
   },
   {
@@ -89,11 +81,9 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     price: null,
     store: "Amazon",
     url: searchLink("toalha bebê com capuz algodão"),
-    reviewedAt: "2026-08-25",
-    expiresAt: "2026-09-24",
+    reviewedAt: "2026-09-11",
+    expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/berco-bebe.jpg",
-    imagePosition: "center 70%",
   },
   {
     id: "mamadeira-anticolica",
@@ -104,11 +94,9 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     price: null,
     store: "Amazon",
     url: searchLink("mamadeira anticólica recém nascido"),
-    reviewedAt: "2026-08-25",
-    expiresAt: "2026-09-24",
+    reviewedAt: "2026-09-11",
+    expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/quarto-bebe.jpg",
-    imagePosition: "right 56%",
     featured: true,
   },
   {
@@ -120,11 +108,9 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     price: null,
     store: "Amazon",
     url: searchLink("kit babador bebê bandana algodão"),
-    reviewedAt: "2026-08-25",
-    expiresAt: "2026-09-24",
+    reviewedAt: "2026-09-11",
+    expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/berco-bebe.jpg",
-    imagePosition: "left 54%",
   },
   {
     id: "bolsa-maternidade",
@@ -135,11 +121,9 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     price: null,
     store: "Amazon",
     url: searchLink("bolsa maternidade mochila compartimentos"),
-    reviewedAt: "2026-08-25",
-    expiresAt: "2026-09-24",
+    reviewedAt: "2026-09-11",
+    expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/quarto-bebe.jpg",
-    imagePosition: "center 48%",
     featured: true,
   },
   {
@@ -151,11 +135,9 @@ export const RECOMMENDATION_CATALOG: readonly Recommendation[] = [
     price: null,
     store: "Amazon",
     url: searchLink("organizador fraldas bebê bolsa"),
-    reviewedAt: "2026-08-25",
-    expiresAt: "2026-09-24",
+    reviewedAt: "2026-09-11",
+    expiresAt: "2026-12-10",
     visibility: "visible",
-    image: "/images/berco-bebe.jpg",
-    imagePosition: "center 35%",
   },
 ];
 
@@ -202,6 +184,12 @@ export function getVisibleRecommendations(
   return catalog.filter((recommendation) => isRecommendationAvailable(recommendation, now));
 }
 
+/**
+ * Teto do agendamento: `setTimeout` só aceita até 2^31-1 ms, e expirações
+ * distantes estouravam esse limite fazendo a vitrine re-renderizar em loop.
+ */
+export const MAX_RECOMMENDATION_REFRESH_DELAY_MS = 60 * 60 * 1000;
+
 export function getNextRecommendationRefreshDelay(
   now = new Date(),
   catalog: readonly Recommendation[] = RECOMMENDATION_CATALOG,
@@ -212,9 +200,12 @@ export function getNextRecommendationRefreshDelay(
     .filter((expiresAt): expiresAt is number => expiresAt !== undefined && expiresAt >= now.getTime())
     .sort((first, second) => first - second)[0];
 
-  return nextExpiration === undefined
-    ? 60 * 60 * 1000
-    : Math.max(1, nextExpiration - now.getTime() + 1);
+  if (nextExpiration === undefined) return MAX_RECOMMENDATION_REFRESH_DELAY_MS;
+
+  return Math.min(
+    MAX_RECOMMENDATION_REFRESH_DELAY_MS,
+    Math.max(1, nextExpiration - now.getTime() + 1),
+  );
 }
 
 /** Snapshot compatível para consumidores que só precisam do catálogo atual. */
