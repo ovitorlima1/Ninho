@@ -1,20 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { createRequire } from "node:module";
-import path from "node:path";
+import { Client, repoRoot, withTestDb } from "./db";
 import { assertTestDatabase, E2E_DATABASE_URL } from "./env";
 
-const repoRoot = path.resolve(import.meta.dirname, "../../..");
-
-// `pg` é dependência do pacote de banco; é de lá que ele é resolvido.
-const requireFromDb = createRequire(path.join(repoRoot, "lib/db/package.json"));
-type PgClient = {
-  connect(): Promise<void>;
-  query(sql: string, params?: unknown[]): Promise<{ rowCount: number | null }>;
-  end(): Promise<void>;
-};
-const { Client } = requireFromDb("pg") as { Client: new (config: { connectionString: string }) => PgClient };
-
-/** Cria o banco de teste se faltar e aplica o schema atual. */
+/** Cria o banco de teste se faltar, aplica o schema atual e zera os limites. */
 export default async function globalSetup(): Promise<void> {
   const target = assertTestDatabase(E2E_DATABASE_URL);
   const databaseName = target.pathname.replace(/^\//, "");
@@ -38,4 +26,7 @@ export default async function globalSetup(): Promise<void> {
     env: { ...process.env, DATABASE_URL: E2E_DATABASE_URL },
     stdio: "pipe",
   });
+
+  // Os limites de tentativa ficam no banco e sobreviveriam entre execuções.
+  await withTestDb((db) => db.query("TRUNCATE auth_attempts"));
 }

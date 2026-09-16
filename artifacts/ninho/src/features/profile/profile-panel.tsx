@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { ArrowUpRight, CalendarDays, Check, CheckCircle2, LogOut, Star } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { logout, type ServerGiftShare, type ServerProfile, type UpdateProfileInput } from "@/lib/api";
+import { ArrowUpRight, CalendarDays, Check, CheckCircle2, Star } from "lucide-react";
+import { type ServerGiftShare, type ServerProfile, type UpdateProfileInput } from "@/lib/api";
 import { calcGestation, formatGestation, getDueDateBounds, validateDueDate } from "@/lib/gestation";
 import { GiftShareCard } from "@/features/profile/gift-share-card";
+import { AccountSection } from "@/features/profile/account-section";
 
 export function ProfilePanel({
   profile, onSave, saveState, saveError, share, onCreateShare, onRevokeShare, shareLoading, shareError,
@@ -27,8 +26,6 @@ export function ProfilePanel({
   const [hospital, setHospital] = useState(profile.hospital || "");
   const [supportPerson, setSupportPerson] = useState(profile.supportPerson || "");
   const [personalNotes, setPersonalNotes] = useState(profile.personalNotes || "");
-  const qc = useQueryClient();
-  const [, setLocation] = useLocation();
 
   // Sem effect de sincronia: o Workspace remonta este painel (key) quando o perfil salvo muda.
   // Os campos ficam sempre abertos: o lápis de 28px escondia a edição inteira
@@ -160,22 +157,7 @@ export function ProfilePanel({
         isLoading={shareLoading}
         error={shareError}
       />
-      <button
-        type="button"
-        className="soft-action"
-        style={{ marginTop: 16, justifyContent: "center", gap: 8 }}
-        onClick={async () => {
-          try {
-            await logout();
-          } finally {
-            qc.clear();
-            setLocation("/sign-in");
-          }
-        }}
-        data-testid="button-profile-sign-out"
-      >
-        <LogOut size={14} /> sair da conta
-      </button>
+      <AccountSection />
       {/* O cartão inteiro é o link: antes só o texto (19px de altura) era clicável. */}
       <a className="soft-action feedback-link" href="https://forms.gle/ninho-feedback" target="_blank" rel="noopener noreferrer">
         <Star size={16} aria-hidden />

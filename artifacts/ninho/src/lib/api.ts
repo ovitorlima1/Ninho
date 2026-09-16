@@ -112,6 +112,11 @@ export async function logout(): Promise<void> {
   return customFetch<void>(`${AUTH_API}/logout`, { method: "POST" });
 }
 
+/** Encerra a conta em todos os aparelhos, inclusive este. */
+export async function logoutEverywhere(): Promise<void> {
+  return customFetch<void>(`${API}/sessions/revoke-all`, { method: "POST" });
+}
+
 export async function requestPasswordReset(data: { email: string }): Promise<{ message: string }> {
   return customFetch<{ message: string }>(`${AUTH_API}/password-reset/request`, {
     method: "POST",

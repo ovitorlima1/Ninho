@@ -65,18 +65,17 @@ export async function initializeUser(userId: string): Promise<{
     }
 
     // New user: seed all default data inside the same transaction so the
-    // data is visible atomically once the transaction commits.
-    await Promise.all([
-      tx.insert(checklistItems).values(
-        DEFAULT_ITEMS.map((item) => ({ ...item, userId })),
-      ),
-      tx.insert(milestones).values(
-        DEFAULT_MILESTONES.map((m) => ({ ...m, userId, completed: false })),
-      ),
-      tx.insert(budgetCategories).values(
-        DEFAULT_BUDGET.map((b) => ({ ...b, userId })),
-      ),
-    ]);
+    // data is visible atomically once the transaction commits. A transaction
+    // is a single connection, so the inserts run one after the other.
+    await tx.insert(checklistItems).values(
+      DEFAULT_ITEMS.map((item) => ({ ...item, userId })),
+    );
+    await tx.insert(milestones).values(
+      DEFAULT_MILESTONES.map((m) => ({ ...m, userId, completed: false })),
+    );
+    await tx.insert(budgetCategories).values(
+      DEFAULT_BUDGET.map((b) => ({ ...b, userId })),
+    );
 
     return { profile: inserted, isNew: true };
   });

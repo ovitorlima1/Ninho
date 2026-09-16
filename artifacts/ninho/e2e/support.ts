@@ -24,7 +24,7 @@ export function isoDaysFromToday(days: number): string {
  * proxy local (o Vite, neste caso), então cada conta de teste conta como um
  * visitante diferente e o limite de cadastros por IP não interfere.
  */
-function randomClientIp(): string {
+export function randomClientIp(): string {
   const n = () => Math.floor(Math.random() * 250) + 1;
   return `10.${n()}.${n()}.${n()}`;
 }

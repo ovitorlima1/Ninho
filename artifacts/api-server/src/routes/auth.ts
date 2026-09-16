@@ -1,17 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
-import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { authUsers, passwordResetTokens } from "@workspace/db/schema";
 import {
-  createSessionToken,
   expiredSessionCookie,
   hashPassword,
-  SESSION_COOKIE,
   sessionCookie,
   verifyPassword,
-  parseCookieHeader,
-  verifySessionToken,
   createPasswordResetToken,
   hashPasswordResetToken,
   authAttemptLimiter,
@@ -20,6 +16,7 @@ import {
 } from "../lib/auth";
 import { sendPasswordResetEmail } from "../lib/email";
 import { initializeUser } from "../lib/seed";
+import { createSession, resolveSession, revokeAllSessions, revokeCurrentSession } from "../lib/sessions";
 
 const router = Router();
 
@@ -155,7 +152,7 @@ router.post("/register", async (req, res) => {
       req.log.error({ err }, "workspace initialization at registration failed");
     }
 
-    res.append("Set-Cookie", sessionCookie(createSessionToken(user.id, user.sessionVersion)));
+    res.append("Set-Cookie", sessionCookie(await createSession(user.id, user.sessionVersion)));
     res.status(201).json({ user: publicUser(user) });
   } catch (err) {
     authAttemptLimiter.release(attemptKeys);
@@ -189,7 +186,7 @@ router.post("/login", async (req, res) => {
     }
 
     authAttemptLimiter.release(attemptKeys);
-    res.append("Set-Cookie", sessionCookie(createSessionToken(user.id, user.sessionVersion)));
+    res.append("Set-Cookie", sessionCookie(await createSession(user.id, user.sessionVersion)));
     res.json({ user: publicUser(user) });
   } catch (err) {
     authAttemptLimiter.release(attemptKeys);
@@ -200,17 +197,13 @@ router.post("/login", async (req, res) => {
 
 /** GET /api/auth/session — returns null instead of throwing for visitors. */
 router.get("/session", async (req, res) => {
-  const token = parseCookieHeader(req.headers.cookie, SESSION_COOKIE);
-  const claims = token ? verifySessionToken(token) : null;
-  if (!claims) {
-    res.json({ user: null });
-    return;
-  }
-
   try {
-    const [user] = await db.select().from(authUsers).where(eq(authUsers.id, claims.userId));
-    if (!user || user.sessionVersion !== claims.sessionVersion) {
-      res.append("Set-Cookie", expiredSessionCookie());
+    const session = await resolveSession(req);
+    const [user] = session
+      ? await db.select().from(authUsers).where(eq(authUsers.id, session.userId))
+      : [];
+    if (!user) {
+      if (req.headers.cookie) res.append("Set-Cookie", expiredSessionCookie());
       res.json({ user: null });
       return;
     }
@@ -319,12 +312,10 @@ router.post("/password-reset/complete", async (req, res) => {
 
       await tx
         .update(authUsers)
-        .set({
-          passwordHash: await hashPassword(password),
-          sessionVersion: sql`${authUsers.sessionVersion} + 1`,
-          updatedAt: now,
-        })
+        .set({ passwordHash: await hashPassword(password), updatedAt: now })
         .where(eq(authUsers.id, user.id));
+      // A senha mudou: todo aparelho conectado precisa entrar de novo.
+      await revokeAllSessions(user.id, tx);
       await tx
         .update(passwordResetTokens)
         .set({ usedAt: now })
@@ -344,8 +335,15 @@ router.post("/password-reset/complete", async (req, res) => {
   }
 });
 
-/** POST /api/auth/logout — clears the browser session cookie. */
-router.post("/logout", (_req, res) => {
+/** POST /api/auth/logout — revoga a sessão deste aparelho e limpa o cookie. */
+router.post("/logout", async (req, res) => {
+  try {
+    await revokeCurrentSession(req);
+  } catch (err) {
+    req.log.error({ err }, "logout revocation error");
+    res.status(500).json({ error: "Não foi possível sair agora. Tente novamente." });
+    return;
+  }
   res.append("Set-Cookie", expiredSessionCookie());
   res.status(204).send();
 });

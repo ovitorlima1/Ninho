@@ -7,7 +7,7 @@ import {
 } from "node:crypto";
 
 const JWT_ALGORITHM = "HS256";
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 const SCRYPT_KEY_LENGTH = 64;
 const AUTH_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_ATTEMPT_BLOCK_MS = 15 * 60 * 1000;
@@ -178,6 +178,7 @@ export const passwordResetOriginLimiter = new AuthAttemptLimiter({
 
 type JwtPayload = {
   sub: string;
+  sid: string;
   sv: number;
   iat: number;
   exp: number;
@@ -185,6 +186,7 @@ type JwtPayload = {
 
 export type SessionClaims = {
   userId: string;
+  sessionId: string;
   sessionVersion: number;
 };
 
@@ -238,11 +240,12 @@ export async function verifyPassword(password: string, storedHash: string): Prom
   }
 }
 
-export function createSessionToken(userId: string, sessionVersion = 0): string {
+export function createSessionToken(userId: string, sessionId: string, sessionVersion = 0): string {
   const now = Math.floor(Date.now() / 1000);
   const header = base64Url(JSON.stringify({ alg: JWT_ALGORITHM, typ: "JWT" }));
   const payload = base64Url(JSON.stringify({
     sub: userId,
+    sid: sessionId,
     sv: sessionVersion,
     iat: now,
     exp: now + SESSION_TTL_SECONDS,
@@ -260,13 +263,15 @@ export function verifySessionToken(token: string): SessionClaims | null {
     const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as Partial<JwtPayload>;
     if (header.alg !== JWT_ALGORITHM || header.typ !== "JWT") return null;
     if (!payload.sub || typeof payload.sub !== "string" || typeof payload.exp !== "number") return null;
+    // Tokens anteriores às sessões registradas não têm `sid` e deixam de valer.
+    if (!payload.sid || typeof payload.sid !== "string") return null;
     const sessionVersion = typeof payload.sv === "number" && Number.isInteger(payload.sv) ? payload.sv : 0;
     if (payload.exp <= Math.floor(Date.now() / 1000)) return null;
 
     const expected = Buffer.from(sign(`${encodedHeader}.${encodedPayload}`));
     const received = Buffer.from(signature);
     if (expected.length !== received.length || !timingSafeEqual(expected, received)) return null;
-    return { userId: payload.sub, sessionVersion };
+    return { userId: payload.sub, sessionId: payload.sid, sessionVersion };
   } catch {
     return null;
   }
@@ -280,6 +285,10 @@ export function createPasswordResetToken(): { token: string; tokenHash: string }
 
 export function hashPasswordResetToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+export function createSessionId(): string {
+  return randomBytes(32).toString("base64url");
 }
 
 export const SESSION_COOKIE = "ninho_session";
