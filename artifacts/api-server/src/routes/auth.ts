@@ -29,7 +29,12 @@ const GENERIC_RESET_MESSAGE = "Se houver uma conta com este e-mail, enviaremos u
 const AUTH_RATE_LIMIT_MESSAGE = "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.";
 const PASSWORD_RESET_RATE_LIMIT_MESSAGE = "Muitos pedidos de redefinição de senha. Aguarde uma hora antes de tentar novamente.";
 
-function validateCredentials(body: unknown): { data: Credentials } | { error: string } {
+/**
+ * No cadastro a senha precisa ter 8+ caracteres. No login não: recusar ali uma
+ * senha curta com essa mensagem vazaria a regra e confundiria contas antigas —
+ * o login responde sempre com a mensagem genérica de credenciais inválidas.
+ */
+function validateCredentials(body: unknown, mode: "register" | "login"): { data: Credentials } | { error: string } {
   if (!body || typeof body !== "object") return { error: "Confira os dados informados." };
   const values = body as Record<string, unknown>;
   const email = typeof values.email === "string" ? values.email.trim().toLowerCase() : "";
@@ -37,7 +42,8 @@ function validateCredentials(body: unknown): { data: Credentials } | { error: st
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) {
     return { error: "Digite um e-mail válido." };
   }
-  if (password.length < 8) return { error: "A senha precisa ter pelo menos 8 caracteres." };
+  if (mode === "login" && password.length === 0) return { error: "Digite sua senha." };
+  if (mode === "register" && password.length < 8) return { error: "A senha precisa ter pelo menos 8 caracteres." };
   if (password.length > 128) return { error: "A senha deve ter no máximo 128 caracteres." };
   return { data: { email, password } };
 }
@@ -109,7 +115,7 @@ async function waitForMinimumResponseTime(startedAt: number): Promise<void> {
 
 /** POST /api/auth/register — creates a new Ninho account and its session. */
 router.post("/register", async (req, res) => {
-  const validated = validateCredentials(req.body);
+  const validated = validateCredentials(req.body, "register");
   if ("error" in validated) {
     res.status(400).json({ error: validated.error });
     return;
@@ -151,7 +157,7 @@ router.post("/register", async (req, res) => {
 
 /** POST /api/auth/login — authenticates with a generic failure message. */
 router.post("/login", async (req, res) => {
-  const validated = validateCredentials(req.body);
+  const validated = validateCredentials(req.body, "login");
   if ("error" in validated) {
     res.status(400).json({ error: validated.error });
     return;

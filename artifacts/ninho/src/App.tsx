@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type InputHTMLAttributes, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { Redirect, Route, Router as WouterRouter, Switch, useLocation, useRoute } from "wouter";
 import {
   Activity,
@@ -175,7 +175,13 @@ const queryClient: QueryClient = new QueryClient({
     },
   },
   queryCache: new QueryCache({ onError: (error) => handleExpiredSession(queryClient, error) }),
-  mutationCache: new MutationCache({ onError: (error) => handleExpiredSession(queryClient, error) }),
+  // Login e cadastro respondem 401 para senha errada: isso não é sessão expirada.
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      if (mutation.meta?.authFlow) return;
+      handleExpiredSession(queryClient, error);
+    },
+  }),
 });
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -1257,14 +1263,13 @@ function BudgetPanel({
               </span>
               <span className="price-input budget-price-input">
                 <span aria-hidden>R$</span>
-                <input
+                <DraftNumberInput
                   inputMode="decimal"
-                  value={formatPriceInput(plannedHere)}
+                  value={plannedHere}
+                  parse={parsePriceInput}
+                  format={formatPriceInput}
                   aria-label={`Orçamento planejado para ${cat}, em reais`}
-                  onChange={(e) => {
-                    const parsed = parsePriceInput(e.target.value);
-                    if (parsed !== null) handleChange(cat, parsed);
-                  }}
+                  onChange={(planned) => handleChange(cat, planned)}
                   disabled={saveState === "saving"}
                   placeholder="0,00"
                   data-testid={`input-phone-budget-${cat.toLowerCase()}`}
@@ -1863,6 +1868,54 @@ function formatPriceInput(price: number): string {
   return price > 0 ? price.toFixed(2).replace(".", ",") : "";
 }
 
+/**
+ * Campo numérico que guarda o texto enquanto a pessoa digita e só normaliza ao
+ * sair do campo. Reformatar a cada tecla transformava "45,90" em "4,02" e
+ * impedia apagar a quantidade para digitar outra.
+ */
+function DraftNumberInput({
+  value, onChange, parse, format, ...rest
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  parse: (text: string) => number | null;
+  format: (value: number) => string;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
+  const [text, setText] = useState(() => format(value));
+  const [lastValue, setLastValue] = useState(value);
+  // Mudança vinda de fora (ex.: valores salvos recarregados): mostra o novo valor.
+  if (value !== lastValue) {
+    setLastValue(value);
+    if (parse(text) !== value) setText(format(value));
+  }
+  const invalid = text.trim() !== "" && parse(text) === null;
+  return (
+    <input
+      {...rest}
+      value={text}
+      aria-invalid={invalid || rest["aria-invalid"] ? true : undefined}
+      onChange={(event) => {
+        setText(event.target.value);
+        const parsed = parse(event.target.value);
+        if (parsed !== null) {
+          setLastValue(parsed);
+          onChange(parsed);
+        }
+      }}
+      onBlur={(event) => {
+        setText(format(parse(text) ?? value));
+        rest.onBlur?.(event);
+      }}
+    />
+  );
+}
+
+function parseQtyInput(text: string): number | null {
+  if (!/^\d{1,3}$/.test(text.trim())) return null;
+  const qty = Number(text.trim());
+  return qty >= 1 && qty <= 999 ? qty : null;
+}
+
 /** Campos compartilhados por adicionar e editar item. */
 function ItemFields({
   values, onChange, priceError,
@@ -1891,13 +1944,12 @@ function ItemFields({
       <div className="item-form-row">
         <label className="modal-label">
           QUANTIDADE
-          <input
-            type="number"
-            min={1}
-            max={999}
+          <DraftNumberInput
             inputMode="numeric"
             value={values.qty}
-            onChange={(event) => onChange({ ...values, qty: Math.max(1, Math.min(999, Number(event.target.value) || 1)) })}
+            parse={parseQtyInput}
+            format={String}
+            onChange={(qty) => onChange({ ...values, qty })}
             data-testid="input-item-qty"
           />
         </label>
@@ -1905,15 +1957,14 @@ function ItemFields({
           PREÇO POR UNIDADE
           <span className="price-input">
             <span aria-hidden>R$</span>
-            <input
+            <DraftNumberInput
               inputMode="decimal"
-              value={formatPriceInput(values.price)}
+              value={values.price}
+              parse={parsePriceInput}
+              format={formatPriceInput}
               aria-invalid={priceError ? true : undefined}
               aria-describedby={priceError ? "item-price-error" : undefined}
-              onChange={(event) => {
-                const parsed = parsePriceInput(event.target.value);
-                onChange({ ...values, price: parsed ?? values.price });
-              }}
+              onChange={(price) => onChange({ ...values, price })}
               placeholder="0,00"
               data-testid="input-item-price"
             />
@@ -2593,6 +2644,7 @@ function AuthPage({ mode }: { mode: AuthMode }) {
   const sessionExpired = !isSignup && new URLSearchParams(window.location.search).get("expirou") === "1";
   const mutation = useMutation({
     mutationFn: () => isSignup ? register({ email, password }) : login({ email, password }),
+    meta: { authFlow: true },
     onSuccess: (session) => {
       qc.clear();
       qc.setQueryData<AuthSession>(["auth-session"], session);

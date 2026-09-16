@@ -49,6 +49,11 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       ...jsxA11y.flatConfigs.recommended.rules,
+      // Componentes do app que renderizam um <input> por dentro.
+      "jsx-a11y/label-has-associated-control": ["error", {
+        controlComponents: ["DraftNumberInput", "PasswordField"],
+        depth: 3,
+      }],
     },
   },
 );
