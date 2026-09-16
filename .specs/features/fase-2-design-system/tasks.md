@@ -45,13 +45,22 @@ Tudo passa por `App.tsx` e `index.css`: execução sequencial no contexto princi
 - **What:** os 7 critérios de aceite; gates; SUMMARY, STATE, ROADMAP; atualizar `replit.md` (design system).
 - **Commit:** `docs: fecha Fase 2`
 
+## Desvios da execução
+
+- **T4 foi feito antes do T3:** o novo markup da Visão geral e da fita métrica eliminava várias
+  classes; escrever o CSS antes seria estilizar componentes que iam sair.
+- **T3, T4 e T5 saíram num commit só (567c9d4):** as mudanças caíram nos mesmos trechos de
+  `App.tsx` e `components.css`, e separar exigiria patches parciais frágeis.
+- **Fora do plano:** a foto do login (`login-pregnancy.png`) era a captura de um projeto de
+  terceiros; foi trocada por um painel com a identidade do Ninho (ver STATE.md).
+
 ## Status
 
 | Tarefa | Status | Commit |
 |---|---|---|
-| T1 | pendente | |
-| T2 | pendente | |
-| T3 | pendente | |
-| T4 | pendente | |
-| T5 | pendente | |
-| T6 | pendente | |
+| T1 | concluído | 50b6169 |
+| T2 | concluído | 109de56 |
+| T3 | concluído | 567c9d4 |
+| T4 | concluído | 567c9d4 |
+| T5 | concluído | 567c9d4 |
+| T6 | concluído | (este commit) |

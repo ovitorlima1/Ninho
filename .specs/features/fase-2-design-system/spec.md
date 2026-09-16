@@ -89,9 +89,9 @@ apoio e do botão principal está abaixo de AA.
 
 | Requisito | Tarefa | Status |
 |---|---|---|
-| F2-R16, R17 | T1 | pendente |
-| F2-R10, R11, R13 | T2 | pendente |
-| F2-R1–R6, R9, R12 | T3 | pendente |
-| F2-R7, R14, R15 | T4 | pendente |
-| F2-R8 | T5 | pendente |
-| — | T6 (validação) | pendente |
+| F2-R16, R17 | T1 | concluído (50b6169, 567c9d4) |
+| F2-R10, R11, R13 | T2 | concluído (109de56) |
+| F2-R1–R6, R9, R12 | T3 | concluído (567c9d4) |
+| F2-R7, R14, R15 | T4 | concluído (567c9d4; R15 em 109de56) |
+| F2-R8 | T5 | concluído (567c9d4) |
+| — | T6 (validação) | concluído (este commit) |

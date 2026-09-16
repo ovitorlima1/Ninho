@@ -27,9 +27,11 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 
 ## Where things live
 
-- `artifacts/ninho/src/App.tsx` — toda a aplicação frontend (componentes, roteamento, hooks)
+- `artifacts/ninho/src/App.tsx` — toda a aplicação frontend (componentes, roteamento, hooks); `AppShell` + `NAV_ITEMS` definem os cinco destinos (Início, Lista, Marcos, Orçamento, Perfil)
 - `artifacts/ninho/src/lib/api.ts` — cliente tipado para a API REST
-- `artifacts/ninho/src/index.css` — estilos globais e design system
+- `artifacts/ninho/src/index.css` — só importa as camadas de estilo, em ordem
+- `artifacts/ninho/src/styles/tokens.css` — design system (única fonte de cor, tipo, espaço, raio, sombra e movimento; identidade do PRD: ivory, sage, vinho, Fraunces + Karla)
+- `artifacts/ninho/src/styles/{base,components,layout}.css` — reset e tipografia, um bloco por componente, casca e pontos de quebra (600 e 900px)
 - `artifacts/api-server/src/routes/me.ts` — todas as rotas autenticadas `/api/me/*`
 - `artifacts/api-server/src/routes/health.ts` — health check `/api/healthz`
 - `artifacts/api-server/src/lib/seed.ts` — seed de dados padrão para novos usuários
@@ -60,6 +62,9 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - **Onboarding**: modal de boas-vindas para novos usuários configurarem nome e data prevista
 
 ## Gotchas
+
+- Nenhuma cor ou tamanho de fonte literal fora de `styles/tokens.css`; sage (`--color-accent`) não é cor de texto pequeno — use `--color-accent-strong`.
+- O progresso usa sempre o componente `Progress` (a "fita métrica"), que exige `label` para o leitor de tela.
 
 - O pacote `lib/api-client-react` usa `composite: true` no TypeScript — após editar `src/index.ts`, rodar `tsc --build lib/api-client-react/tsconfig.json` para regenerar os arquivos `.d.ts` antes do typecheck do frontend.
 - A API usa `numeric` do Postgres para o campo `price` — chega ao frontend como string e precisa de `parseFloat()` para converter.
