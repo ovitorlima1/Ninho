@@ -1,7 +1,7 @@
 # CONCERNS — dívida técnica e áreas frágeis
 
 Base: auditoria "Raio-X do Ninho" (2026-09-11, 35 achados: C1–C5, A1–A12, M1–M14, B1–B4).
-Estado depois das Fases 0–3 (branch `fase-0-correcoes-urgentes`, até `0c7ca8d`, sem merge nem push).
+Estado depois das Fases 0–4 (branch `fase-0-correcoes-urgentes`, até o fechamento da Fase 4, sem merge nem push).
 Severidade: 🔴 crítica · 🟠 alta · 🟡 média · ⚪ baixa. Status: ✅ resolvido · 🔶 parcial · ⛔ aberto.
 Referências `arquivo:linha` conferidas no código em 2026-09-16.
 
@@ -9,10 +9,9 @@ Referências `arquivo:linha` conferidas no código em 2026-09-16.
 
 | Situação | Itens |
 |---|---|
-| ✅ Resolvidos (Fases 0–3) | C1–C5, A1–A8, A10–A12, M1–M9, M11–M14, B1, B2 |
-| 🔶 Parciais | A9 (limite existe, mas em memória → Fase 4), B3 (botão morto saiu; "Voltar" do onboarding continua à direita) |
-| ⛔ Abertos → Fase 4 (Segurança e privacidade) | M10 (cabeçalhos, logout, LGPD), B4, A9 persistente, validação e limites de entrada, logs |
-| ⛔ Abertos sem fase | foto do login, ajustes de texto/UI, modo escuro, OpenAPI, mensagens em inglês, docs antigas |
+| ✅ Resolvidos (Fases 0–4) | C1–C5, A1–A12, M1–M14, B1, B2, B4 |
+| 🔶 Parciais | B3 (botão morto saiu; "Voltar" do onboarding continua à direita) |
+| ⛔ Abertos sem fase | foto do login, ajustes de texto/UI, modo escuro, OpenAPI, docs antigas, política de privacidade, limites do deploy estático |
 
 ## Resolvidos
 
@@ -49,6 +48,9 @@ Referências `arquivo:linha` conferidas no código em 2026-09-16.
 | 🟡 M14 | Perfil trancado atrás do lápis | 1 | `3f225e3` |
 | ⚪ B1 | Telas de sistema em inglês | 1 | `3f225e3` |
 | ⚪ B2 | Confirmação duplicada no perfil | 1 | `3f225e3` (F1-R23) |
+| 🟠 A9 | Limitadores em memória (autoscale) | 0 → 4 | `951d38d` (limite do reset) · `11bae31` feat(A9): limites de tentativa persistidos no Postgres |
+| 🟡 M10 | Cabeçalhos, logout sem revogação, LGPD, validação, logs | 4 | `1d7d16a` · `7247faa` sessões revogáveis · `22523ab` cabeçalhos, só JSON, origem · `b15a4d7` Zod, logs, pt-BR · `4f9b185` exportar e excluir conta |
+| ⚪ B4 | Enumeração por tempo e token de reset no histórico | 4 | `b15a4d7` (hash fictício no login, hash no cadastro repetido, `replaceState`). O cadastro ainda responde diferente para e-mail já usado — resolver exige verificação por e-mail |
 
 Resíduos frágeis dos resolvidos:
 - **C4:** o catálogo continua hard-coded no bundle (`artifacts/ninho/src/lib/recommendations.ts`,
@@ -62,53 +64,12 @@ Resíduos frágeis dos resolvidos:
 
 ## Parciais
 
-### 🟠 A9 — Limitadores em memória — 🔶 parcial (Fase 0 → Fase 4)
-
-`951d38d` fix(A9): limita pedidos de recuperação de senha por e-mail e IP (3/h e 10/h,
-`artifacts/api-server/src/routes/auth.ts:241-249`). Continua aberto: `AuthAttemptLimiter` é um
-`Map` por processo (`artifacts/api-server/src/lib/auth.ts:46`, instâncias em `:155`, `:163`, `:173`)
-e o deploy é autoscale (`.replit`) — N instâncias = N× o limite, e reinício zera os contadores.
-Frágil: o limitador recusa em vez de despejar quando cheio, e as chaves são compostas
-origem+conta; um store persistente precisa manter os dois comportamentos. O E2E depende de a
-API subir limpa a cada execução.
-
 ### ⚪ B3 — Botão sem ação e "Voltar" à direita — 🔶 parcial
 
 O `.desktop-help-button` sem `onClick` saiu com a casca nova (`109de56`). O "Voltar" do passo 2
 do onboarding continua no canto superior direito: é o último filho de `.modal-top`
 (`artifacts/ninho/src/features/onboarding/onboarding-modal.tsx:95-98`), que usa
 `justify-content: space-between` (`artifacts/ninho/src/styles/components.css:1012`).
-
-## Abertos → Fase 4 (Segurança e privacidade)
-
-- **M10a — Cabeçalhos e superfície HTTP.** `artifacts/api-server/src/app.ts` não usa helmet
-  (sem CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`), não chama
-  `app.disable("x-powered-by")`, mantém `express.urlencoded` sem necessidade (`app.ts:32`) e não
-  confere `Origin` nas rotas que mudam estado (a defesa hoje é só `SameSite=Lax` no cookie,
-  `lib/auth.ts:306`).
-- **M10b — Logout não revoga o JWT.** `POST /api/auth/logout` só expira o cookie
-  (`routes/auth.ts:348-351`); o token vale até `exp` (7 dias, `lib/auth.ts:10`). `sessionVersion`
-  já existe e só é incrementado no reset de senha (`routes/auth.ts:324`).
-- **M10c — LGPD: sem exclusão de conta nem exportação de dados.** Não há rota para isso em
-  `routes/me.ts` nem em `routes/auth.ts`. A data prevista do parto é dado de saúde (sensível).
-  Nenhuma migração em `lib/db/drizzle/*.sql` declara foreign key, então apagar um usuário exige
-  varrer as tabelas por `user_id` manualmente.
-- **Validação com Zod nas rotas de acesso.** `register`/`login` usam `validateCredentials` escrito
-  à mão (`routes/auth.ts:38`), e `password-reset/request|complete` fazem parse manual do corpo
-  (`routes/auth.ts:227-231`, `:283-286`), enquanto as rotas de `me.ts` usam schemas Zod.
-- **Limites do schema de orçamento.** `upsertBudgetSchema` (`lib/db/src/schema/budgetCategories.ts:20-27`)
-  aceita um array sem tamanho máximo e `category` como texto livre (1–100 caracteres), e o
-  `PUT /api/me/budget` apaga e reinsere tudo (`routes/me.ts:358-385`).
-- **Logs com dados pessoais.** Cinco `console.error(..., err)` em `routes/me.ts` (`:52`, `:187`,
-  `:320`, `:350`, `:383`) imprimem o erro inteiro fora do pino — sem o `redact` de
-  `lib/logger.ts` — e erros do Postgres podem carregar valores da consulta (nome, data prevista).
-- **B4a — Enumeração de contas.** O login só roda o scrypt quando o usuário existe
-  (`routes/auth.ts:185`), então o tempo de resposta revela o e-mail; o cadastro responde 400
-  para e-mail já existente e 201 para novo (`routes/auth.ts:135-138`).
-- **B4b — Token de redefinição no histórico.** `PasswordResetPage` lê `?token=` da URL
-  (`artifacts/ninho/src/features/auth/password-reset-pages.tsx:82`) e não chama
-  `history.replaceState` em nenhum ponto do arquivo.
-- **A9 persistente** (ver Parciais).
 
 ## Abertos sem fase
 
@@ -134,8 +95,12 @@ do onboarding continua no canto superior direito: é o último filho de `.modal-
 - **Contrato de API só no papel.** `lib/api-spec/openapi.yaml` descreve só `/healthz` (linha 14);
   o front usa apenas `customFetch` do `@workspace/api-client-react` (`src/lib/api.ts:5`) e tipa o
   resto à mão, em paralelo aos tipos Drizzle. Os hooks gerados não são usados.
-- **Mensagens de erro em inglês na API.** 15 respostas com `"Internal server error"`,
-  `"Item not found"` ou `"Invalid input"` em `artifacts/api-server/src/routes/`, numa API que
-  responde o resto em pt-BR (o front traduz via `lib/errors.ts`, mas o contrato fica misto).
-- **Docs antigas.** `replit.md:8` ainda cita a porta 8080 para a API (local é 8787);
-  `.agents/memory/database-startup-migrations.md:8` fala de "Clerk proxy", que não existe mais.
+- **Docs antigas.** `.agents/memory/database-startup-migrations.md:8` fala de "Clerk proxy", que não existe mais.
+- **Política de privacidade e termos.** O app exporta e exclui dados (Fase 4), mas não há página
+  explicando o tratamento de dados de saúde — texto jurídico, decisão do dono.
+- **Limites do deploy estático.** O front é servido sem cabeçalhos próprios: a CSP vai por
+  `<meta>` (`artifacts/ninho/vite.config.ts`) e `frame-ancestors`/`X-Frame-Options` não se aplicam
+  à página, que continua podendo ser embutida em iframe.
+- **Sem monitoramento de erros.** Os erros só vão para o log do pino (sem Sentry ou similar).
+- **Sessões antigas acumulam.** `auth_sessions` não tem limpeza periódica de linhas vencidas ou
+  revogadas (o limitador tem; as sessões não). Pequeno por conta, mas cresce sem fim.

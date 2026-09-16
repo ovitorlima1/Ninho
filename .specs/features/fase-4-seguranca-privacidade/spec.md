@@ -65,7 +65,7 @@ e o login responde mais rápido quando o e-mail não existe.
 
 | ID | Requisito |
 |---|---|
-| F4-R16 | `GET /api/me/export` devolve um arquivo JSON com todos os dados da conta (e-mail, datas, perfil, itens, marcos, orçamento, link de presentes sem o token e reservas). O Perfil tem "exportar meus dados". |
+| F4-R16 | `GET /api/me/export` devolve um arquivo JSON com todos os dados da conta (e-mail, datas, perfil, itens, marcos, orçamento, link de presentes sem o token, reservas e datas das sessões). O Perfil tem "exportar meus dados". |
 | F4-R17 | `DELETE /api/me/account` com a senha e a palavra EXCLUIR apaga numa transação todas as linhas da conta em todas as tabelas, revoga as sessões e limpa o cookie. Senha errada: erro por campo, nada é apagado. |
 | F4-R18 | O Perfil tem "sair deste aparelho", "sair de todos os aparelhos" (com confirmação) e "excluir minha conta" (diálogo com senha e confirmação), acessíveis por teclado. |
 
@@ -91,10 +91,10 @@ e o login responde mais rápido quando o e-mail não existe.
 
 | Requisito | Tarefa | Status |
 |---|---|---|
-| — | T1 (tabelas) | pendente |
-| F4-R1–R4, R18 (sair) | T2 | pendente |
-| F4-R5–R7 | T3 | pendente |
-| F4-R8–R11 | T4 | pendente |
-| F4-R12–R15 | T5 | pendente |
-| F4-R16, R17, R18 (dados e exclusão) | T6 | pendente |
-| — | T7 (validação) | pendente |
+| — | T1 (tabelas) | concluído (1d7d16a) |
+| F4-R1–R4, R18 (sair) | T2 | concluído (7247faa) |
+| F4-R5–R7 | T3 | concluído (11bae31) |
+| F4-R8–R11 | T4 | concluído (22523ab) |
+| F4-R12–R15 | T5 | concluído (b15a4d7) |
+| F4-R16, R17, R18 (dados e exclusão) | T6 | concluído (4f9b185) |
+| — | T7 (validação) | concluído (este commit; ver SUMMARY.md) |

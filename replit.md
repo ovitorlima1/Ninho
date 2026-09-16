@@ -5,7 +5,8 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 ## Run & Operate
 
 - `pnpm --filter @workspace/ninho run dev` — frontend Vite (porta configurada por PORT)
-- `pnpm --filter @workspace/api-server run dev` — API Express (porta 8080)
+- `pnpm dev` — stack local (Postgres no Docker, API na 8787, Vite na 5180)
+- `pnpm --filter @workspace/api-server run dev` — API Express (porta definida por PORT)
 - `pnpm --filter @workspace/db run push` — push do schema Drizzle para o banco (dev)
 - `pnpm --filter @workspace/db run push-force` — push forçado (sem confirmação interativa)
 - `pnpm run typecheck` — typecheck completo em todos os pacotes (strict no front)
@@ -15,6 +16,7 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - `pnpm run build` — typecheck + build de todos os pacotes
 - `pnpm --filter @workspace/api-spec run codegen` — regenerar hooks e schemas Zod do spec OpenAPI
 - Required env: `DATABASE_URL`, `SESSION_SECRET` (mínimo de 32 caracteres)
+- Opcional: `ALLOWED_ORIGINS` (lista separada por vírgulas) para liberar outros domínios do front nas rotas que alteram dados
 - Para recuperação de senha em produção: `PUBLIC_APP_URL` (URL HTTPS canônica do app) e `RESEND_FROM_EMAIL` (remetente verificado no Resend)
 
 ## Stack
@@ -42,9 +44,12 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - `artifacts/api-server/src/routes/me.ts` — todas as rotas autenticadas `/api/me/*`
 - `artifacts/api-server/src/routes/health.ts` — health check `/api/healthz`
 - `artifacts/api-server/src/lib/seed.ts` — seed de dados padrão para novos usuários
-- `artifacts/api-server/src/routes/auth.ts` — cadastro, login, sessão atual e logout
-- `artifacts/api-server/src/middlewares/requireAuth.ts` — valida a sessão JWT para rotas protegidas
-- `lib/db/src/schema/` — tabelas Drizzle: authUsers, profiles, checklistItems, milestones, budgetCategories
+- `artifacts/api-server/src/routes/auth.ts` — cadastro, login, sessão atual, recuperação e logout (deste aparelho)
+- `artifacts/api-server/src/routes/account.ts` — sair de todos os aparelhos, exportar dados e excluir conta (`/api/me/...`)
+- `artifacts/api-server/src/lib/sessions.ts` — sessões por aparelho (`auth_sessions`); `lib/rate-limit.ts` — limites de tentativa no Postgres (`auth_attempts`)
+- `artifacts/api-server/src/middlewares/security.ts` — cabeçalhos, checagem de origem, 404 e erros em JSON
+- `artifacts/api-server/src/middlewares/requireAuth.ts` — valida o JWT e a sessão registrada no banco
+- `lib/db/src/schema/` — tabelas Drizzle (authUsers com sessões e tentativas, profiles, checklistItems, milestones, budgetCategories, giftSharing) e os schemas Zod de validação
 - `lib/db/drizzle.config.ts` — configuração do Drizzle Kit
 - `lib/api-spec/openapi.yaml` — spec OpenAPI (source of truth para codegen)
 - `lib/api-client-react/src/` — hooks React Query gerados pelo Orval
@@ -57,7 +62,11 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - **Otimismo no cliente**: mutações de checklist e marcos usam `onMutate` para atualização otimista e gravam a resposta da API no cache; o workspace só é recarregado em caso de erro.
 - **Onboarding na primeira entrada**: quando `profile.onboardingComplete === false`, o app exibe um modal de onboarding para capturar nome e data prevista antes de entrar no dashboard.
 - **Shower/chá de bebê**: funcionalidade removida do MVP — não há backend. O link foi removido de todos os painéis.
-- **Sessão em cookie HttpOnly**: o navegador envia a sessão JWT automaticamente nas chamadas para `/api`; tokens nunca ficam acessíveis ao JavaScript do cliente.
+- **Sessão em cookie HttpOnly, registrada no banco**: o JWT carrega o id da sessão (`sid`); sair revoga só o aparelho, "sair de todos" e a redefinição de senha revogam todos. Tokens nunca ficam acessíveis ao JavaScript do cliente.
+- **Limites persistentes**: login, cadastro, recuperação, exclusão de conta e reserva pública ficam em `auth_attempts` (valem entre instâncias do autoscale); as chaves guardam só HMAC de e-mail/IP.
+- **Superfície HTTP**: só JSON (64 kB), 403 para POST/PUT/PATCH/DELETE de outra origem, cabeçalhos de segurança e `no-store` nas rotas de conta. A CSP do front vai por `<meta>` e só entra no build (o Vite de dev usa scripts inline).
+- **Logs sem dados pessoais**: tudo passa por `req.log`; o serializador de erro corta os valores das consultas do Drizzle.
+- **LGPD**: exportação em JSON e exclusão imediata (senha + EXCLUIR) apagando todas as tabelas numa transação — não há foreign keys, então tabela nova com `user_id` precisa entrar em `routes/account.ts`.
 
 ## Product
 
@@ -65,7 +74,7 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - **Dashboard**: progresso real calculado dos dados salvos, próximo marco, orçamento investido
 - **Linha do tempo**: marcos de preparação semanais com toggle de conclusão; estado vazio amigável quando data prevista não está configurada
 - **Orçamento**: planejado por categoria com total calculado; o "investido" soma preço unitário × quantidade só dos itens **Comprado** — "Ganhei" é presente e não conta como gasto (regra em `artifacts/ninho/src/lib/budget.ts`, com testes)
-- **Perfil**: nome, cidade, data prevista do parto (usada para calcular semana atual)
+- **Perfil**: nome, cidade, data prevista do parto (usada para calcular semana atual), link de presentes e "Sua conta" (sair deste aparelho, sair de todos, exportar dados, excluir conta)
 - **Onboarding**: modal de boas-vindas para novos usuários configurarem nome e data prevista
 
 ## Gotchas
@@ -75,6 +84,8 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 
 - O pacote `lib/api-client-react` usa `composite: true` no TypeScript — após editar `src/index.ts`, rodar `tsc --build lib/api-client-react/tsconfig.json` para regenerar os arquivos `.d.ts` antes do typecheck do frontend.
 - A API usa `numeric` do Postgres para o campo `price` — chega ao frontend como string e precisa de `parseFloat()` para converter.
+- Tabela nova com `user_id` precisa entrar na exportação e na exclusão de conta (`routes/account.ts`) e na contagem do E2E (`e2e/account.spec.ts`).
+- Mensagens de erro da API sempre em pt-BR; a resposta de validação usa só a primeira mensagem do schema (`lib/validation.ts`).
 - O `drizzle-kit push` pode ser interativo — usar `push-force` em scripts de build para evitar prompts.
 
 ## Pointers

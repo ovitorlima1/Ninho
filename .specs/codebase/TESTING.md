@@ -37,9 +37,12 @@ Um arquivo: `pnpm --filter @workspace/ninho exec vitest run src/lib/budget.test.
 | `artifacts/ninho/src/lib/budget.test.ts` | 7 | "investido" = preço × quantidade só de "Comprado", em centavos; por categoria |
 | `artifacts/ninho/src/lib/gestation.test.ts` | 7 | semana completa (`floor`), virada de semana, horário de verão, trava em 40, data inválida e limites da data prevista |
 | `artifacts/ninho/src/lib/recommendations.test.ts` | 6 | visível/expirada/oculta/URL insegura, item vinculado expirado, fronteira de expiração, atraso do timer ≤ 1 h, **alarme de validade** |
-| `artifacts/api-server/src/lib/auth.test.ts` | 5 | limitadores de reset de senha (3/h por e-mail, 10/h por origem, `retryAfterSeconds`, janela, independência) |
+| `artifacts/api-server/src/lib/attempts.test.ts` | 6 | regra dos limites (3/h por e-mail, 10/h por origem, `retryAfterSeconds`, fim do bloqueio, chave bloqueada não gasta as outras, janela vencida) |
+| `artifacts/api-server/src/middlewares/security.test.ts` | 6 | checagem de origem (leituras, mesmo host, sem Origin/`Sec-Fetch-Site`, Origin nula, origens configuradas, localhost só fora de produção) |
+| `artifacts/api-server/src/lib/sessions.test.ts` | 3 | token com `sid`, token antigo sem `sid` recusado, assinatura alterada |
+| `artifacts/api-server/src/lib/logger.test.ts` | 2 | erro do Drizzle sem os valores da consulta na mensagem e no stack |
 
-Front: 20. API: 5.
+Front: 20. API: 17. Testes da API não importam `@workspace/db` (exigiria `DATABASE_URL`): regra pura fica em arquivo próprio.
 
 **Teste-alarme proposital** (`recommendations.test.ts:77`): usa a data real e falha quando
 algum item visível do catálogo tem menos de 14 dias de validade. O catálogo vence em
@@ -55,10 +58,12 @@ e o job `checks` do CI. A correção é renovar a curadoria em `artifacts/ninho/
   (o Postgres do `docker-compose.dev.yml`, banco separado). `assertTestDatabase` recusa
   qualquer banco cujo nome não termine em `_test`.
 - **Segredo:** `E2E_SESSION_SECRET` (padrão fixo só para uso local).
-- **globalSetup:** conecta em `/postgres`, cria o banco se faltar e roda
-  `pnpm --filter @workspace/db run push-force` (`drizzle-kit push --force`) com o `DATABASE_URL` de teste.
-- **Servidores** (`webServer`, `reuseExistingServer: false`, sobem a cada execução para zerar
-  os limitadores em memória): API em **8790** (`tsx src/index.ts`, `NODE_ENV=development`,
+- **globalSetup:** conecta em `/postgres`, cria o banco se faltar, roda
+  `pnpm --filter @workspace/db run push-force` (`drizzle-kit push --force`) com o `DATABASE_URL` de teste
+  e faz `TRUNCATE auth_attempts` (os limites ficam no banco desde a Fase 4).
+- **Banco nos testes:** `e2e/db.ts` (`withTestDb`) abre um cliente só no banco `_test`, para
+  inserir um token de redefinição ou contar linhas por tabela.
+- **Servidores** (`webServer`, `reuseExistingServer: false`, sobem a cada execução): API em **8790** (`tsx src/index.ts`, `NODE_ENV=development`,
   `LOG_LEVEL=warn`) e Vite em **5190** (`API_PROXY_TARGET` → 8790). Não conflitam com o `pnpm dev` (8787/5180).
 - **Projetos:** `celular` (Pixel 7 em 375×812) e `desktop` (Desktop Chrome em 1280×800).
   `locale: pt-BR`, `timezoneId: America/Sao_Paulo`, `reducedMotion: "reduce"`, trace só em falha.
@@ -73,16 +78,30 @@ e o job `checks` do CI. A correção é renovar a curadoria em `artifacts/ninho/
   só confia no XFF vindo de loopback (`app.set("trust proxy", "loopback")`,
   `artifacts/api-server/src/app.ts:10`) — ou seja, via proxy do Vite; um cliente direto não
   consegue forjar.
-- `uniqueEmail`, `isoDaysFromToday`, `itemRow(page, nome)` (linha `.check-item-row`), `PASSWORD`.
+- `uniqueEmail`, `isoDaysFromToday`, `itemRow(page, nome)` (linha `.check-item-row`), `PASSWORD`, `randomClientIp()` (para logins extras).
 - `expectAccessible(page)`: axe com as tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`,
   `wcag22aa`; falha só com violações `serious` ou `critical`. Chamado em 10 pontos da suíte.
 
-### Cenários (17 × 2 projetos = 34)
+### Cenários (27 × 2 projetos = 54)
 
-`e2e/auth.spec.ts` (3)
+`e2e/auth.spec.ts` (4)
 1. cadastro valida por campo e o onboarding leva ao Início
 2. login mostra erro por campo sem travar senha curta
-3. recuperação de senha limita o quarto pedido na mesma hora
+3. recuperação de senha limita o quarto pedido na mesma hora (e o contador está no banco, sem o e-mail)
+4. redefinir a senha tira o token da URL e derruba as sessões abertas
+
+`e2e/account.spec.ts` (5)
+1. sair deste aparelho revoga o token na hora
+2. sair de todos os aparelhos derruba as outras sessões
+3. exportar meus dados baixa um JSON com a lista e sem o token do link
+4. excluir a conta pede senha e EXCLUIR e apaga tudo (contagem de linhas por tabela)
+5. a API recusa excluir sem a palavra de confirmação
+
+`e2e/security.spec.ts` (4)
+1. cabeçalhos de segurança e sem X-Powered-By
+2. outro site não consegue alterar dados (Origin e `Sec-Fetch-Site`)
+3. corpo que não é JSON é recusado com mensagem em português
+4. orçamento só aceita as quatro categorias conhecidas
 
 `e2e/checklist.spec.ts` (8; `beforeEach` cria conta e abre `/checklist`)
 1. status muda direto, sem ciclo escondido
@@ -102,8 +121,8 @@ e o job `checks` do CI. A correção é renovar a curadoria em `artifacts/ninho/
 5. sessão expirada leva ao login com aviso (`context.clearCookies()`)
 6. página pública de presentes reserva um item sem conta
 
-**Resultado:** a última execução registrada na validação da Fase 3 foi **34/34 passando**
-(17 cenários contados nos arquivos × 2 projetos). A suíte é de caracterização: a mesma rodou
+**Resultado:** a última execução registrada (validação da Fase 4) foi **54/54 passando**
+(27 cenários × 2 projetos). A suíte é de caracterização: a mesma rodou
 antes e depois da divisão do `App.tsx` (32/32 em `be5699d`, antes do cenário de PATCH único).
 
 ## Como escrever um teste novo

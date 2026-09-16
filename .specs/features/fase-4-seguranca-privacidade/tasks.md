@@ -6,7 +6,7 @@ T1 tabelas ──► T2 sessões ──► T3 limitador persistente ──► T5
 ```
 
 T2, T3, T5 e T6 mexem em `routes/auth.ts` e `routes/me.ts`: sequenciais. T4 mexe em arquivos
-próprios e vai para sub-agente em paralelo.
+próprios; acabou feita em sequência pelo orquestrador (pequena, e o E2E compartilha portas).
 
 ---
 
@@ -27,7 +27,7 @@ próprios e vai para sub-agente em paralelo.
 
 ### T4 [P] — Endurecimento HTTP
 - **What:** `middlewares/security.ts` (cabeçalhos, no-store, mesma origem), `x-powered-by` off, só JSON com limite, tratador de erro JSON, CSP por meta só no build.
-- **Where:** `artifacts/api-server/src/app.ts`, `src/middlewares/security.ts` (+ teste), `artifacts/ninho/vite.config.ts`.
+- **Where:** `artifacts/api-server/src/app.ts`, `src/middlewares/security.ts` (+ teste), `artifacts/ninho/vite.config.ts`, `artifacts/ninho/index.html`.
 - **Done when:** F4-R8–R11; Vitest do `isAllowedOrigin`; E2E de cabeçalhos e 403.
 - **Commit:** `feat(M10): cabeçalhos de segurança, só JSON e bloqueio de outras origens`
 
@@ -49,10 +49,10 @@ próprios e vai para sub-agente em paralelo.
 
 | Tarefa | Status | Commit |
 |---|---|---|
-| T1 | pendente | |
-| T2 | pendente | |
-| T3 | pendente | |
-| T4 | pendente | |
-| T5 | pendente | |
-| T6 | pendente | |
-| T7 | pendente | |
+| T1 | concluído | 1d7d16a |
+| T2 | concluído | 7247faa |
+| T3 | concluído | 11bae31 |
+| T4 | concluído | 22523ab |
+| T5 | concluído | b15a4d7 |
+| T6 | concluído | 4f9b185 |
+| T7 | concluído | este commit |

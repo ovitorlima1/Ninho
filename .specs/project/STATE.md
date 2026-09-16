@@ -18,6 +18,9 @@
 | 2026-09-16 | Inspirações sem foto: bloco com ícone da categoria. | Escolha do usuário (M7). |
 | 2026-09-16 | CI só como arquivo, sem push. | Escolha do usuário. |
 | 2026-09-17 | O seed do workspace acontece no cadastro; `GET /api/me/workspace` é só leitura (`ensureUserInitialized`). | M9. |
+| 2026-09-16 | Sessões registradas (`auth_sessions`): "sair" encerra só o aparelho; "sair de todos" e a redefinição de senha revogam tudo. Tokens antigos (sem `sid`) deixam de valer no deploy. | Escolha do usuário (M10). |
+| 2026-09-16 | Exclusão de conta imediata, com senha e a palavra EXCLUIR, numa transação sobre as 9 tabelas (sem FKs); exportação em JSON sem o token do link. | Escolha do usuário (LGPD). |
+| 2026-09-16 | Limites de tentativa no Postgres (`auth_attempts`), chaves = escopo + HMAC; o global setup do E2E zera a tabela. Cabeçalhos por middleware próprio (sem helmet); CSP do front por `<meta>`, só no build. | Fase 4 (A9, M10). |
 | 2026-09-16 | O login não usa mais `login-pregnancy.png`: era a captura de um projeto de terceiros ("Pregnancy Tracker Logo", com a marca de outro produto). O arquivo continua em `public/`, sem uso. | Risco de direito de uso e de marca. |
 
 ## Bloqueios
@@ -29,7 +32,10 @@
 - Testes de caracterização antes de refatorar pagaram na hora: acharam três bugs que a verificação manual tinha deixado passar (a automação do navegador digitava o texto de uma vez, escondendo o problema do campo de preço).
 - `form.requestSubmit()` e `pressSequentially` são os jeitos confiáveis de simular envio por Enter e digitação real.
 - Rodar o E2E numa `git worktree` com `pnpm install --offline` é rápido e permite validar um commit isolado.
-- Limitadores em memória e E2E: subir a API a cada execução zera os contadores; contas de teste usam X-Forwarded-For próprio (aceito só via proxy local).
+- Limitadores e E2E: desde a Fase 4 os contadores ficam no banco, então o global setup faz `TRUNCATE auth_attempts`; contas de teste continuam com X-Forwarded-For próprio (aceito só via proxy local).
+- `redact` do pino não protege erros do Drizzle: os valores da consulta vêm dentro da mensagem e do stack. Olhar a saída real do log antes de confiar na redação.
+- Importar `@workspace/db` num teste unitário exige `DATABASE_URL`: regra pura vai em arquivo separado do acesso ao banco.
+- Screenshot tirado por um spec temporário no ambiente de E2E é o jeito de conferir telas logadas sem criar dados no banco de dev.
 
 - Animação de entrada que começa em `opacity: 0` deixa a tela em branco em abas em segundo plano e em capturas; animar só o deslocamento resolve.
 - Grid com `1fr` cresce até o conteúdo mínimo (a fila de pílulas com rolagem própria gerou rolagem lateral na página): usar `minmax(0, 1fr)`.
@@ -47,7 +53,9 @@
 - [x] Atualizar `replit.md` com a nova regra de "investido" (feito na Fase 0).
 - [ ] O catálogo de inspirações vence em 2026-12-10; o teste começa a falhar em 2026-11-26 pedindo revisão.
 - [ ] Conta de teste local `qa-ninho@teste.local` pode ser apagada do banco de dev quando não for mais útil.
-- [ ] Fases 0–3 estão na branch `fase-0-correcoes-urgentes` (28+ commits), sem merge e sem push. O CI só roda depois do push.
+- [ ] Fases 0–4 estão na branch `fase-0-correcoes-urgentes` (35+ commits), sem merge e sem push. O CI só roda depois do push.
+- [ ] Deploy da Fase 4: `db push` em produção (2 tabelas novas); todos precisarão entrar de novo; conferir `ALLOWED_ORIGINS` se houver outro domínio.
+- [ ] Política de privacidade e termos de uso (texto jurídico) — decisão do dono.
 - [ ] Ajustes pequenos vistos na divisão: plural "que já está" no modal de inspiração; iniciais do avatar do perfil diferentes das do topo; "gerar novo link" usa o mesmo handler de criar.
 - [ ] Decidir o destino de `public/login-pregnancy.png` (sem uso; provável material de terceiros).
 - [ ] Modo escuro: os tokens estão prontos para uma paleta escura, que ficou fora da Fase 2.

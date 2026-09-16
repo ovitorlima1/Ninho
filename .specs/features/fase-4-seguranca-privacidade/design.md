@@ -25,6 +25,8 @@ Sem dado pessoal em claro: nenhuma das duas guarda e-mail, IP ou user-agent.
 ## 2. Sessões
 
 - JWT ganha `sid`. `createSession(userId)` insere a sessão e devolve o token.
+- Implementação: `api-server/src/lib/sessions.ts` (`createSession`, `resolveSession`,
+  `revokeCurrentSession`, `revokeAllSessions`); rotas da conta em `routes/account.ts`.
 - `requireAuth` (e `GET /api/auth/session`): verifica assinatura → busca sessão + conta num
   `SELECT` com join → recusa se não existir, se `revoked_at` estiver preenchido, se
   `expires_at` passou ou se `session_version` não bate.
@@ -50,8 +52,11 @@ existe), aplica `nextAttempt` e grava. Chave = `${escopo}:${hmacSha256(SESSION_S
 `release(keys)` apaga as chaves (login certo). Limpeza: a cada ~100 chamadas, apaga linhas cujo
 `window_started_at` e `blocked_until` são mais antigos que 1 dia.
 
-A classe em memória sai; os testes da Fase 0 passam a testar `nextAttempt` com as mesmas
-configurações exportadas.
+A classe em memória sai; os testes da Fase 0 passam a testar a regra pura com as mesmas
+configurações exportadas. Na implementação a regra se chama `consumeAttempts` e fica em
+`lib/attempts.ts` (sem banco, para o Vitest não precisar de `DATABASE_URL`); a persistência
+fica em `lib/rate-limit.ts`. Um bloqueio só termina em `blockedUntil` (o limitador antigo o
+encerrava junto com a janela).
 
 ## 4. Endurecimento HTTP (`api-server/src/middlewares/security.ts`)
 
@@ -76,8 +81,10 @@ configurações exportadas.
 
 ## 5. Logs e validação
 
-- `logger`: `redact` ganha `err.params`, `err.query`, `err.cause.params`, `err.cause.query`.
+- `logger`: serializador de erro próprio. O `DrizzleQueryError` repete os valores na mensagem e
+  no stack (`params: …`), então só `redact` não basta; o texto da consulta (sem valores) fica.
 - `console.error` → `req.log.error({ err }, ...)` em `me.ts`.
+- Schemas ficam em `lib/db/src/schema/authUsers.ts`, junto dos outros (a API não depende de zod).
 - Zod para `register`, `login`, `password-reset/request`, `password-reset/complete`,
   `account delete`; mensagens em pt-BR.
 - `upsertBudgetSchema`: `z.array(...).max(4)` e `category: z.enum(ITEM_CATEGORIES)`.
