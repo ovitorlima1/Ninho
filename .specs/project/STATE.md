@@ -12,7 +12,7 @@
 | 2026-09-12 | Status do item vira controle visível de 3 opções; tocar no item abre a folha de edição. | Escolha do usuário (A3/A4). |
 | 2026-09-12 | Passada a data prevista, a semana trava em 40 e o app pergunta se o bebê nasceu (sem campo novo no banco). | Escolha do usuário (M5); modo pós-parto vira feature própria. |
 | 2026-09-12 | As 334 linhas comentadas do Workspace saíram já na Fase 1, antes da hora (A11 é da Fase 3). | A cópia dobrava o risco de editar o lugar errado. |
-| 2026-09-16 | Identidade do PRD §10: ivory/sage/vinho, Fraunces + Karla, fita métrica. Tokens em `src/styles/tokens.css`; sage nunca é texto pequeno (usar `--color-accent-strong`). | Escolha do usuário. |
+| 2026-09-16 | ~~Identidade do PRD §10: ivory/sage/vinho, Fraunces + Karla~~ — substituída em 2026-09-17. A fita métrica e os tokens em `src/styles/tokens.css` continuam. | Escolha do usuário. |
 | 2026-09-16 | Cinco destinos (Início, Lista, Marcos, Orçamento, Perfil) numa casca única (`AppShell`, `NAV_ITEMS`); Inspirações é uma aba da Lista; "sair" só no Perfil. | Escolha do usuário (M4). |
 | 2026-09-16 | Fase 3 com Vitest, Playwright + axe e ESLint como dependências de desenvolvimento; Playwright fixado em 1.60.0 (Chromium em cache). | Escolha do usuário. |
 | 2026-09-16 | Inspirações sem foto: bloco com ícone da categoria. | Escolha do usuário (M7). |
@@ -22,11 +22,13 @@
 | 2026-09-16 | Exclusão de conta imediata, com senha e a palavra EXCLUIR, numa transação sobre as 9 tabelas (sem FKs); exportação em JSON sem o token do link. | Escolha do usuário (LGPD). |
 | 2026-09-16 | Limites de tentativa no Postgres (`auth_attempts`), chaves = escopo + HMAC; o global setup do E2E zera a tabela. Cabeçalhos por middleware próprio (sem helmet); CSP do front por `<meta>`, só no build. | Fase 4 (A9, M10). |
 | 2026-09-16 | `main` protegida por ruleset: só PR, `checks` e `e2e` verdes com a branch em dia, sem force push nem exclusão, sem exceção para admin. | Pedido do usuário (M-3). |
-| 2026-09-16 | O login não usa mais `login-pregnancy.png`: era a captura de um projeto de terceiros ("Pregnancy Tracker Logo", com a marca de outro produto). O arquivo continua em `public/`, sem uso. | Risco de direito de uso e de marca. |
+| 2026-09-16 | O login não usa mais `login-pregnancy.png`: era a captura de um projeto de terceiros ("Pregnancy Tracker Logo", com a marca de outro produto). | Risco de direito de uso e de marca. |
+| 2026-09-17 | Volta a identidade lilás de antes da Fase 2 (fundos lavanda, roxo, Montserrat + Space Mono), com roxo de texto e degradê do botão mais escuros para passar no AA. | O dono preferia a paleta antiga. |
+| 2026-09-17 | Login com foto de gestante da Unsplash (Breno Dias, Licença Unsplash) sob véu roxo; `login-pregnancy.png` apagado. A foto antiga é de banco pago (Shutterstock 1971086771 e outros, achada por busca reversa). | Escolha do dono entre foto gratuita e licenciar a original. |
 
 ## Bloqueios
 
-- **Foto do login:** se o usuário quiser foto no login, precisa de uma imagem licenciada (banco de imagens ou produção própria). Até lá, o painel usa só a identidade.
+- Nenhum.
 
 ## Lições
 
@@ -36,6 +38,8 @@
 - Limitadores e E2E: desde a Fase 4 os contadores ficam no banco, então o global setup faz `TRUNCATE auth_attempts`; contas de teste continuam com X-Forwarded-For próprio (aceito só via proxy local).
 - `redact` do pino não protege erros do Drizzle: os valores da consulta vêm dentro da mensagem e do stack. Olhar a saída real do log antes de confiar na redação.
 - Importar `@workspace/db` num teste unitário exige `DATABASE_URL`: regra pura vai em arquivo separado do acesso ao banco.
+- Pergunta com duas opções parecidas ("voltar ao lilás" e "lilás com as fontes novas") deixou a escolha ambígua; nas opções, dizer exatamente o que muda e o que fica.
+- Busca reversa (TinEye por URL pública) resolve rápido de onde vem uma imagem; o Google Lens pede CAPTCHA.
 - Screenshot tirado por um spec temporário no ambiente de E2E é o jeito de conferir telas logadas sem criar dados no banco de dev.
 
 - Animação de entrada que começa em `opacity: 0` deixa a tela em branco em abas em segundo plano e em capturas; animar só o deslocamento resolve.
@@ -58,7 +62,7 @@
 - [ ] Deploy da Fase 4: `db push` em produção (2 tabelas novas); todos precisarão entrar de novo; conferir `ALLOWED_ORIGINS` se houver outro domínio.
 - [ ] Política de privacidade e termos de uso (texto jurídico) — decisão do dono.
 - [ ] Ajustes pequenos vistos na divisão: plural "que já está" no modal de inspiração; iniciais do avatar do perfil diferentes das do topo; "gerar novo link" usa o mesmo handler de criar.
-- [ ] Decidir o destino de `public/login-pregnancy.png` (sem uso; provável material de terceiros).
+- [x] `public/login-pregnancy.png` apagado; login com foto da Unsplash (2026-09-17).
 - [ ] Modo escuro: os tokens estão prontos para uma paleta escura, que ficou fora da Fase 2.
 
 ## Ideias adiadas

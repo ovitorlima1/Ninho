@@ -11,7 +11,7 @@ Referências `arquivo:linha` conferidas no código em 2026-09-16.
 |---|---|
 | ✅ Resolvidos (Fases 0–4) | C1–C5, A1–A12, M1–M14, B1, B2, B4 |
 | 🔶 Parciais | B3 (botão morto saiu; "Voltar" do onboarding continua à direita) |
-| ⛔ Abertos sem fase | foto do login, ajustes de texto/UI, modo escuro, OpenAPI, docs antigas, política de privacidade, limites do deploy estático |
+| ⛔ Abertos sem fase | ajustes de texto/UI, modo escuro, OpenAPI, docs antigas, política de privacidade, limites do deploy estático |
 
 ## Resolvidos
 
@@ -73,10 +73,6 @@ do onboarding continua no canto superior direito: é o último filho de `.modal-
 
 ## Abertos sem fase
 
-- **Foto do login (decisão do dono).** `artifacts/ninho/public/login-pregnancy.png` (343 kB) não
-  é referenciada por nenhum arquivo de `src/` nem pelo `index.html`; é provavelmente material de
-  terceiros (captura com a marca de outro produto, ver `.specs/project/STATE.md`). Apagar ou
-  substituir por imagem licenciada.
 - **Ajustes de texto/UI vistos na divisão do `App.tsx`:**
   - `RecommendationLinkModal`: "combina com itens de … **que já está**" — falta o plural
     ("estão"), e o ternário seguinte devolve "na sua lista" nos dois ramos
