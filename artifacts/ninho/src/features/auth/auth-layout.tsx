@@ -1,16 +1,19 @@
 import { type ReactNode } from "react";
 import { Brand } from "@/components/brand";
 
+// Foto: Breno Dias na Unsplash (Licença Unsplash) — ver .specs/features/lilas-e-foto-login.
+const HERO_IMAGE = `${import.meta.env.BASE_URL}images/login-gestante.jpg`;
+
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="auth-page">
-      {/* Sem foto: a imagem antiga era a captura de um projeto de terceiros,
-          com a marca e os botões de outro produto. */}
       <div className="auth-mobile-visual">
+        <img className="auth-hero-image" src={HERO_IMAGE} alt="" decoding="async" />
         <Brand />
         <p className="auth-mobile-tagline">Prepare a chegada <strong>com leveza.</strong></p>
       </div>
       <div className="auth-panel">
+        <img className="auth-hero-image" src={HERO_IMAGE} alt="" decoding="async" />
         <Brand />
         <div className="auth-copy">
           <span className="eyebrow">Organização de enxoval</span>
