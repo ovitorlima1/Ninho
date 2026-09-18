@@ -27,7 +27,7 @@
 |---|---|
 | LF-R1 | `tokens.css` usa a paleta lilás: fundo lavanda claro, superfícies brancas, ação em roxo, destaques e progresso no lilás vivo antigo (`#a453d1`), sucesso em verde e erro em rosa (tons antigos). |
 | LF-R2 | Todo texto continua com contraste AA (4,5:1; 3:1 para bordas de campo): o roxo de texto e o degradê do botão principal são mais escuros que os antigos (`#a453d1` dá 4,06:1 no fundo; o degradê antigo `#bd70ed` dá 3,1:1 com texto branco). |
-| LF-R3 | Montserrat no corpo e nos títulos (com espaçamento negativo nos títulos, como antes) e Space Mono nas etiquetas em caixa alta; só os pesos usados são carregados. |
+| LF-R3 | Montserrat em todo o app — corpo, títulos (com espaçamento negativo, como antes) e etiquetas em caixa alta; só os pesos usados são carregados. (Space Mono nas etiquetas foi tirada em 2026-09-18 a pedido do dono.) |
 | LF-R4 | Login no computador: painel esquerdo com a foto coberta por um véu roxo em degradê, marca, etiqueta, título "Prepare a chegada **com leveza.**" e texto de apoio legíveis sobre a foto. No celular: faixa com a foto e o mesmo véu, marca e frase. |
 | LF-R5 | A foto é decorativa (`alt=""`), servida de `public/images/` (≤ 300 kB; a atual tem 214 kB), carregada só nas telas de acesso e sem quebrar a CSP (`img-src 'self'`). |
 | LF-R6 | `public/login-pregnancy.png` sai do repositório. |

@@ -46,7 +46,7 @@ Estado depois da Fase 3 (branch `fase-0-correcoes-urgentes`, até `0c7ca8d`).
 
 ```
 artifacts/ninho/
-├─ index.html              lang="pt-BR", viewport sem trava de zoom, Montserrat + Space Mono (Google Fonts), color-scheme light
+├─ index.html              lang="pt-BR", viewport sem trava de zoom, Montserrat (Google Fonts), color-scheme light
 ├─ vite.config.ts          exige PORT e BASE_PATH; alias @ e @assets; proxy /api se API_PROXY_TARGET
 ├─ vitest.config.ts        Vitest em node, src/**/*.test.ts, alias @
 ├─ playwright.config.ts    E2E: API 8790 + Vite 5190 (ou `E2E_API_PORT`/`E2E_WEB_PORT`), projetos celular/desktop

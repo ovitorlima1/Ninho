@@ -39,7 +39,7 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - `artifacts/ninho/e2e/` — testes E2E (Playwright + axe); `.github/workflows/ci.yml` — CI
 - `artifacts/ninho/src/lib/api.ts` — cliente tipado para a API REST
 - `artifacts/ninho/src/index.css` — só importa as camadas de estilo, em ordem
-- `artifacts/ninho/src/styles/tokens.css` — design system (única fonte de cor, tipo, espaço, raio, sombra e movimento; identidade lilás: fundos lavanda, ação em roxo, Montserrat + Space Mono)
+- `artifacts/ninho/src/styles/tokens.css` — design system (única fonte de cor, tipo, espaço, raio, sombra e movimento; identidade lilás: fundos lavanda, ação em roxo, Montserrat em tudo)
 - `artifacts/ninho/src/styles/{base,components,layout}.css` — reset e tipografia, um bloco por componente, casca e pontos de quebra (600 e 900px)
 - `artifacts/api-server/src/routes/me.ts` — todas as rotas autenticadas `/api/me/*`
 - `artifacts/api-server/src/routes/health.ts` — health check `/api/healthz`

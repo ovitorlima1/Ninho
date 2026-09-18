@@ -1,7 +1,7 @@
 /*
  * Tokens do Ninho — a única fonte de cor, tipo, espaço, raio, sombra e movimento.
  * Identidade lilás (a de antes da Fase 2, retomada em 2026-09-17): fundos lavanda, ação em roxo,
- * Montserrat no texto e Space Mono nas etiquetas.
+ * Montserrat em tudo.
  * Nenhum outro arquivo de estilo deve declarar cor literal: use estes tokens.
  * Contrastes medidos estão em .specs/features/lilas-e-foto-login/SUMMARY.md.
  */
@@ -61,7 +61,7 @@
   /* Tipografia */
   --font-display: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-body: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-label: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-label: var(--font-body);
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;

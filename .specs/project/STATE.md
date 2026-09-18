@@ -23,7 +23,7 @@
 | 2026-09-16 | Limites de tentativa no Postgres (`auth_attempts`), chaves = escopo + HMAC; o global setup do E2E zera a tabela. Cabeçalhos por middleware próprio (sem helmet); CSP do front por `<meta>`, só no build. | Fase 4 (A9, M10). |
 | 2026-09-16 | `main` protegida por ruleset: só PR, `checks` e `e2e` verdes com a branch em dia, sem force push nem exclusão, sem exceção para admin. | Pedido do usuário (M-3). |
 | 2026-09-16 | O login não usa mais `login-pregnancy.png`: era a captura de um projeto de terceiros ("Pregnancy Tracker Logo", com a marca de outro produto). | Risco de direito de uso e de marca. |
-| 2026-09-17 | Volta a identidade lilás de antes da Fase 2 (fundos lavanda, roxo, Montserrat + Space Mono), com roxo de texto e degradê do botão mais escuros para passar no AA. | O dono preferia a paleta antiga. |
+| 2026-09-17 | Volta a identidade lilás de antes da Fase 2 (fundos lavanda, roxo, Montserrat — desde 2026-09-18 também nas etiquetas, sem Space Mono), com roxo de texto e degradê do botão mais escuros para passar no AA. | O dono preferia a paleta antiga. |
 | 2026-09-17 | Login com foto de gestante sob véu roxo — desde 2026-09-18 a do Pexels (Jonathan Borba, Licença Pexels), trocada a pedido do dono; `login-pregnancy.png` apagado. A foto antiga é de banco pago (Shutterstock 1971086771 e outros, achada por busca reversa). | Escolha do dono entre foto gratuita e licenciar a original. |
 
 ## Bloqueios
