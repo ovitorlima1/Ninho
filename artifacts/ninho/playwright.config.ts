@@ -2,8 +2,9 @@ import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_DATABASE_URL, E2E_SESSION_SECRET } from "./e2e/env";
 
-const API_PORT = 8790;
-const WEB_PORT = 5190;
+// Portas próprias do E2E; troque por variável se outro projeto já as usar.
+const API_PORT = Number(process.env.E2E_API_PORT ?? 8790);
+const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 5190);
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 
 /**

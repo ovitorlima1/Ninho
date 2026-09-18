@@ -64,7 +64,7 @@ e o job `checks` do CI. A correção é renovar a curadoria em `artifacts/ninho/
 - **Banco nos testes:** `e2e/db.ts` (`withTestDb`) abre um cliente só no banco `_test`, para
   inserir um token de redefinição ou contar linhas por tabela.
 - **Servidores** (`webServer`, `reuseExistingServer: false`, sobem a cada execução): API em **8790** (`tsx src/index.ts`, `NODE_ENV=development`,
-  `LOG_LEVEL=warn`) e Vite em **5190** (`API_PROXY_TARGET` → 8790). Não conflitam com o `pnpm dev` (8787/5180).
+  `LOG_LEVEL=warn`) e Vite em **5190** (`API_PROXY_TARGET` → 8790). Não conflitam com o `pnpm dev` (8787/5180); se outro projeto usar essas portas, `E2E_API_PORT` e `E2E_WEB_PORT` trocam.
 - **Projetos:** `celular` (Pixel 7 em 375×812) e `desktop` (Desktop Chrome em 1280×800).
   `locale: pt-BR`, `timezoneId: America/Sao_Paulo`, `reducedMotion: "reduce"`, trace só em falha.
   No CI: `retries: 1`, `workers: 2`, `forbidOnly`, relatório HTML.

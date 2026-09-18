@@ -39,7 +39,7 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - `artifacts/ninho/e2e/` — testes E2E (Playwright + axe); `.github/workflows/ci.yml` — CI
 - `artifacts/ninho/src/lib/api.ts` — cliente tipado para a API REST
 - `artifacts/ninho/src/index.css` — só importa as camadas de estilo, em ordem
-- `artifacts/ninho/src/styles/tokens.css` — design system (única fonte de cor, tipo, espaço, raio, sombra e movimento; identidade do PRD: ivory, sage, vinho, Fraunces + Karla)
+- `artifacts/ninho/src/styles/tokens.css` — design system (única fonte de cor, tipo, espaço, raio, sombra e movimento; identidade lilás: fundos lavanda, ação em roxo, Montserrat em tudo)
 - `artifacts/ninho/src/styles/{base,components,layout}.css` — reset e tipografia, um bloco por componente, casca e pontos de quebra (600 e 900px)
 - `artifacts/api-server/src/routes/me.ts` — todas as rotas autenticadas `/api/me/*`
 - `artifacts/api-server/src/routes/health.ts` — health check `/api/healthz`
@@ -79,7 +79,9 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 
 ## Gotchas
 
-- Nenhuma cor ou tamanho de fonte literal fora de `styles/tokens.css`; sage (`--color-accent`) não é cor de texto pequeno — use `--color-accent-strong`.
+- Nenhuma cor ou tamanho de fonte literal fora de `styles/tokens.css`. Texto roxo é sempre `--color-brand` (o lilás vivo `--color-brand-vivid`/`--color-progress` não passa no contraste como texto); verde (`--color-accent`) só como texto na variante `-strong`.
+- A foto do login (`public/images/login-gestante.jpg`) é do Pexels (Jonathan Borba, Licença Pexels); troca de foto só com licença de uso registrada em `.specs/features/lilas-e-foto-login/`.
+- E2E usa as portas 8790/5190; se outro projeto estiver nelas, rode com `E2E_API_PORT` e `E2E_WEB_PORT`.
 - O progresso usa sempre o componente `Progress` (a "fita métrica"), que exige `label` para o leitor de tela.
 
 - O pacote `lib/api-client-react` usa `composite: true` no TypeScript — após editar `src/index.ts`, rodar `tsc --build lib/api-client-react/tsconfig.json` para regenerar os arquivos `.d.ts` antes do typecheck do frontend.

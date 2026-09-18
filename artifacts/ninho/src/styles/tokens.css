@@ -1,50 +1,67 @@
 /*
  * Tokens do Ninho — a única fonte de cor, tipo, espaço, raio, sombra e movimento.
- * Direção visual do PRD (§10): ivory, sage e vinho; Fraunces nos títulos e Karla no corpo.
+ * Identidade lilás (a de antes da Fase 2, retomada em 2026-09-17): fundos lavanda, ação em roxo,
+ * Montserrat em tudo.
  * Nenhum outro arquivo de estilo deve declarar cor literal: use estes tokens.
- * Contrastes medidos estão em .specs/features/fase-2-design-system/design.md.
+ * Contrastes medidos estão em .specs/features/lilas-e-foto-login/SUMMARY.md.
  */
 
 :root {
   /* Superfícies */
-  --color-bg: #f7f2ea;
-  --color-surface: #fffdf9;
-  --color-surface-sunk: #f0e9df;
-  --color-line: #e4dbcf;
-  --color-line-strong: #9a8b7c;
+  --color-bg: #f6f4f9;
+  --color-surface: #ffffff;
+  --color-surface-sunk: #f1edf5;
+  --color-line: #e4dcea;
+  --color-line-strong: #8f879a;
 
   /* Texto */
-  --color-ink: #2b2521;
-  --color-ink-muted: #6b5f57;
+  --color-ink: #24202a;
+  --color-ink-muted: #6b6573;
 
-  /* Vinho: a única cor de ação */
-  --color-brand: #7a2e3b;
-  --color-brand-strong: #5e2230;
-  --color-brand-soft: #f3e4e4;
+  /* Roxo: a cor de ação (texto, links, foco). O lilás vivo antigo não passa
+     como texto (4,06:1 no fundo), então fica para preenchimentos e destaques. */
+  --color-brand: #8a44bb;
+  --color-brand-strong: #6c3f88;
+  --color-brand-soft: #f1e4fb;
+  --color-brand-vivid: #a453d1;
+  --color-brand-gradient: linear-gradient(135deg, #9851d0, #7e3fae);
   --color-on-brand: #ffffff;
+  --color-highlight: #e0a4fb;
 
-  /* Sage: preenchimentos e ícones; texto só na variante strong */
-  --color-accent: #6f8a72;
-  --color-accent-strong: #4f6b53;
-  --color-accent-soft: #e6eee4;
-  --color-accent-light: #b7c9b6;
+  /* Painel de acesso: roxo profundo com véu sobre a foto */
+  --color-hero: #583767;
+  --color-hero-veil:
+    linear-gradient(to top, rgb(36 22 46 / 0.92) 0%, rgb(44 30 54 / 0.72) 38%, rgb(44 30 54 / 0) 70%),
+    linear-gradient(150deg, rgb(44 30 54 / 0.5) 4%, rgb(72 42 84 / 0.3) 55%, rgb(150 82 187 / 0.3));
+  --color-hero-veil-mobile: linear-gradient(90deg, rgb(51 34 60 / 0.78), rgb(96 52 112 / 0.3));
+  --color-on-hero-muted: #efe6f3;
+  --color-glow: radial-gradient(circle at 82% 20%, rgb(229 212 245 / 0.75), transparent 25rem);
+  --color-hero-label: #dac1e8;
+  --shadow-hero-text: 0 2px 20px rgb(42 25 52 / 0.32);
+
+  /* Verde: concluído, salvo, vinculado (texto só na variante strong) */
+  --color-accent: #6a9f80;
+  --color-accent-strong: #3f6b53;
+  --color-accent-soft: #eaf5ed;
 
   /* Estados */
   --color-warning: #8a5a1f;
-  --color-warning-soft: #f6ebdd;
-  --color-danger: #9b3434;
-  --color-danger-soft: #f7e6e3;
-  --color-overlay: rgb(43 37 33 / 0.45);
-  --color-focus: #7a2e3b;
+  --color-warning-soft: #fbeedd;
+  --color-danger: #9b3f52;
+  --color-danger-soft: #f9edf2;
+  --color-overlay: rgb(36 32 42 / 0.45);
+  --color-focus: #8a44bb;
 
   /* Fita métrica */
-  --tape-track: #efe3cf;
-  --tape-tick: rgb(43 37 33 / 0.28);
+  --color-progress: #a453d1;
+  --tape-track: #ece5f2;
+  --tape-tick: rgb(36 32 42 / 0.22);
   --tape-tick-on-fill: rgb(255 255 255 / 0.45);
 
   /* Tipografia */
-  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
-  --font-body: "Karla", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-label: var(--font-body);
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -56,6 +73,7 @@
   --leading-snug: 1.35;
   --leading-body: 1.5;
   --tracking-label: 0.08em;
+  --tracking-display: -0.04em;
 
   /* Espaço (múltiplos de 4) */
   --space-1: 4px;
@@ -74,10 +92,11 @@
   --radius-xl: 24px;
   --radius-full: 999px;
 
-  /* Sombra (tom quente, derivado da tinta) */
-  --shadow-sm: 0 1px 2px rgb(43 37 33 / 0.05), 0 2px 8px rgb(43 37 33 / 0.04);
-  --shadow-md: 0 6px 20px rgb(43 37 33 / 0.08);
-  --shadow-lg: 0 24px 56px rgb(43 37 33 / 0.18);
+  /* Sombra (tom arroxeado) */
+  --shadow-sm: 0 1px 2px rgb(81 57 99 / 0.05), 0 2px 8px rgb(81 57 99 / 0.05);
+  --shadow-md: 0 8px 24px rgb(81 57 99 / 0.1);
+  --shadow-lg: 0 24px 60px rgb(81 57 99 / 0.18);
+  --shadow-brand: 0 8px 18px rgb(164 82 212 / 0.22);
 
   /* Movimento */
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
