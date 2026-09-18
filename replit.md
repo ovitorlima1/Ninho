@@ -80,7 +80,7 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 ## Gotchas
 
 - Nenhuma cor ou tamanho de fonte literal fora de `styles/tokens.css`. Texto roxo é sempre `--color-brand` (o lilás vivo `--color-brand-vivid`/`--color-progress` não passa no contraste como texto); verde (`--color-accent`) só como texto na variante `-strong`.
-- A foto do login (`public/images/login-gestante.jpg`) é da Unsplash (Breno Dias, Licença Unsplash); troca de foto só com licença de uso registrada em `.specs/features/lilas-e-foto-login/`.
+- A foto do login (`public/images/login-gestante.jpg`) é do Pexels (Jonathan Borba, Licença Pexels); troca de foto só com licença de uso registrada em `.specs/features/lilas-e-foto-login/`.
 - E2E usa as portas 8790/5190; se outro projeto estiver nelas, rode com `E2E_API_PORT` e `E2E_WEB_PORT`.
 - O progresso usa sempre o componente `Progress` (a "fita métrica"), que exige `label` para o leitor de tela.
 

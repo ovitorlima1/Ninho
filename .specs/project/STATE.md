@@ -24,7 +24,7 @@
 | 2026-09-16 | `main` protegida por ruleset: só PR, `checks` e `e2e` verdes com a branch em dia, sem force push nem exclusão, sem exceção para admin. | Pedido do usuário (M-3). |
 | 2026-09-16 | O login não usa mais `login-pregnancy.png`: era a captura de um projeto de terceiros ("Pregnancy Tracker Logo", com a marca de outro produto). | Risco de direito de uso e de marca. |
 | 2026-09-17 | Volta a identidade lilás de antes da Fase 2 (fundos lavanda, roxo, Montserrat + Space Mono), com roxo de texto e degradê do botão mais escuros para passar no AA. | O dono preferia a paleta antiga. |
-| 2026-09-17 | Login com foto de gestante da Unsplash (Breno Dias, Licença Unsplash) sob véu roxo; `login-pregnancy.png` apagado. A foto antiga é de banco pago (Shutterstock 1971086771 e outros, achada por busca reversa). | Escolha do dono entre foto gratuita e licenciar a original. |
+| 2026-09-17 | Login com foto de gestante sob véu roxo — desde 2026-09-18 a do Pexels (Jonathan Borba, Licença Pexels), trocada a pedido do dono; `login-pregnancy.png` apagado. A foto antiga é de banco pago (Shutterstock 1971086771 e outros, achada por busca reversa). | Escolha do dono entre foto gratuita e licenciar a original. |
 
 ## Bloqueios
 
@@ -62,7 +62,7 @@
 - [ ] Deploy da Fase 4: `db push` em produção (2 tabelas novas); todos precisarão entrar de novo; conferir `ALLOWED_ORIGINS` se houver outro domínio.
 - [ ] Política de privacidade e termos de uso (texto jurídico) — decisão do dono.
 - [ ] Ajustes pequenos vistos na divisão: plural "que já está" no modal de inspiração; iniciais do avatar do perfil diferentes das do topo; "gerar novo link" usa o mesmo handler de criar.
-- [x] `public/login-pregnancy.png` apagado; login com foto da Unsplash (2026-09-17).
+- [x] `public/login-pregnancy.png` apagado; login com foto licenciada (Pexels desde 2026-09-18).
 - [ ] Modo escuro: os tokens estão prontos para uma paleta escura, que ficou fora da Fase 2.
 
 ## Ideias adiadas

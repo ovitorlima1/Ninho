@@ -33,11 +33,18 @@ de baixo, onde fica o texto sobre o vestido claro da foto.
 Na captura tirada no meio do toque, o botão "comprei" aparece roxo sobre roxo — é a transição de
 cor; em repouso fica branco sobre `#8a44bb`.
 
+## Troca da foto (2026-09-18)
+
+O dono não gostou da primeira foto (Unsplash, ao ar livre). A nova, do Pexels, é mais escura
+(parede azul-acinzentada), então a parte de cima do véu ficou mais leve (o rosto aparecia apagado)
+e a de baixo continua escura para o texto. O recorte foi ajustado ao rosto nos dois tamanhos.
+
 ## Arquivos
 
 - `styles/tokens.css` (paleta, fontes, sombras, véu), `styles/base.css` (espaçamento dos títulos),
   `styles/components.css` (etiquetas em Space Mono, botão em degradê, painel do login com foto,
   fita em lilás, cartão suave em lilás), `index.html` (fontes e `theme-color`),
-  `features/auth/auth-layout.tsx` (foto), `public/images/login-gestante.jpg` (280 kB, 1200×1800).
+  `features/auth/auth-layout.tsx` (foto), `public/images/login-gestante.jpg` (214 kB, 1200×1800,
+  Jonathan Borba no Pexels).
 - Apagado: `public/login-pregnancy.png`.
 - `playwright.config.ts`: portas do E2E configuráveis (`E2E_API_PORT`, `E2E_WEB_PORT`).

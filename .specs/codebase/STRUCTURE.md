@@ -51,7 +51,7 @@ artifacts/ninho/
 ├─ vitest.config.ts        Vitest em node, src/**/*.test.ts, alias @
 ├─ playwright.config.ts    E2E: API 8790 + Vite 5190 (ou `E2E_API_PORT`/`E2E_WEB_PORT`), projetos celular/desktop
 ├─ tsconfig.json           strict; inclui src, e2e e as duas configs de teste
-├─ public/                 favicon.svg, logo.svg, robots.txt, images/login-gestante.jpg (foto do login, Unsplash)
+├─ public/                 favicon.svg, logo.svg, robots.txt, images/login-gestante.jpg (foto do login, Pexels)
 ├─ e2e/                    ver TESTING.md
 │  ├─ env.ts                    19  E2E_DATABASE_URL, E2E_SESSION_SECRET, trava *_test
 │  ├─ global-setup.ts           41  cria ninho_test e roda push-force
