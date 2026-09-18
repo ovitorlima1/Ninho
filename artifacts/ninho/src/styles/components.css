@@ -1438,7 +1438,7 @@
     .auth-copy .eyebrow { color: var(--color-hero-label); }
     .auth-copy h1 { color: var(--color-on-brand); font-size: clamp(2.5rem, 4.5vw, 4rem); font-weight: 700; line-height: 0.95; letter-spacing: -0.06em; }
     .auth-copy p { max-width: 40ch; color: var(--color-on-hero-muted); }
-    .auth-panel .auth-hero-image { object-position: 72% 30%; }
+    .auth-panel .auth-hero-image { object-position: 58% 30%; }
     .auth-form-panel { align-content: center; padding: var(--space-7); background: var(--color-glow), var(--color-bg); }
     .auth-card { margin-top: 0; }
   }

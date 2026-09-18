@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { Brand } from "@/components/brand";
 
-// Foto: Breno Dias na Unsplash (Licença Unsplash) — ver .specs/features/lilas-e-foto-login.
+// Foto: Jonathan Borba no Pexels (Licença Pexels) — ver .specs/features/lilas-e-foto-login.
 const HERO_IMAGE = `${import.meta.env.BASE_URL}images/login-gestante.jpg`;
 
 export function AuthLayout({ children }: { children: ReactNode }) {

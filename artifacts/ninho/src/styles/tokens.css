@@ -32,8 +32,8 @@
   --color-hero: #583767;
   --color-hero-veil:
     linear-gradient(to top, rgb(36 22 46 / 0.92) 0%, rgb(44 30 54 / 0.72) 38%, rgb(44 30 54 / 0) 70%),
-    linear-gradient(150deg, rgb(44 30 54 / 0.8) 4%, rgb(72 42 84 / 0.45) 55%, rgb(150 82 187 / 0.35));
-  --color-hero-veil-mobile: linear-gradient(90deg, rgb(51 34 60 / 0.8), rgb(96 52 112 / 0.4));
+    linear-gradient(150deg, rgb(44 30 54 / 0.5) 4%, rgb(72 42 84 / 0.3) 55%, rgb(150 82 187 / 0.3));
+  --color-hero-veil-mobile: linear-gradient(90deg, rgb(51 34 60 / 0.78), rgb(96 52 112 / 0.3));
   --color-on-hero-muted: #efe6f3;
   --color-glow: radial-gradient(circle at 82% 20%, rgb(229 212 245 / 0.75), transparent 25rem);
   --color-hero-label: #dac1e8;
