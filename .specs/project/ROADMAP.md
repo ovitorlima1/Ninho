@@ -10,6 +10,8 @@ Códigos entre parênteses = achados da auditoria.
 | 2 | `fase-2-design-system` | A1, A5, A10, M3, M4, M6, M8 (fontes), M11, M12 | **Concluída** (2026-09-16) | — |
 | 3 | `fase-3-base-tecnica` | A11, A12, M7, M8, M9 | **Concluída** (2026-09-17) | — |
 | 4 | `fase-4-seguranca-privacidade` | A9 (persistente), M10, B4 | **Concluída** (2026-09-16) | — |
+| — | `lilas-e-foto-login` | — | **Concluída** (2026-09-18) | — |
+| — | `design-novo-inicio` | diagnóstico d01–d04, d06 | **Concluída na branch** (2026-09-22), PR pendente | — |
 
 ## Marcos
 
@@ -20,3 +22,7 @@ Códigos entre parênteses = achados da auditoria.
 - **M-4 — Dados protegidos e sob controle da usuária** ✅ 2026-09-16 (fim da Fase 4): sessões revogáveis,
   limites persistentes, cabeçalhos e CSP, exportação e exclusão de conta.
 - **M-3 — CI obrigatório** ✅ 2026-09-16: CI verde no GitHub e exigido na `main` (ruleset `main protegida`).
+
+## Acompanhamento
+
+O que falta para o app ficar completo está na página "Diagnóstico do Ninho": https://claude.ai/artifact/UBfs6PnqqFvNb8PQbxTBSG

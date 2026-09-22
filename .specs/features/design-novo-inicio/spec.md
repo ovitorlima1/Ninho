@@ -56,9 +56,9 @@
 
 | Requisito | Status |
 |---|---|
-| DN-R1–R2 | pendente |
-| DN-R3 | pendente |
-| DN-R4 | pendente |
-| DN-R5 | pendente |
-| DN-R6–R7 | pendente |
-| DN-R8–R9 | pendente |
+| DN-R1–R2 | concluído (`c0b0fbf`) |
+| DN-R3 | concluído (`e89c20b`) |
+| DN-R4 | concluído (`0ce12c5`) |
+| DN-R5 | concluído (`48a836f`) |
+| DN-R6–R7 | concluído (`e89c20b`) |
+| DN-R8–R9 | concluído (54/54 E2E com axe; sem rolagem horizontal em 320–1280px) |
