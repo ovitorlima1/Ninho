@@ -62,6 +62,16 @@
 
   .ninho-app { min-height: 100dvh; }
 
+  /* Some da tela, mas continua para leitores de tela (rótulos da barra do celular, marca compacta). */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   /* Utilitário ainda usado pelo botão "voltar" do onboarding. */
   .rotate-180 { transform: rotate(180deg); }
 
