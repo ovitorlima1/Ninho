@@ -2,6 +2,7 @@ import { CalendarDays, CheckCircle2, Circle, ClipboardCheck, Gift, Heart, Sparkl
 import { Progress } from "@/components/progress";
 import { type ServerMilestone, type ServerProfile } from "@/lib/api";
 import { calcGestation, formatGestation } from "@/lib/gestation";
+import { getNextMilestone } from "@/lib/milestones";
 import { ArrivalNotice } from "@/features/timeline/arrival-notice";
 
 const GESTATION_WEEKS = Array.from({ length: 40 }, (_, index) => index + 1);
@@ -18,6 +19,9 @@ export function TimelinePanel({
   const week = gestation?.week ?? null;
   const displayWeek = week;
   const trimester = week === null ? null : week <= 13 ? 1 : week <= 27 ? 2 : 3;
+  const nextMilestone = getNextMilestone(miles, week);
+  const nextLate = Boolean(nextMilestone && week !== null && nextMilestone.week < week);
+  const weeksUntilNext = nextMilestone && week !== null ? nextMilestone.week - week : null;
 
   return (
     <div className="screen timeline">
@@ -60,6 +64,20 @@ export function TimelinePanel({
             })}
           </ol>
         </section>
+      )}
+
+      {nextMilestone && (
+        <div className={`tile tile-static ${nextLate ? "tile-late" : "tile-peach"}`} data-testid="timeline-next-milestone">
+          <span className="tile-icon" aria-hidden><CalendarDays size={20} /></span>
+          <span className="tile-kicker">{nextLate ? "Marco atrasado" : "Próximo marco"}</span>
+          <span className="tile-value">{nextMilestone.title}</span>
+          <span className="tile-note">
+            Semana {nextMilestone.week}
+            {weeksUntilNext !== null && !nextLate && weeksUntilNext > 0
+              ? ` · daqui a ${weeksUntilNext} ${weeksUntilNext === 1 ? "semana" : "semanas"}`
+              : weeksUntilNext === 0 ? " · nesta semana" : nextLate ? " · marque quando resolver" : ""}
+          </span>
+        </div>
       )}
 
       <h2 className="section-title">Sua linha do tempo</h2>

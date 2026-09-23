@@ -198,11 +198,15 @@
     scrollbar-width: none;
   }
   .filter-row::-webkit-scrollbar { display: none; }
+  /* Chip do design system: ativo inverte (tinta sobre fundo), inativos brancos com borda. */
   .pill {
+    display: inline-flex;
     flex: none;
     min-height: 40px;
+    align-items: center;
+    gap: var(--space-2);
     padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-line-strong);
+    border: 1px solid var(--color-line);
     border-radius: var(--radius-full);
     color: var(--color-ink);
     background: var(--color-surface);
@@ -210,10 +214,11 @@
     font-weight: 600;
     white-space: nowrap;
   }
+  .pill:has(.cat-badge) { padding-left: 7px; }
   .pill-active {
-    border-color: var(--color-brand);
-    color: var(--color-on-brand);
-    background: var(--color-brand);
+    border-color: var(--color-ink);
+    color: var(--color-bg);
+    background: var(--color-ink);
   }
 
   /* minmax(0, 1fr): sem isso a coluna cresce até a largura das pílulas e a tela rola para o lado. */
@@ -487,6 +492,9 @@
     transition: box-shadow var(--duration) var(--ease), transform 120ms var(--ease);
   }
   .tile:active { transform: scale(0.98); }
+  /* Bloco só informativo (sem ação): sem cursor de clique nem realce. */
+  .tile-static { min-height: 0; cursor: default; }
+  .tile-static:active { transform: none; }
   .tile-lilac { color: var(--color-on-tile-lilac); background: var(--color-tile-lilac); }
   .tile-peach { color: var(--color-on-tile-peach); background: var(--color-tile-peach); }
   .tile-mint { color: var(--color-on-tile-mint); background: var(--color-tile-mint); }
@@ -640,7 +648,16 @@
   .check-circle.checked { border-color: var(--color-accent-strong); background: var(--color-accent-strong); }
   .check-name { display: grid; flex: 1; min-width: 0; gap: 2px; }
   .check-name strong { font-weight: 600; overflow-wrap: anywhere; }
-  .check-name small { color: var(--color-ink-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+  .check-name small {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px var(--space-2);
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+  .card-title-with-badge { display: flex; align-items: center; gap: var(--space-2); }
   .check-item-edit-hint { color: var(--color-ink-muted); }
 
   .status-picker {
@@ -722,18 +739,20 @@
     font-weight: 700;
   }
 
+  /* "Seu progresso": bloco malva, como o herói do Início. */
   .log-card {
     display: grid;
     gap: var(--space-2);
     padding: var(--space-4) var(--space-5);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface-sunk);
+    border-radius: var(--radius-xl);
+    color: var(--color-on-tile-lilac);
+    background: var(--color-tile-lilac);
     font-size: var(--text-sm);
   }
   .log-title { display: flex; align-items: center; gap: var(--space-2); font-weight: 700; }
-  .log-row { display: flex; align-items: center; gap: var(--space-2); color: var(--color-ink-muted); }
-  .log-dot { width: 8px; height: 8px; flex: none; border-radius: var(--radius-full); background: var(--color-accent-strong); }
-  .log-dot.dim { background: var(--color-line-strong); }
+  .log-row { display: flex; align-items: center; gap: var(--space-2); }
+  .log-dot { width: 8px; height: 8px; flex: none; border-radius: var(--radius-full); background: var(--color-on-tile-lilac); }
+  .log-dot.dim { opacity: 0.5; }
 
   /* ── Marcos ────────────────────────────────────────────────────────────── */
   .gestation-card .card-title { font-size: var(--text-xl); }
@@ -1457,7 +1476,7 @@
     .auth-forgot:hover,
     .auth-switch button:hover { text-decoration: underline; }
     .pill:hover:not(.pill-active) { border-color: var(--color-brand); }
-    .tile:hover { box-shadow: inset 0 0 0 2px var(--color-brand); }
+    .tile:not(.tile-static):hover { box-shadow: inset 0 0 0 2px var(--color-brand); }
     .overview-buy-row:hover .overview-buy-name { color: var(--color-brand); }
     .status-option:hover:not(.selected):not(:disabled) { color: var(--color-ink); background: var(--color-surface); }
     .delete-item-btn:hover { color: var(--color-danger); background: var(--color-danger-soft); }
