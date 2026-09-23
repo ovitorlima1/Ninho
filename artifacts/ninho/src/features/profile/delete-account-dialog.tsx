@@ -64,7 +64,7 @@ export function DeleteAccountDialog({ onClose, onDeleted }: { onClose: () => voi
         Isso apaga <strong>na hora e para sempre</strong> sua lista, marcos, orçamento, perfil e o link de presentes. Se quiser guardar uma cópia, exporte seus dados antes.
       </p>
       <label className="modal-label">
-        SUA SENHA
+        Sua senha
         <PasswordField
           value={password}
           onChange={setPassword}
@@ -78,7 +78,7 @@ export function DeleteAccountDialog({ onClose, onDeleted }: { onClose: () => voi
         {passwordError && <span className="field-error" role="alert" id="delete-account-password-error">{passwordError}</span>}
       </label>
       <label className="modal-label">
-        PARA CONFIRMAR, DIGITE {CONFIRMATION}
+        Para confirmar, digite {CONFIRMATION}
         <input
           value={confirmation}
           onChange={(event) => setConfirmation(event.target.value)}

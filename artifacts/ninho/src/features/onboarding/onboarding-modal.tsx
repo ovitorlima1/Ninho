@@ -67,11 +67,11 @@ export function OnboardingModal({ userId, onComplete }: { userId: string; onComp
         {step === 1 && (
           <>
             <div className="modal-top">
-              <div className="onboarding-intro"><span className="eyebrow">BEM-VINDA</span><h2 id="onboarding-step-1-title">Como posso te chamar?</h2></div>
+              <div className="onboarding-intro"><span className="eyebrow">Bem-vinda</span><h2 id="onboarding-step-1-title">Como posso te chamar?</h2></div>
             </div>
             <p className="onboarding-description" id="onboarding-step-1-description">Pode ser seu nome, um apelido ou como você gosta de ser chamada.</p>
             <label className="modal-label">
-              NOME OU APELIDO
+              Nome ou apelido
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -93,12 +93,12 @@ export function OnboardingModal({ userId, onComplete }: { userId: string; onComp
         {step === 2 && (
           <>
             <div className="modal-top">
-              <div className="onboarding-intro"><span className="eyebrow">CHEGADA</span><h2 id="onboarding-step-2-title">Qual é a data prevista?</h2></div>
+              <div className="onboarding-intro"><span className="eyebrow">Chegada</span><h2 id="onboarding-step-2-title">Qual é a data prevista?</h2></div>
               <TinyButton onClick={() => setStep(1)} label="Voltar" testId="button-onboarding-back"><ChevronRight size={17} className="rotate-180" /></TinyButton>
             </div>
             <p className="onboarding-description" id="onboarding-step-2-description">A partir dela, calculamos sua semana e os marcos. Você pode mudar depois.</p>
             <label className="modal-label">
-              DATA PREVISTA
+              Data prevista
               <input
                 type="date"
                 value={dueDate}

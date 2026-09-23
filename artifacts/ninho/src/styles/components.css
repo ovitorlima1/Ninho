@@ -21,6 +21,21 @@
     line-height: 1;
   }
 
+  /* ── Ícone de categoria (cor = papel no design system) ───────────────────── */
+  .cat-badge {
+    display: inline-grid;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    place-items: center;
+    border-radius: var(--radius-sm);
+  }
+  .cat-badge-sm { width: 26px; height: 26px; border-radius: 8px; }
+  .cat-lilac { color: var(--color-on-tile-lilac); background: var(--color-tile-lilac); }
+  .cat-mint { color: var(--color-on-tile-mint); background: var(--color-tile-mint); }
+  .cat-peach { color: var(--color-on-tile-peach); background: var(--color-tile-peach); }
+  .cat-butter { color: var(--color-on-tile-butter); background: var(--color-tile-butter); }
+
   /* ── Texto de apoio ────────────────────────────────────────────────────── */
   .eyebrow {
     display: block;
@@ -1214,21 +1229,6 @@
   }
   .auth-mobile-tagline strong,
   .auth-copy h1 strong { color: var(--color-highlight); font-weight: 700; }
-  .auth-tape {
-    position: relative;
-    height: 16px;
-    max-width: 320px;
-    margin-top: var(--space-4);
-    overflow: hidden;
-    border-radius: var(--radius-full);
-    background-color: var(--tape-track);
-  }
-  .auth-tape span {
-    position: absolute;
-    inset: 0 40% 0 0;
-    border-radius: inherit;
-    background-color: var(--color-highlight);
-  }
   .auth-panel { display: none; }
   .auth-form-panel {
     display: grid;

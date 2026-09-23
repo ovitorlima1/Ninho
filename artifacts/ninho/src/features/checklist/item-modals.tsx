@@ -25,7 +25,7 @@ export function ItemFields({
         ))}
       </div>
       <label className="modal-label">
-        NOME DO ITEM
+        Nome do item
         <input
           value={values.name}
           maxLength={200}
@@ -36,7 +36,7 @@ export function ItemFields({
       </label>
       <div className="item-form-row">
         <label className="modal-label">
-          QUANTIDADE
+          Quantidade
           <DraftNumberInput
             inputMode="numeric"
             value={values.qty}
@@ -47,7 +47,7 @@ export function ItemFields({
           />
         </label>
         <label className="modal-label">
-          PREÇO POR UNIDADE
+          Preço por unidade
           <span className="price-input">
             <span aria-hidden>R$</span>
             <DraftNumberInput
@@ -100,7 +100,7 @@ export function AddItemModal({
     <ModalShell labelledBy="add-item-title" onClose={onClose} onSubmit={submit} returnFocusTestId={returnFocusTestId}>
       <>
         <div className="modal-top">
-          <div><span className="eyebrow">SUA LISTA, SUAS REGRAS</span><h2 id="add-item-title">Adicionar item</h2></div>
+          <div><span className="eyebrow">Sua lista, suas regras</span><h2 id="add-item-title">Adicionar item</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-add-item"><X size={17} /></TinyButton>
         </div>
         <ItemFields values={values} onChange={setValues} priceError={null} />
@@ -147,7 +147,7 @@ export function EditItemModal({
     <ModalShell labelledBy="edit-item-title" onClose={onClose} onSubmit={submit} returnFocusTestId={`button-phone-check-${item.id}`}>
       <>
         <div className="modal-top">
-          <div><span className="eyebrow">AJUSTAR ITEM</span><h2 id="edit-item-title">{item.name}</h2></div>
+          <div><span className="eyebrow">Ajustar item</span><h2 id="edit-item-title">{item.name}</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-edit-item"><X size={17} /></TinyButton>
         </div>
         <ItemFields values={values} onChange={setValues} priceError={null} />

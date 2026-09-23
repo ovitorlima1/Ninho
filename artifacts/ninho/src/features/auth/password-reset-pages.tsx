@@ -28,7 +28,7 @@ export function PasswordResetRequestPage() {
         <div className="auth-card auth-result-card">
           <Mail size={22} className="auth-result-icon" />
           <div className="auth-card-header">
-            <span className="eyebrow">CONFIRA SEU E-MAIL</span>
+            <span className="eyebrow">Confira seu e-mail</span>
             <h2>Se houver uma conta, o link está a caminho.</h2>
             <p>Enviamos instruções para redefinir sua senha. Se a mensagem não aparecer, confira o spam.</p>
           </div>
@@ -44,13 +44,13 @@ export function PasswordResetRequestPage() {
     <AuthLayout>
       <form className="auth-card" onSubmit={submit} noValidate>
         <div className="auth-card-header">
-          <span className="eyebrow">RECUPERE SEU ESPAÇO</span>
+          <span className="eyebrow">Recupere seu espaço</span>
           <h2>Esqueceu sua senha?</h2>
           <p>Digite seu e-mail e, se houver uma conta, enviaremos um link temporário para você voltar ao seu ninho.</p>
         </div>
         <div className="auth-fields">
           <label className="auth-field">
-            E-MAIL
+            E-mail
             <input
               type="email"
               autoComplete="email"
@@ -120,7 +120,7 @@ export function PasswordResetPage() {
         <div className="auth-card auth-result-card">
           <div className="auth-result-check" aria-hidden><Check size={22} /></div>
           <div className="auth-card-header">
-            <span className="eyebrow">TUDO PRONTO</span>
+            <span className="eyebrow">Tudo pronto</span>
             <h2>Senha redefinida.</h2>
             <p>Suas sessões antigas foram encerradas. Entre novamente com a nova senha.</p>
           </div>
@@ -136,14 +136,14 @@ export function PasswordResetPage() {
     <AuthLayout>
       <form className="auth-card" onSubmit={submit} noValidate>
         <div className="auth-card-header">
-          <span className="eyebrow">NOVA SENHA</span>
+          <span className="eyebrow">Nova senha</span>
           <h2>Crie uma nova senha</h2>
           <p>Escolha uma senha com pelo menos 8 caracteres para proteger seu ninho.</p>
         </div>
         <input className="auth-hidden-username" type="email" autoComplete="username" name="username" value="" readOnly tabIndex={-1} aria-hidden />
         <div className="auth-fields">
           <label className="auth-field">
-            NOVA SENHA
+            Nova senha
             <input
               type="password"
               autoComplete="new-password"
@@ -154,7 +154,7 @@ export function PasswordResetPage() {
             />
           </label>
           <label className="auth-field">
-            CONFIRME A NOVA SENHA
+            Confirme a nova senha
             <input
               type="password"
               autoComplete="new-password"

@@ -19,7 +19,6 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           <span className="eyebrow">Organização de enxoval</span>
           <h1>Prepare a chegada<br /><strong>com leveza.</strong></h1>
           <p>Checklist, orçamento e marcos da gestação — tudo no seu ritmo.</p>
-          <div className="auth-tape" aria-hidden><span /></div>
         </div>
       </div>
       <div className="auth-form-panel">{children}</div>

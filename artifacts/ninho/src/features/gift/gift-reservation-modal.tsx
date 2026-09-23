@@ -37,16 +37,16 @@ export function GiftReservationModal({
     >
       <>
         <div className="modal-top">
-          <div><span className="eyebrow">UM PRESENTE COM CARINHO</span><h2 id="reserve-gift-title">{item.name}</h2></div>
+          <div><span className="eyebrow">Um presente com carinho</span><h2 id="reserve-gift-title">{item.name}</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-gift-reservation"><X size={17} /></TinyButton>
         </div>
         <p>Você está reservando {item.qty > 1 ? `${item.qty} unidades` : "este item"} para que ele não se repita.</p>
         <label className="modal-label">
-          SEU NOME <small>(opcional)</small>
+          Seu nome <small>(opcional)</small>
           <input value={guestName} maxLength={120} onChange={(event) => setGuestName(event.target.value)} placeholder="Como a família vai reconhecer você?" data-testid="input-gift-guest-name" />
         </label>
         <fieldset className="gift-status-picker">
-          <legend>COMO VOCÊ QUER MARCAR?</legend>
+          <legend>Como você quer marcar?</legend>
           <button type="button" className={status === "vou presentear" ? "selected" : ""} onClick={() => setStatus("vou presentear")} data-testid="button-gift-status-intend">
             vou presentear
           </button>

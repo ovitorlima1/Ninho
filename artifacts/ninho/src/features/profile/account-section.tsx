@@ -51,7 +51,7 @@ export function AccountSection() {
   return (
     <section className="account-section" aria-labelledby="account-section-title">
       <div>
-        <span className="eyebrow">SEGURANÇA E PRIVACIDADE</span>
+        <span className="eyebrow">Segurança e privacidade</span>
         <h2 id="account-section-title">Sua conta</h2>
       </div>
       <button type="button" className="soft-action" onClick={() => void signOut()} disabled={busy} data-testid="button-profile-sign-out">
