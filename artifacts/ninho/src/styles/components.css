@@ -380,7 +380,7 @@
   .loading-spinner {
     width: 36px;
     height: 36px;
-    border: 3px solid var(--color-line);
+    border: 3px solid var(--color-tile-lilac);
     border-top-color: var(--color-brand);
     border-radius: var(--radius-full);
     animation: spin 900ms linear infinite;
@@ -1185,6 +1185,8 @@
   .modal-card > p strong { color: var(--color-ink); }
   .modal-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
   .modal-top h2 { margin-top: var(--space-1); font-size: var(--text-xl); }
+  .modal-top-back { justify-content: flex-start; }
+  .modal-top-back > .icon-button { margin-left: calc(var(--space-2) * -1); }
   .modal-card .primary-button { margin-top: var(--space-2); }
   .confirm-cancel { width: 100%; }
 

@@ -72,8 +72,6 @@
     white-space: nowrap;
   }
 
-  /* Utilitário ainda usado pelo botão "voltar" do onboarding. */
-  .rotate-180 { transform: rotate(180deg); }
 
   @keyframes spin { to { transform: rotate(360deg); } }
   /* Só deslocamento: o conteúdo nunca fica invisível esperando a animação. */

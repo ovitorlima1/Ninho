@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { TinyButton } from "@/components/controls";
 import { ModalShell } from "@/components/modal-shell";
@@ -92,9 +92,10 @@ export function OnboardingModal({ userId, onComplete }: { userId: string; onComp
 
         {step === 2 && (
           <>
-            <div className="modal-top">
+            {/* "Voltar" à esquerda, onde o olho procura (achado B3): antes ficava no canto direito. */}
+            <div className="modal-top modal-top-back">
+              <TinyButton onClick={() => setStep(1)} label="Voltar" testId="button-onboarding-back"><ChevronLeft size={18} /></TinyButton>
               <div className="onboarding-intro"><span className="eyebrow">Chegada</span><h2 id="onboarding-step-2-title">Qual é a data prevista?</h2></div>
-              <TinyButton onClick={() => setStep(1)} label="Voltar" testId="button-onboarding-back"><ChevronRight size={17} className="rotate-180" /></TinyButton>
             </div>
             <p className="onboarding-description" id="onboarding-step-2-description">A partir dela, calculamos sua semana e os marcos. Você pode mudar depois.</p>
             <label className="modal-label">
