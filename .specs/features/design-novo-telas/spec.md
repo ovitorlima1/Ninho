@@ -44,10 +44,10 @@
 
 | Requisito | Status |
 |---|---|
-| DT-R1 | pendente |
-| DT-R2 | pendente |
-| DT-R3 | pendente |
-| DT-R4 | pendente |
-| DT-R5 | pendente |
-| DT-R6 | pendente |
-| DT-R7 | pendente |
+| DT-R1 | concluído (`6cb7cdc`) |
+| DT-R2 | concluído (`83efeb4`) |
+| DT-R3 | concluído (`83efeb4`) |
+| DT-R4 | concluído (`756bfa4`) |
+| DT-R5 | concluído (`dd3ad82`) |
+| DT-R6 | concluído (`6cb7cdc, 150f496`) |
+| DT-R7 | concluído (54/54 E2E com axe; sem rolagem lateral em 320–1280px nas 6 telas) |
