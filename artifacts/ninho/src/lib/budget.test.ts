@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
+  calcOverBudget,
   calcSpent,
   calcSpentByCategory,
   calcSpentCents,
@@ -65,4 +66,17 @@ test("soma por categoria considera só a categoria pedida", () => {
   assert.equal(calcSpentByCategory(items, "Roupas"), 370);
   assert.equal(calcSpentByCategory(items, "Higiene"), 116);
   assert.equal(calcSpentByCategory(items, "Acessórios"), 0);
+});
+
+test("categoria estourada: só quem tem planejado e gastou mais, com o excesso exato", () => {
+  const items = [
+    { category: "Alimentação", status: "Comprado", price: 240, qty: 3 },
+    { category: "Roupas", status: "Comprado", price: 100, qty: 2 },
+    { category: "Higiene", status: "Comprado", price: 50, qty: 1 },
+    { category: "Acessórios", status: "Ganhei", price: 900, qty: 1 },
+  ];
+  const planned = { Alimentação: 600, Roupas: 200, Higiene: 0, Acessórios: 100 };
+  assert.deepEqual(calcOverBudget(items, planned, ["Roupas", "Higiene", "Alimentação", "Acessórios"]), [
+    { category: "Alimentação", over: 120 },
+  ]);
 });

@@ -814,23 +814,39 @@
   .milestone-late .milestone-meta { color: var(--color-warning); font-weight: 700; }
 
   /* ── Orçamento ─────────────────────────────────────────────────────────── */
+  /* "Investido até aqui": bloco menta (dinheiro), como no design system. */
   .budget-total {
     display: grid;
     gap: var(--space-1);
     padding: var(--space-6) var(--space-5);
-    border: 1px solid var(--color-line);
     border-radius: var(--radius-xl);
-    background: var(--color-surface);
+    color: var(--color-on-tile-mint);
+    background: var(--color-tile-mint);
   }
+  .budget-total .eyebrow { color: inherit; }
   .budget-total strong {
     font-family: var(--font-display);
-    font-size: var(--text-3xl);
-    font-weight: 600;
-    line-height: var(--leading-tight);
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
     font-variant-numeric: tabular-nums;
   }
-  .budget-total small { color: var(--color-ink-muted); font-size: var(--text-sm); }
-  .budget-total .tape { margin-top: var(--space-3); }
+  .budget-total small { font-size: var(--text-sm); font-weight: 500; }
+  .budget-total .tape { margin-top: var(--space-3); background-color: var(--color-surface); }
+  .budget-total .tape-fill { background-color: var(--color-accent-strong); }
+  .budget-over {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-lg);
+    color: var(--color-warning);
+    background: var(--color-warning-soft);
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+  .budget-over svg { margin-top: 1px; }
   .budget-list { gap: 0; }
   .budget-row {
     display: flex;
@@ -848,6 +864,11 @@
     font-weight: 700;
   }
   .budget-row-label small { color: var(--color-ink-muted); font-size: var(--text-sm); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .budget-row-name { display: flex; align-items: center; gap: var(--space-2); }
+  /* Dinheiro em verde; categoria ou total acima do planejado em vermelho (a cor não é a única pista: o aviso diz quanto). */
+  .budget-row .tape-fill { background-color: var(--color-accent-strong); }
+  .budget-total .tape-brand .tape-fill,
+  .budget-row .tape-brand .tape-fill { background-color: var(--color-danger); }
   .budget-price-input { flex: none; width: 132px; }
   .budget-price-input input { text-align: right; }
   .budget-list .primary-button { margin-top: var(--space-3); }

@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Check, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2 } from "lucide-react";
+import { CategoryBadge } from "@/components/category-icon";
 import { DraftNumberInput } from "@/components/draft-number-input";
 import { Progress } from "@/components/progress";
 import { type ServerBudgetCategory } from "@/lib/api";
-import { calcSpent, calcSpentByCategory } from "@/lib/budget";
+import { calcOverBudget, calcSpent, calcSpentByCategory } from "@/lib/budget";
 import { money } from "@/lib/format";
 import { CATEGORIES, formatPriceInput, parsePriceInput, type ChecklistItem } from "@/lib/items";
 
@@ -26,6 +27,7 @@ export function BudgetPanel({
 
   const spent = calcSpent(items);
   const total = Object.values(planned).reduce((s, v) => s + v, 0);
+  const overBudget = calcOverBudget(items, planned, CATEGORIES);
 
   const handleChange = (cat: string, val: number) => {
     setPlanned((p) => ({ ...p, [cat]: val }));
@@ -49,6 +51,14 @@ export function BudgetPanel({
         <small>de {money(total)} planejados</small>
         <Progress value={total > 0 ? (spent / total) * 100 : 0} label="Orçamento usado" size="lg" tone={spent > total ? "brand" : "accent"} />
       </div>
+      {overBudget.length > 0 && (
+        <p className="budget-over" role="status" data-testid="budget-over-notice">
+          <AlertCircle size={18} aria-hidden />
+          <span>
+            {overBudget.map(({ category, over }) => `${category} passou ${money(over)} do previsto`).join("; ")}.
+          </span>
+        </p>
+      )}
       <section className="card budget-list" aria-busy={saveState === "saving"} aria-labelledby="budget-list-title" data-testid="budget-edit-card">
         <div className="card-header"><h2 className="card-title" id="budget-list-title">Por categoria</h2><span className="card-meta">planejado editável</span></div>
         {CATEGORIES.map((cat) => {
@@ -57,7 +67,7 @@ export function BudgetPanel({
           return (
             <label className="budget-row" key={cat}>
               <span className="budget-row-label">
-                {cat}
+                <span className="budget-row-name"><CategoryBadge category={cat} small />{cat}</span>
                 <small>{money(spentHere)} de {money(plannedHere)}</small>
                 <Progress value={plannedHere > 0 ? (spentHere / plannedHere) * 100 : 0} label={`${cat}: gasto em relação ao planejado`} tone={spentHere > plannedHere ? "brand" : "accent"} />
               </span>
