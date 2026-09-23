@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowUpRight, CalendarDays, Check, CheckCircle2, Star } from "lucide-react";
 import { type ServerGiftShare, type ServerProfile, type UpdateProfileInput } from "@/lib/api";
 import { calcGestation, formatGestation, getDueDateBounds, validateDueDate } from "@/lib/gestation";
+import { initialsFor } from "@/lib/format";
 import { GiftShareCard } from "@/features/profile/gift-share-card";
 import { AccountSection } from "@/features/profile/account-section";
 
@@ -52,7 +53,8 @@ export function ProfilePanel({
     });
   };
 
-  const initials = (profile.displayName || "?").slice(0, 2).toUpperCase();
+  // Mesma regra do avatar do topo (primeira e última palavra): antes, "Ana Lima" virava "AN" aqui e "AL" lá.
+  const initials = initialsFor(profile.displayName);
   const gestation = calcGestation(profile.dueDate);
   const week = gestation?.week ?? null;
   const canSave = isDirty && !dueDateError && saveState !== "saving";
