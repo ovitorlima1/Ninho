@@ -85,6 +85,9 @@ do onboarding continua no canto superior direito: é o último filho de `.modal-
     `POST /api/me/share` revoga o link ativo e cria outro token na mesma transação
     (`artifacts/api-server/src/routes/me.ts:74-103`), então o link antigo para de funcionar.
     Só o nome do handler engana.
+- **Textos em caixa alta escritos no JSX** (design novo, 2026-09-22): o CSS de `.eyebrow` não força mais caixa alta,
+  mas strings como "QUEM ESTÁ PREPARANDO", "A PEQUENA PESSOA", "BEM-VINDA DE VOLTA" e "LISTA PARA PRESENTES" estão
+  em caixa alta no próprio código (`features/profile/*`, `features/auth/auth-page.tsx`). Reescrever ao refazer cada tela.
 - **Modo escuro não implementado.** `index.html:19` declara `color-scheme: light` e nenhum arquivo
   de `src/styles/` tem `prefers-color-scheme`; os tokens (`styles/tokens.css`) estão prontos para
   receber uma paleta escura.

@@ -1,66 +1,86 @@
 /*
  * Tokens do Ninho — a única fonte de cor, tipo, espaço, raio, sombra e movimento.
- * Identidade lilás (a de antes da Fase 2, retomada em 2026-09-17): fundos lavanda, ação em roxo,
- * Montserrat em tudo.
+ * Identidade "Ninho Bento" (2026-09-22): ameixa da logo na ação, blocos pastel com significado
+ * (malva, pêssego, menta, manteiga), Plus Jakarta Sans em tudo.
+ * Design system: https://claude.ai/artifact/43t7uK7KSLg2qaQhbaLqjs — os pares de texto listados lá
+ * passam 4,5:1 (3:1 em bordas e ícones).
+ * Os nomes antigos (--color-brand, --color-bg…) ficam para as telas que ainda não mudaram de layout.
  * Nenhum outro arquivo de estilo deve declarar cor literal: use estes tokens.
- * Contrastes medidos estão em .specs/features/lilas-e-foto-login/SUMMARY.md.
  */
 
 :root {
   /* Superfícies */
-  --color-bg: #f6f4f9;
+  --color-bg: #f8f3f6;
   --color-surface: #ffffff;
-  --color-surface-sunk: #f1edf5;
-  --color-line: #e4dcea;
-  --color-line-strong: #8f879a;
+  --color-surface-sunk: #f2e9ef;
+  --color-line: #ebdee6;
+  --color-line-strong: #94818d;
 
   /* Texto */
-  --color-ink: #24202a;
-  --color-ink-muted: #6b6573;
+  --color-ink: #2a1c26;
+  --color-ink-muted: #6c5c67;
 
-  /* Roxo: a cor de ação (texto, links, foco). O lilás vivo antigo não passa
-     como texto (4,06:1 no fundo), então fica para preenchimentos e destaques. */
-  --color-brand: #8a44bb;
-  --color-brand-strong: #6c3f88;
-  --color-brand-soft: #f1e4fb;
-  --color-brand-vivid: #a453d1;
-  --color-brand-gradient: linear-gradient(135deg, #9851d0, #7e3fae);
+  /* Ameixa: a cor de ação (texto, links, foco). brand-strong é o traço da logo. */
+  --color-brand: #82376f;
+  --color-brand-strong: #6a2a5b;
+  --color-brand-soft: #efd6e8;
+  --color-brand-vivid: #b0569a;
+  --color-brand-gradient: linear-gradient(var(--color-brand), var(--color-brand));
   --color-on-brand: #ffffff;
-  --color-highlight: #e0a4fb;
+  --color-highlight: #f4ba9a;
 
-  /* Painel de acesso: roxo profundo com véu sobre a foto */
-  --color-hero: #583767;
+  /* Blocos do bento: cada cor tem papel e categoria (ver design system). Texto sempre no on-* da mesma cor. */
+  --color-tile-lilac: #efd6e8;
+  --color-on-tile-lilac: #5a1f4c;
+  --color-tile-peach: #ffdccb;
+  --color-on-tile-peach: #6b2e14;
+  --color-tile-mint: #cfebdd;
+  --color-on-tile-mint: #1e5238;
+  --color-tile-butter: #fff0bf;
+  --color-on-tile-butter: #5e4608;
+
+  /* Navegação: pílula escura no celular, item ativo em malva */
+  --color-nav: #2a1c26;
+  --color-nav-muted: #b3a0ad;
+  --color-nav-active: #efd6e8;
+  --color-on-nav-active: #5a1f4c;
+
+  /* Marca: fixas, iguais em qualquer tema */
+  --color-mark-bg: #fbf4ec;
+  --color-mark-line: #6a2a5b;
+  --color-mark-heart: #f4ba9a;
+
+  /* Painel de acesso: ameixa profunda com véu sobre a foto */
+  --color-hero: #4a1f3f;
   --color-hero-veil:
-    linear-gradient(to top, rgb(36 22 46 / 0.92) 0%, rgb(44 30 54 / 0.72) 38%, rgb(44 30 54 / 0) 70%),
-    linear-gradient(150deg, rgb(44 30 54 / 0.5) 4%, rgb(72 42 84 / 0.3) 55%, rgb(150 82 187 / 0.3));
-  --color-hero-veil-mobile: linear-gradient(90deg, rgb(51 34 60 / 0.78), rgb(96 52 112 / 0.3));
-  --color-on-hero-muted: #efe6f3;
-  --color-glow: radial-gradient(circle at 82% 20%, rgb(229 212 245 / 0.75), transparent 25rem);
-  --color-hero-label: #dac1e8;
-  --shadow-hero-text: 0 2px 20px rgb(42 25 52 / 0.32);
+    linear-gradient(to top, rgb(34 16 29 / 0.92) 0%, rgb(42 20 36 / 0.72) 38%, rgb(42 20 36 / 0) 70%),
+    linear-gradient(150deg, rgb(42 20 36 / 0.5) 4%, rgb(74 32 64 / 0.3) 55%, rgb(130 55 111 / 0.3));
+  --color-hero-veil-mobile: linear-gradient(90deg, rgb(42 20 36 / 0.78), rgb(90 31 76 / 0.3));
+  --color-on-hero-muted: #f3e6ee;
+  --color-glow: radial-gradient(circle at 82% 20%, rgb(239 214 232 / 0.75), transparent 25rem);
+  --color-hero-label: #efd6e8;
+  --shadow-hero-text: 0 2px 20px rgb(34 16 29 / 0.32);
 
-  /* Verde: concluído, salvo, vinculado (texto só na variante strong) */
-  --color-accent: #6a9f80;
-  --color-accent-strong: #3f6b53;
-  --color-accent-soft: #eaf5ed;
+  /* Verde: concluído, salvo, vinculado (texto na variante strong) */
+  --color-accent: #2f6e4e;
+  --color-accent-strong: #2f6e4e;
+  --color-accent-soft: #cfebdd;
 
   /* Estados */
   --color-warning: #8a5a1f;
   --color-warning-soft: #fbeedd;
-  --color-danger: #9b3f52;
-  --color-danger-soft: #f9edf2;
-  --color-overlay: rgb(36 32 42 / 0.45);
-  --color-focus: #8a44bb;
+  --color-danger: #a63a4f;
+  --color-danger-soft: #fbeaee;
+  --color-overlay: rgb(42 28 38 / 0.45);
+  --color-focus: #82376f;
 
-  /* Fita métrica */
-  --color-progress: #a453d1;
-  --tape-track: #ece5f2;
-  --tape-tick: rgb(36 32 42 / 0.22);
-  --tape-tick-on-fill: rgb(255 255 255 / 0.45);
+  /* Barra de progresso: pílula lisa, sem marcações */
+  --color-progress: #b0569a;
+  --tape-track: #efe2eb;
 
   /* Tipografia */
-  --font-display: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-body: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-label: var(--font-body);
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -72,8 +92,8 @@
   --leading-tight: 1.15;
   --leading-snug: 1.35;
   --leading-body: 1.5;
-  --tracking-label: 0.08em;
-  --tracking-display: -0.04em;
+  --tracking-label: 0.02em;
+  --tracking-display: -0.025em;
 
   /* Espaço (múltiplos de 4) */
   --space-1: 4px;
@@ -85,18 +105,19 @@
   --space-7: 32px;
   --space-8: 40px;
 
-  /* Raio */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
+  /* Raio: tudo arredondado; blocos do bento em xl */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
   --radius-full: 999px;
 
-  /* Sombra (tom arroxeado) */
-  --shadow-sm: 0 1px 2px rgb(81 57 99 / 0.05), 0 2px 8px rgb(81 57 99 / 0.05);
-  --shadow-md: 0 8px 24px rgb(81 57 99 / 0.1);
-  --shadow-lg: 0 24px 60px rgb(81 57 99 / 0.18);
-  --shadow-brand: 0 8px 18px rgb(164 82 212 / 0.22);
+  /* Sombra (tom ameixa): só no que flutua e nos cartões brancos */
+  --shadow-sm: 0 1px 2px rgb(74 32 64 / 0.06), 0 4px 12px rgb(74 32 64 / 0.05);
+  --shadow-md: 0 8px 24px rgb(74 32 64 / 0.1);
+  --shadow-lg: 0 24px 64px rgb(74 32 64 / 0.24);
+  --shadow-brand: none;
+  --shadow-float: 0 12px 32px rgb(42 28 38 / 0.22);
 
   /* Movimento */
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -105,8 +126,10 @@
   /* Medidas de interface */
   --touch-target: 44px;
   --nav-height: 64px;
-  --sidebar-width: 232px;
-  --content-max: 1080px;
+  --rail-width: 88px;
+  --sidebar-width: 248px;
+  --aside-width: 340px;
+  --content-max: 1120px;
   --reading-max: 720px;
 
   /* Compatibilidade com os componentes shadcn que ainda existem (toaster) */

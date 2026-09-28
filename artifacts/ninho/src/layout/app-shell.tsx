@@ -24,7 +24,9 @@ export function navPathFor(location: string): NavPath {
   return NAV_ITEMS.find((item) => item.path === location)?.path ?? "/dashboard";
 }
 
-export function NavLinks({ current, go, variant }: { current: NavPath; go: (path: string) => void; variant: "tabbar" | "sidebar" }) {
+const TEST_ID_PREFIX = { tabbar: "button-phone-tab", rail: "button-rail", sidebar: "button-sidebar" } as const;
+
+export function NavLinks({ current, go, variant }: { current: NavPath; go: (path: string) => void; variant: "tabbar" | "rail" | "sidebar" }) {
   return (
     <ul className={`nav-list nav-list-${variant}`}>
       {NAV_ITEMS.map(({ path, label, icon: Icon, testId }) => {
@@ -41,10 +43,11 @@ export function NavLinks({ current, go, variant }: { current: NavPath; go: (path
                 event.preventDefault();
                 go(path);
               }}
-              data-testid={variant === "tabbar" ? `button-phone-tab-${testId}` : `button-sidebar-${testId}`}
+              data-testid={`${TEST_ID_PREFIX[variant]}-${testId}`}
             >
-              <span className="nav-icon" aria-hidden><Icon size={20} strokeWidth={selected ? 2.2 : 1.7} /></span>
-              <span>{label}</span>
+              <span className="nav-icon" aria-hidden><Icon size={20} strokeWidth={selected ? 2.2 : 1.75} /></span>
+              {/* Na barra do celular só o item atual mostra o rótulo; os outros continuam com nome para leitor de tela. */}
+              <span className={variant === "tabbar" && !selected ? "visually-hidden" : "nav-label"}>{label}</span>
             </a>
           </li>
         );
@@ -53,7 +56,10 @@ export function NavLinks({ current, go, variant }: { current: NavPath; go: (path
   );
 }
 
-/** Casca única: barra inferior abaixo de 900px, barra lateral a partir dela. */
+/**
+ * Casca única por faixa do design system: barra flutuante no rodapé abaixo de 600px,
+ * trilho de ícones de 600 a 1023px e barra lateral a partir de 1024px.
+ */
 export function AppShell({
   location, go, profile, children,
 }: {
@@ -81,6 +87,12 @@ export function AppShell({
   return (
     <div className="app-shell">
       <a className="skip-link" href="#conteudo">Pular para o conteúdo</a>
+      <aside className="app-rail">
+        <Brand compact />
+        <nav aria-label="Navegação principal">
+          <NavLinks current={current} go={go} variant="rail" />
+        </nav>
+      </aside>
       <aside className="app-sidebar">
         <Brand />
         <nav aria-label="Navegação principal">
