@@ -57,7 +57,7 @@ export function DeleteAccountDialog({ onClose, onDeleted }: { onClose: () => voi
       returnFocusTestId="button-profile-delete-account"
     >
       <div className="modal-top">
-        <div><span className="eyebrow">EXCLUIR CONTA</span><h2 id="delete-account-title">Excluir sua conta?</h2></div>
+        <div><span className="eyebrow">Excluir conta</span><h2 id="delete-account-title">Excluir sua conta?</h2></div>
         <TinyButton onClick={onClose} label="Fechar" testId="button-close-delete-account"><X size={17} /></TinyButton>
       </div>
       <p id="delete-account-description">
