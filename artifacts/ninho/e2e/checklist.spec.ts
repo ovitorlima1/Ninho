@@ -102,3 +102,45 @@ test("aba Inspirações dentro da Lista", async ({ page }) => {
   await expect(page.locator(".recommendation-card").first()).toBeVisible();
   await expectAccessible(page);
 });
+
+test("busca acha item de outra categoria, sem acento, e o status funciona no resultado", async ({ page }) => {
+  await page.getByTestId("button-phone-category-higiene").click();
+  const search = page.getByRole("searchbox", { name: "Buscar item" });
+  await search.fill("macacao");
+
+  await expect(page.getByRole("heading", { name: "Resultados para “macacao”" })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("1 item encontrado");
+  await expect(page.getByRole("heading", { level: 3, name: "Roupas" })).toBeVisible();
+  const row = itemRow(page, "Macacão de algodão");
+  await row.getByRole("radio", { name: "comprei" }).click();
+  await expect(row.getByRole("radio", { name: "comprei" })).toHaveAttribute("aria-checked", "true");
+  await expectAccessible(page);
+});
+
+test("busca sem resultado oferece limpar e volta para a categoria", async ({ page }) => {
+  const search = page.getByRole("searchbox", { name: "Buscar item" });
+  await search.fill("carrinho");
+  await expect(page.getByText("Nenhum item com “carrinho”.")).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("0 itens encontrados");
+
+  await page.getByTestId("button-empty-clear-checklist-search").click();
+  await expect(search).toHaveValue("");
+  await expect(search).toBeFocused();
+  await expect(page.getByRole("heading", { level: 2, name: "Roupas" })).toBeVisible();
+});
+
+test("Esc, o botão de limpar e os chips limpam a busca", async ({ page }) => {
+  const search = page.getByRole("searchbox", { name: "Buscar item" });
+  await search.fill("body");
+  await search.press("Escape");
+  await expect(search).toHaveValue("");
+
+  await search.fill("body");
+  await page.getByRole("button", { name: "Limpar busca" }).click();
+  await expect(search).toHaveValue("");
+
+  await search.fill("body");
+  await page.getByTestId("button-phone-category-higiene").click();
+  await expect(search).toHaveValue("");
+  await expect(page.getByRole("heading", { level: 2, name: "Higiene" })).toBeVisible();
+});
