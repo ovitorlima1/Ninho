@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
+import { mkdirSync, rmSync } from "node:fs";
 import { Client, repoRoot, withTestDb } from "./db";
-import { assertTestDatabase, E2E_DATABASE_URL } from "./env";
+import { assertTestDatabase, E2E_DATABASE_URL, E2E_OUTBOX_DIR } from "./env";
 
 /** Cria o banco de teste se faltar, aplica o schema atual e zera os limites. */
 export default async function globalSetup(): Promise<void> {
@@ -26,6 +27,10 @@ export default async function globalSetup(): Promise<void> {
     env: { ...process.env, DATABASE_URL: E2E_DATABASE_URL },
     stdio: "pipe",
   });
+
+  // E-mails de execuções anteriores confundiriam a busca pelo link mais recente.
+  rmSync(E2E_OUTBOX_DIR, { recursive: true, force: true });
+  mkdirSync(E2E_OUTBOX_DIR, { recursive: true });
 
   // Os limites de tentativa ficam no banco e sobreviveriam entre execuções.
   await withTestDb((db) => db.query("TRUNCATE auth_attempts"));

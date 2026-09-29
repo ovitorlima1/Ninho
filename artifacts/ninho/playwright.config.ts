@@ -1,6 +1,6 @@
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
-import { E2E_DATABASE_URL, E2E_SESSION_SECRET } from "./e2e/env";
+import { E2E_DATABASE_URL, E2E_OUTBOX_DIR, E2E_SESSION_SECRET } from "./e2e/env";
 
 // Portas próprias do E2E; troque por variável se outro projeto já as usar.
 const API_PORT = Number(process.env.E2E_API_PORT ?? 8790);
@@ -51,6 +51,9 @@ export default defineConfig({
         SESSION_SECRET: E2E_SESSION_SECRET,
         NODE_ENV: "development",
         LOG_LEVEL: "warn",
+        EMAIL_TRANSPORT: "outbox",
+        EMAIL_OUTBOX_DIR: E2E_OUTBOX_DIR,
+        PUBLIC_APP_URL: "https://ninho.test",
       },
     },
     {

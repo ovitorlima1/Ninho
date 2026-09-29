@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { withTestDb } from "./db";
+import { CONFIRM_SUBJECT, tokenFrom, waitForEmail } from "./mail";
 import { createAccount, expectAccessible, isoDaysFromToday, PASSWORD, randomClientIp, uniqueEmail } from "./support";
 
 test("cadastro valida por campo e o onboarding leva ao Início", async ({ page }) => {
@@ -18,10 +19,19 @@ test("cadastro valida por campo e o onboarding leva ao Início", async ({ page }
   await expect(page.getByTestId("input-auth-email")).toBeFocused();
   await expectAccessible(page);
 
-  await page.getByTestId("input-auth-email").fill(uniqueEmail("cadastro"));
+  const email = uniqueEmail("cadastro");
+  await page.getByTestId("input-auth-email").fill(email);
   await page.getByTestId("input-auth-password").fill(PASSWORD);
   await page.getByTestId("input-auth-confirmation").fill(PASSWORD);
   await page.getByTestId("button-auth-submit").click();
+
+  // O cadastro não abre o ninho: quem abre é o link do e-mail.
+  await expect(page.getByRole("heading", { name: `Enviamos um link para ${email}` })).toBeVisible();
+  await expectAccessible(page);
+  expect((await page.request.get("/api/me/workspace")).status()).toBe(401);
+
+  const token = tokenFrom(await waitForEmail(email, CONFIRM_SUBJECT));
+  await page.goto(`/verify-email?token=${token}`);
 
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Como posso te chamar?" })).toBeVisible();
