@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowUpRight, CalendarDays, Check, CheckCircle2, Star } from "lucide-react";
+import { CalendarDays, Check, CheckCircle2 } from "lucide-react";
 import { type ServerGiftShare, type ServerProfile, type UpdateProfileInput } from "@/lib/api";
 import { calcGestation, formatGestation, getDueDateBounds, validateDueDate } from "@/lib/gestation";
 import { initialsFor } from "@/lib/format";
@@ -160,12 +160,6 @@ export function ProfilePanel({
         error={shareError}
       />
       <AccountSection />
-      {/* O cartão inteiro é o link: antes só o texto (19px de altura) era clicável. */}
-      <a className="soft-action feedback-link" href="https://forms.gle/ninho-feedback" target="_blank" rel="noopener noreferrer">
-        <Star size={16} aria-hidden />
-        <span>deixar feedback do beta</span>
-        <ArrowUpRight size={16} aria-hidden />
-      </a>
     </div>
   );
 }
