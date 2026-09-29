@@ -173,8 +173,6 @@
     color: var(--color-brand);
     background: var(--color-surface);
   }
-  .feedback-link { justify-content: flex-start; gap: var(--space-3); }
-  .feedback-link span { flex: 1; }
 
   .icon-button {
     display: grid;
