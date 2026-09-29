@@ -36,7 +36,7 @@ export function RecommendationLinkModal({
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-recommendation-modal"><X size={17} /></TinyButton>
         </div>
         <p className="recommendation-link-description" id={`recommendation-link-description-${recommendation.id}`}>
-          <strong>{recommendation.name}</strong> combina com {items.length === 1 ? "um item" : "itens"} de {recommendation.category.toLowerCase()} que já está {items.length === 1 ? "na sua lista" : "na sua lista"}.
+          <strong>{recommendation.name}</strong> combina com {items.length === 1 ? "um item" : "itens"} de {recommendation.category.toLowerCase()} que já {items.length === 1 ? "está" : "estão"} na sua lista.
         </p>
         <button ref={createButtonRef} type="button" className="primary-button" onClick={onCreate} disabled={isPending} data-testid={`button-create-recommendation-item-${recommendation.id}`}>
           <Plus size={14} /> adicionar como item novo

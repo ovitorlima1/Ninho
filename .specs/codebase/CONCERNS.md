@@ -74,9 +74,7 @@ do onboarding continua no canto superior direito: é o último filho de `.modal-
 ## Abertos sem fase
 
 - **Ajustes de texto/UI vistos na divisão do `App.tsx`:**
-  - `RecommendationLinkModal`: "combina com itens de … **que já está**" — falta o plural
-    ("estão"), e o ternário seguinte devolve "na sua lista" nos dois ramos
-    (`features/recommendations/recommendation-link-modal.tsx:39`).
+  - ~~`RecommendationLinkModal`: plural "que já está"~~ resolvido em 2026-09-29 (quick 002).
   - ~~Iniciais do avatar~~ resolvido em 2026-09-23 (`dd3ad82`): o Perfil usa `initialsFor`. Antes, o Perfil usava as 2 primeiras letras do nome
     (`features/profile/profile-panel.tsx:58`, "Ana Paula" → "AN"), o topo usa `initialsFor`
     (primeira + última palavra, `lib/format.ts:14-18`, usado em `layout/app-shell.tsx:105` → "AP").
