@@ -10,9 +10,34 @@ export const authUsers = pgTable("auth_users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   sessionVersion: integer("session_version").notNull().default(0),
+  /**
+   * Nulo até a pessoa abrir o link de confirmação. O default existe só para o
+   * `drizzle-kit push`: as contas anteriores à verificação ganham a data e
+   * ficam confirmadas. O cadastro grava `null` explicitamente.
+   */
+  emailVerifiedAt: timestamp("email_verified_at").defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+/**
+ * Links de confirmação de e-mail. Cada um carrega o hash da senha do cadastro
+ * que o gerou: se o mesmo e-mail for cadastrado de novo antes da confirmação,
+ * quem abrir o link define a senha da conta.
+ */
+export const emailVerificationTokens = pgTable(
+  "email_verification_tokens",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [index("email_verification_tokens_user_id_idx").on(table.userId)],
+);
 
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: text("id").primaryKey(),
@@ -57,6 +82,7 @@ export type InsertAuthUser = typeof authUsers.$inferInsert;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 export type AuthSession = typeof authSessions.$inferSelect;
+export type EmailVerificationToken = typeof emailVerificationTokens.$inferSelect;
 export type AuthAttempt = typeof authAttempts.$inferSelect;
 
 // ─── Validação das rotas de acesso ───────────────────────────────────────────
@@ -64,6 +90,7 @@ export type AuthAttempt = typeof authAttempts.$inferSelect;
 const INVALID_BODY = "Confira os dados informados.";
 const INVALID_EMAIL = "Digite um e-mail válido.";
 const INVALID_RESET_LINK = "Este link de recuperação é inválido ou expirou.";
+const INVALID_VERIFICATION_LINK = "Este link de confirmação é inválido ou expirou.";
 
 const emailField = z
   .string({ error: INVALID_EMAIL })
@@ -93,6 +120,11 @@ export const passwordResetCompleteSchema = z.object({
   token: z.string({ error: INVALID_RESET_LINK }).min(40, INVALID_RESET_LINK).max(128, INVALID_RESET_LINK),
   password: newPasswordField,
 }, { error: INVALID_BODY });
+
+export const emailVerificationSchema = z.object({
+  token: z.string({ error: INVALID_VERIFICATION_LINK }).min(40, INVALID_VERIFICATION_LINK).max(128, INVALID_VERIFICATION_LINK),
+}, { error: INVALID_VERIFICATION_LINK });
+export const verificationResendSchema = z.object({ email: emailField }, { error: INVALID_EMAIL });
 
 export const DELETE_ACCOUNT_CONFIRMATION = "EXCLUIR";
 export const deleteAccountSchema = z.object({
