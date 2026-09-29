@@ -101,8 +101,23 @@ export async function login(data: { email: string; password: string }): Promise<
   });
 }
 
-export async function register(data: { email: string; password: string }): Promise<AuthSession> {
-  return customFetch<AuthSession>(`${AUTH_API}/register`, {
+/** O cadastro não abre sessão: responde sempre a mesma mensagem, e o link do e-mail abre. */
+export async function register(data: { email: string; password: string }): Promise<{ message: string }> {
+  return customFetch<{ message: string }>(`${AUTH_API}/register`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function verifyEmail(data: { token: string }): Promise<AuthSession> {
+  return customFetch<AuthSession>(`${AUTH_API}/verify-email`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function resendVerification(data: { email: string }): Promise<{ message: string }> {
+  return customFetch<{ message: string }>(`${AUTH_API}/verify-email/resend`, {
     method: "POST",
     body: JSON.stringify(data),
   });

@@ -1385,6 +1385,9 @@
   .auth-submit { margin-top: var(--space-1); }
   .auth-switch { color: var(--color-ink-muted); text-align: center; }
   .auth-switch button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
     min-height: var(--touch-target);
     padding: 0 var(--space-2);
     border: 0;
@@ -1404,6 +1407,10 @@
     background: var(--color-accent-soft);
   }
   .auth-result-icon { padding: var(--space-3); }
+  .auth-email { overflow-wrap: anywhere; }
+  .auth-resend { display: grid; gap: var(--space-2); width: 100%; }
+  .auth-resend .secondary-button { width: 100%; }
+  .auth-result-card .loading-spinner { margin: var(--space-2) 0; }
   .auth-hidden-username { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); opacity: 0; }
   .auth-copy { display: grid; gap: var(--space-3); }
 
