@@ -62,3 +62,24 @@ export function parsePriceInput(value: string): number | null {
 export function formatPriceInput(price: number): string {
   return price > 0 ? price.toFixed(2).replace(".", ",") : "";
 }
+
+/** Tira acento e caixa: "Macacão" e "macacao" viram a mesma coisa. */
+export function normalizeSearch(text: string): string {
+  return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+}
+
+/**
+ * Itens cujo nome ou grupo contém o texto buscado, agrupados na ordem das categorias.
+ * Categorias sem resultado ficam de fora.
+ */
+export function searchItems<T extends { name: string; group: string; category: CategoryKey }>(
+  items: T[],
+  query: string,
+): { category: CategoryKey; items: T[] }[] {
+  const q = normalizeSearch(query);
+  if (!q) return [];
+  const hits = items.filter((i) => normalizeSearch(i.name).includes(q) || normalizeSearch(i.group).includes(q));
+  return CATEGORIES
+    .map((category) => ({ category, items: hits.filter((i) => i.category === category) }))
+    .filter((g) => g.items.length > 0);
+}

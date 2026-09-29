@@ -196,6 +196,54 @@
     scrollbar-width: none;
   }
   .filter-row::-webkit-scrollbar { display: none; }
+
+  /* ── Busca na Lista (canvas 3.3): pílula funda com lupa à esquerda e limpar à direita ── */
+  .list-search { position: relative; display: flex; align-items: center; }
+  .list-search > svg {
+    position: absolute;
+    left: var(--space-4);
+    color: var(--color-ink-muted);
+    pointer-events: none;
+  }
+  .list-search input {
+    width: 100%;
+    min-width: 0;
+    min-height: 52px;
+    padding: 0 52px 0 44px;
+    border: 0;
+    border-radius: var(--radius-full);
+    color: var(--color-ink);
+    background: var(--color-surface-sunk);
+    font-weight: 500;
+    appearance: none;
+  }
+  .list-search input::placeholder { color: var(--color-ink-muted); opacity: 1; }
+  .list-search input::-webkit-search-cancel-button { appearance: none; }
+  .list-search input:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 0; }
+  .list-search-clear {
+    position: absolute;
+    right: var(--space-1);
+    display: grid;
+    place-items: center;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-full);
+    color: var(--color-ink-muted);
+    background: transparent;
+    cursor: pointer;
+  }
+  .list-search-clear:hover { color: var(--color-ink); }
+  .search-group-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-3) 0 var(--space-2);
+    font-size: var(--text-base);
+    font-weight: 700;
+  }
   /* Chip do design system: ativo inverte (tinta sobre fundo), inativos brancos com borda. */
   .pill {
     display: inline-flex;
