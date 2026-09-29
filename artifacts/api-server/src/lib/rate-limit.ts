@@ -9,6 +9,8 @@ import {
   GIFT_RESERVATION_POLICY,
   PASSWORD_RESET_EMAIL_POLICY,
   PASSWORD_RESET_ORIGIN_POLICY,
+  VERIFICATION_EMAIL_POLICY,
+  VERIFICATION_ORIGIN_POLICY,
   type AttemptLimitResult,
   type AttemptState,
   type LimitPolicy,
@@ -120,5 +122,7 @@ export class PersistentLimiter {
 export const authAttemptLimiter = new PersistentLimiter(AUTH_POLICY);
 export const passwordResetEmailLimiter = new PersistentLimiter(PASSWORD_RESET_EMAIL_POLICY);
 export const passwordResetOriginLimiter = new PersistentLimiter(PASSWORD_RESET_ORIGIN_POLICY);
+export const verificationEmailLimiter = new PersistentLimiter(VERIFICATION_EMAIL_POLICY);
+export const verificationOriginLimiter = new PersistentLimiter(VERIFICATION_ORIGIN_POLICY);
 export const accountDeletionLimiter = new PersistentLimiter(ACCOUNT_DELETION_POLICY);
 export const giftReservationLimiter = new PersistentLimiter(GIFT_RESERVATION_POLICY);

@@ -4,11 +4,14 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   authUsers,
+  emailVerificationSchema,
+  emailVerificationTokens,
   loginSchema,
   passwordResetCompleteSchema,
   passwordResetRequestSchema,
   passwordResetTokens,
   registerSchema,
+  verificationResendSchema,
 } from "@workspace/db/schema";
 import {
   dummyPasswordHash,
@@ -24,8 +27,10 @@ import {
   limiterKey,
   passwordResetEmailLimiter,
   passwordResetOriginLimiter,
+  verificationEmailLimiter,
+  verificationOriginLimiter,
 } from "../lib/rate-limit";
-import { sendPasswordResetEmail } from "../lib/email";
+import { accountExistsMessage, passwordResetMessage, sendEmail, verificationMessage, type EmailMessage } from "../lib/email";
 import { firstIssueMessage } from "../lib/validation";
 import { initializeUser } from "../lib/seed";
 import { createSession, resolveSession, revokeAllSessions, revokeCurrentSession } from "../lib/sessions";
@@ -33,10 +38,17 @@ import { createSession, resolveSession, revokeAllSessions, revokeCurrentSession 
 const router = Router();
 
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
-const PASSWORD_RESET_RESPONSE_MIN_MS = 400;
+const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+/** Tempo mínimo das rotas que respondem igual exista ou não a conta. */
+const GENERIC_RESPONSE_MIN_MS = 400;
 const GENERIC_RESET_MESSAGE = "Se houver uma conta com este e-mail, enviaremos um link para redefinir sua senha.";
+const GENERIC_REGISTER_MESSAGE = "Enviamos um link de confirmação para o seu e-mail. Abra o link para entrar no seu ninho.";
+const GENERIC_RESEND_MESSAGE = "Se houver um cadastro esperando confirmação, enviamos um novo link.";
+const INVALID_VERIFICATION_MESSAGE = "Este link de confirmação é inválido ou expirou.";
+const EMAIL_NOT_VERIFIED_MESSAGE = "Falta confirmar seu e-mail. Abra o link que enviamos ou peça outro.";
 const AUTH_RATE_LIMIT_MESSAGE = "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.";
 const PASSWORD_RESET_RATE_LIMIT_MESSAGE = "Muitos pedidos de redefinição de senha. Aguarde uma hora antes de tentar novamente.";
+const VERIFICATION_RATE_LIMIT_MESSAGE = "Muitos pedidos de link de confirmação. Aguarde uma hora antes de tentar novamente.";
 
 function publicUser(user: typeof authUsers.$inferSelect) {
   return { id: user.id, email: user.email };
@@ -58,7 +70,11 @@ function getPasswordResetAttemptKeys(scope: "origin" | "account", value: string)
   return [limiterKey(`password-reset:${scope}`, value)];
 }
 
-type RateLimitedRoute = "login" | "register" | "password-reset-request";
+function getVerificationAttemptKeys(scope: "origin" | "account", value: string): string[] {
+  return [limiterKey(`verification-resend:${scope}`, value)];
+}
+
+type RateLimitedRoute = "login" | "register" | "password-reset-request" | "verification-resend";
 
 function rejectRateLimitedRequest(
   req: Request,
@@ -89,21 +105,49 @@ function getPublicAppUrl(): string {
   }
 
   const url = new URL(rawUrl);
-  if (url.protocol !== "https:") {
+  // Fora de produção, http://localhost vale para rodar o cadastro na máquina.
+  const localDevelopment = process.env.NODE_ENV !== "production"
+    && url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+  if (url.protocol !== "https:" && !localDevelopment) {
     throw new Error("PUBLIC_APP_URL must use HTTPS.");
   }
   return url.origin;
 }
 
 async function waitForMinimumResponseTime(startedAt: number): Promise<void> {
-  const remaining = PASSWORD_RESET_RESPONSE_MIN_MS - (Date.now() - startedAt);
+  const remaining = GENERIC_RESPONSE_MIN_MS - (Date.now() - startedAt);
   if (remaining > 0) {
     await new Promise((resolve) => setTimeout(resolve, remaining));
   }
 }
 
-/** POST /api/auth/register — creates a new Ninho account and its session. */
+/** Envia sem segurar a resposta: a falha vai para o log, nunca para quem pediu. */
+function deliver(req: Request, message: EmailMessage, kind: string): void {
+  void sendEmail(message).catch((err: unknown) => {
+    req.log.error({ err, email: kind }, "email delivery error");
+  });
+}
+
+/** Grava um link de confirmação com a senha deste cadastro e manda o e-mail. */
+async function issueVerification(req: Request, user: { id: string; email: string }, passwordHash: string, publicAppUrl: string): Promise<void> {
+  const { token, tokenHash } = createPasswordResetToken();
+  await db.insert(emailVerificationTokens).values({
+    id: randomUUID(),
+    userId: user.id,
+    tokenHash,
+    passwordHash,
+    expiresAt: new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS),
+  });
+  const verifyUrl = `${publicAppUrl}/verify-email?token=${encodeURIComponent(token)}`;
+  deliver(req, verificationMessage(user.email, verifyUrl), "verification");
+}
+
+/**
+ * POST /api/auth/register — nunca cria sessão. A resposta é a mesma, no mesmo
+ * tempo mínimo, exista ou não conta com o e-mail; o que muda é o e-mail enviado.
+ */
 router.post("/register", async (req, res) => {
+  const startedAt = Date.now();
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: firstIssueMessage(parsed.error) });
@@ -119,39 +163,129 @@ router.post("/register", async (req, res) => {
   }
 
   try {
-    const [existing] = await db.select({ id: authUsers.id }).from(authUsers).where(eq(authUsers.email, data.email));
-    if (existing) {
-      // Mesmo trabalho de hash do caminho de sucesso: o tempo não denuncia a conta.
-      await hashPassword(data.password);
-      res.status(400).json({ error: "Não foi possível criar a conta. Confira os dados e tente novamente." });
-      return;
+    const publicAppUrl = getPublicAppUrl();
+    // O hash acontece sempre: o tempo não denuncia se a conta existe.
+    const passwordHash = await hashPassword(data.password);
+    const [existing] = await db.select().from(authUsers).where(eq(authUsers.email, data.email));
+    if (existing?.emailVerifiedAt) {
+      deliver(req, accountExistsMessage(existing.email, `${publicAppUrl}/sign-in`, `${publicAppUrl}/forgot-password`), "account-exists");
+    } else {
+      // Conta nova, ou cadastro repetido antes da confirmação: o link novo leva a senha deste cadastro.
+      const user = existing ?? (await db.insert(authUsers).values({
+        id: randomUUID(),
+        email: data.email,
+        passwordHash,
+        emailVerifiedAt: null,
+      }).returning())[0];
+      if (!user) throw new Error("account insert returned no row");
+      await issueVerification(req, user, passwordHash, publicAppUrl);
     }
-
-    const [user] = await db.insert(authUsers).values({
-      id: randomUUID(),
-      email: data.email,
-      passwordHash: await hashPassword(data.password),
-    }).returning();
-    if (!user) {
-      res.status(500).json({ error: "Não foi possível criar sua conta agora." });
-      return;
-    }
-
-    // O workspace nasce no cadastro, e a leitura do workspace passa a ser só
-    // leitura. Se o seed falhar aqui, a primeira leitura tenta de novo.
-    try {
-      await initializeUser(user.id);
-    } catch (err) {
-      req.log.error({ err }, "workspace initialization at registration failed");
-    }
-
-    res.append("Set-Cookie", sessionCookie(await createSession(user.id, user.sessionVersion)));
-    res.status(201).json({ user: publicUser(user) });
   } catch (err) {
     await authAttemptLimiter.release(attemptKeys);
     req.log.error({ err }, "registration error");
     res.status(500).json({ error: "Não foi possível criar sua conta agora." });
+    return;
   }
+
+  await waitForMinimumResponseTime(startedAt);
+  res.status(202).json({ message: GENERIC_REGISTER_MESSAGE });
+});
+
+/**
+ * POST /api/auth/verify-email — gasta o link, confirma a conta com a senha do
+ * cadastro que gerou o link, prepara a lista e abre a sessão.
+ */
+router.post("/verify-email", async (req, res) => {
+  const parsed = emailVerificationSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: INVALID_VERIFICATION_MESSAGE });
+    return;
+  }
+
+  try {
+    const now = new Date();
+    const tokenHash = hashPasswordResetToken(parsed.data.token);
+    const user = await db.transaction(async (tx) => {
+      const [claimed] = await tx
+        .update(emailVerificationTokens)
+        .set({ usedAt: now })
+        .where(and(
+          eq(emailVerificationTokens.tokenHash, tokenHash),
+          isNull(emailVerificationTokens.usedAt),
+          gt(emailVerificationTokens.expiresAt, now),
+        ))
+        .returning({ userId: emailVerificationTokens.userId, passwordHash: emailVerificationTokens.passwordHash });
+      if (!claimed) return null;
+
+      const [verified] = await tx
+        .update(authUsers)
+        .set({ emailVerifiedAt: now, passwordHash: claimed.passwordHash, updatedAt: now })
+        .where(eq(authUsers.id, claimed.userId))
+        .returning();
+      if (!verified) return null;
+
+      // Os outros links da conta (de cadastros repetidos) deixam de valer.
+      await tx
+        .update(emailVerificationTokens)
+        .set({ usedAt: now })
+        .where(and(eq(emailVerificationTokens.userId, verified.id), isNull(emailVerificationTokens.usedAt)));
+      return verified;
+    });
+
+    if (!user) {
+      res.status(400).json({ error: INVALID_VERIFICATION_MESSAGE });
+      return;
+    }
+
+    // A lista nasce na confirmação; se falhar, a primeira leitura tenta de novo.
+    try {
+      await initializeUser(user.id);
+    } catch (err) {
+      req.log.error({ err }, "workspace initialization at verification failed");
+    }
+
+    res.append("Set-Cookie", sessionCookie(await createSession(user.id, user.sessionVersion)));
+    res.json({ user: publicUser(user) });
+  } catch (err) {
+    req.log.error({ err }, "email verification error");
+    res.status(500).json({ error: "Não foi possível confirmar seu e-mail agora." });
+  }
+});
+
+/** POST /api/auth/verify-email/resend — responde sempre igual; só envia para cadastro não confirmado. */
+router.post("/verify-email/resend", async (req, res) => {
+  const startedAt = Date.now();
+  const parsed = verificationResendSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: firstIssueMessage(parsed.error) });
+    return;
+  }
+  const { email } = parsed.data;
+
+  const emailRateLimit = await verificationEmailLimiter.consume(getVerificationAttemptKeys("account", email));
+  if (!emailRateLimit.allowed) {
+    rejectRateLimitedRequest(req, res, "verification-resend", emailRateLimit, VERIFICATION_RATE_LIMIT_MESSAGE);
+    return;
+  }
+  const originRateLimit = await verificationOriginLimiter.consume(getVerificationAttemptKeys("origin", getRequestOrigin(req)));
+  if (!originRateLimit.allowed) {
+    rejectRateLimitedRequest(req, res, "verification-resend", originRateLimit, VERIFICATION_RATE_LIMIT_MESSAGE);
+    return;
+  }
+
+  try {
+    const publicAppUrl = getPublicAppUrl();
+    const [user] = await db.select().from(authUsers).where(eq(authUsers.email, email));
+    if (user && !user.emailVerifiedAt) {
+      await issueVerification(req, user, user.passwordHash, publicAppUrl);
+    }
+  } catch (err) {
+    // Detalhe de banco ou de envio não pode virar sinal de que a conta existe.
+    req.log.error({ err }, "verification resend error");
+  }
+
+  await waitForMinimumResponseTime(startedAt);
+  res.status(202).json({ message: GENERIC_RESEND_MESSAGE });
 });
 
 /** POST /api/auth/login — authenticates with a generic failure message. */
@@ -180,6 +314,11 @@ router.post("/login", async (req, res) => {
     }
 
     await authAttemptLimiter.release(attemptKeys);
+    // Só depois da senha certa: quem não sabe a senha não descobre nada da conta.
+    if (!user.emailVerifiedAt) {
+      res.status(403).json({ error: EMAIL_NOT_VERIFIED_MESSAGE, code: "email_not_verified" });
+      return;
+    }
     res.append("Set-Cookie", sessionCookie(await createSession(user.id, user.sessionVersion)));
     res.json({ user: publicUser(user) });
   } catch (err) {
@@ -250,9 +389,7 @@ router.post("/password-reset/request", async (req, res) => {
       });
 
       const resetUrl = `${publicAppUrl}/reset-password?token=${encodeURIComponent(token)}`;
-      void sendPasswordResetEmail(user.email, resetUrl).catch((err: unknown) => {
-        req.log.error({ err }, "password reset email delivery error");
-      });
+      deliver(req, passwordResetMessage(user.email, resetUrl), "password-reset");
     }
   } catch (err) {
     // Do not turn database or delivery details into an account-enumeration signal.
@@ -288,15 +425,21 @@ router.post("/password-reset/complete", async (req, res) => {
       if (!claimed) return false;
 
       const [user] = await tx
-        .select({ id: authUsers.id })
+        .select({ id: authUsers.id, emailVerifiedAt: authUsers.emailVerifiedAt })
         .from(authUsers)
         .where(eq(authUsers.id, claimed.userId));
       if (!user) return false;
 
+      // O link chegou no e-mail da conta: isso também confirma o endereço.
       await tx
         .update(authUsers)
-        .set({ passwordHash: await hashPassword(password), updatedAt: now })
+        .set({ passwordHash: await hashPassword(password), updatedAt: now, emailVerifiedAt: user.emailVerifiedAt ?? now })
         .where(eq(authUsers.id, user.id));
+      // Um link de confirmação antigo não pode trocar a senha nova pela do cadastro.
+      await tx
+        .update(emailVerificationTokens)
+        .set({ usedAt: now })
+        .where(and(eq(emailVerificationTokens.userId, user.id), isNull(emailVerificationTokens.usedAt)));
       // A senha mudou: todo aparelho conectado precisa entrar de novo.
       await revokeAllSessions(user.id, tx);
       await tx

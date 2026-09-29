@@ -14,6 +14,9 @@ export type LimitPolicy = {
 export const AUTH_POLICY: LimitPolicy = { windowMs: 15 * MINUTE_MS, blockMs: 15 * MINUTE_MS, maxAttempts: 5 };
 export const PASSWORD_RESET_EMAIL_POLICY: LimitPolicy = { windowMs: HOUR_MS, blockMs: HOUR_MS, maxAttempts: 3 };
 export const PASSWORD_RESET_ORIGIN_POLICY: LimitPolicy = { windowMs: HOUR_MS, blockMs: HOUR_MS, maxAttempts: 10 };
+/** Reenvio do link de confirmação: mesmas cotas da redefinição de senha. */
+export const VERIFICATION_EMAIL_POLICY: LimitPolicy = { windowMs: HOUR_MS, blockMs: HOUR_MS, maxAttempts: 3 };
+export const VERIFICATION_ORIGIN_POLICY: LimitPolicy = { windowMs: HOUR_MS, blockMs: HOUR_MS, maxAttempts: 10 };
 export const ACCOUNT_DELETION_POLICY: LimitPolicy = { windowMs: 15 * MINUTE_MS, blockMs: 15 * MINUTE_MS, maxAttempts: 5 };
 export const GIFT_RESERVATION_POLICY: LimitPolicy = { windowMs: HOUR_MS, blockMs: HOUR_MS, maxAttempts: 20 };
 
