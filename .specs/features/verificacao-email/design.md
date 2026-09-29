@@ -18,7 +18,7 @@
 | `POST /login` | senha certa + conta não confirmada → `403 { error, code: "email_not_verified" }`; resto igual. |
 | `POST /password-reset/complete` | também grava `email_verified_at` se estiver nulo. |
 
-Tokens: reutiliza `createPasswordResetToken`/`hashPasswordResetToken` (renomeados para `createOpaqueToken`/`hashOpaqueToken`).
+Tokens: reutiliza `createPasswordResetToken`/`hashPasswordResetToken` (mantidos os nomes para não mexer na redefinição; comentário explica o uso duplo).
 
 ## E-mail (`lib/email.ts`)
 

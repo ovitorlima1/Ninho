@@ -50,7 +50,7 @@ Referências `arquivo:linha` conferidas no código em 2026-09-16.
 | ⚪ B2 | Confirmação duplicada no perfil | 1 | `3f225e3` (F1-R23) |
 | 🟠 A9 | Limitadores em memória (autoscale) | 0 → 4 | `951d38d` (limite do reset) · `11bae31` feat(A9): limites de tentativa persistidos no Postgres |
 | 🟡 M10 | Cabeçalhos, logout sem revogação, LGPD, validação, logs | 4 | `1d7d16a` · `7247faa` sessões revogáveis · `22523ab` cabeçalhos, só JSON, origem · `b15a4d7` Zod, logs, pt-BR · `4f9b185` exportar e excluir conta |
-| ⚪ B4 | Enumeração por tempo e token de reset no histórico | 4 | `b15a4d7` (hash fictício no login, hash no cadastro repetido, `replaceState`). O cadastro ainda responde diferente para e-mail já usado — resolver exige verificação por e-mail |
+| ⚪ B4 | Enumeração por tempo e token de reset no histórico | 4 | `b15a4d7` (hash fictício no login, hash no cadastro repetido, `replaceState`). Resíduo resolvido em 2026-09-29 (`verificacao-email`): o cadastro responde igual para qualquer e-mail e só a caixa de entrada sabe o resultado |
 
 Resíduos frágeis dos resolvidos:
 - **C4:** o catálogo continua hard-coded no bundle (`artifacts/ninho/src/lib/recommendations.ts`,
@@ -96,5 +96,8 @@ do onboarding continua no canto superior direito: é o último filho de `.modal-
   `<meta>` (`artifacts/ninho/vite.config.ts`) e `frame-ancestors`/`X-Frame-Options` não se aplicam
   à página, que continua podendo ser embutida em iframe.
 - **Sem monitoramento de erros.** Os erros só vão para o log do pino (sem Sentry ou similar).
+- **Contas nunca confirmadas ficam no banco.** Desde a verificação de e-mail (2026-09-29), um cadastro que
+  nunca abre o link deixa uma linha em `auth_users` (sem lista, sem sessão) e links vencidos em
+  `email_verification_tokens`. Pequeno, mas cresce sem fim — limpar junto com as sessões antigas.
 - **Sessões antigas acumulam.** `auth_sessions` não tem limpeza periódica de linhas vencidas ou
   revogadas (o limitador tem; as sessões não). Pequeno por conta, mas cresce sem fim.

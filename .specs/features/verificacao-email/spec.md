@@ -52,8 +52,8 @@ resíduo do achado B4 da auditoria).
 
 | Requisito | Tarefa | Status |
 |---|---|---|
-| EV-R1–R4 | T3 | pendente |
-| EV-R5, EV-R10 | T3, T6 | pendente |
-| EV-R6, EV-R7 | T3, T5 | pendente |
-| EV-R8, EV-R9 | T1, T3, T4 | pendente |
-| EV-R11 | T5, T6 | pendente |
+| EV-R1–R4 | T3 | concluído |
+| EV-R5, EV-R10 | T3, T6 | concluído |
+| EV-R6, EV-R7 | T3, T5 | concluído |
+| EV-R8, EV-R9 | T1, T3, T4 | concluído |
+| EV-R11 | T5, T6 | concluído |

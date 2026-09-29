@@ -18,8 +18,11 @@ repositório: o que existe é `.env.example` (sem valores) e o `.env` local (ign
 - `artifacts/api-server/src/lib/email.ts`: `new ReplitConnectors()` e
   `connectors.proxy("resend", "/emails", { method: "POST", … })` — o token do
   Resend nunca aparece no código; o proxy do Replit o injeta.
-- Único uso: link de redefinição de senha
-  (`routes/auth.ts:223`, disparado em *fire-and-forget* com `.catch` logado).
+- Usos (todos em `routes/auth.ts`, *fire-and-forget* com `.catch` logado): link de confirmação do cadastro,
+  aviso "você já tem uma conta" (cadastro repetido de e-mail confirmado) e link de redefinição de senha.
+  **Sem e-mail funcionando em produção ninguém termina o cadastro** (desde a verificação de e-mail, 2026-09-29).
+- Transporte por `EMAIL_TRANSPORT` (`lib/email.ts`): `resend` (padrão, único aceito em produção), `log`
+  (desenvolvimento local) e `outbox` (E2E grava JSON em `EMAIL_OUTBOX_DIR` e lê o link de lá).
 - Requisitos: `RESEND_FROM_EMAIL` (remetente verificado; ausência → erro) e
   `PUBLIC_APP_URL` HTTPS canônica (`getPublicAppUrl`, `routes/auth.ts:74`);
   fora de produção aceita `https://$REPLIT_DEV_DOMAIN`.
