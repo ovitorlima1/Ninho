@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Activity, Check, Gift, Heart, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { CategoryBadge } from "@/components/category-icon";
 import { Pill, TinyButton } from "@/components/controls";
+import { Progress } from "@/components/progress";
 import { type CategoryKey, type GiftReservationStatus, type ItemStatus } from "@/lib/api";
 import { CATEGORIES, ITEM_STATUS_OPTIONS, describeItemTotal, type ChecklistItem } from "@/lib/items";
+import { enxovalProgress } from "@/lib/overview";
 import { isRecommendationVisible } from "@/lib/recommendations";
 
 export function ChecklistPanel({
@@ -24,22 +27,26 @@ export function ChecklistPanel({
 }) {
   const [category, setCategory] = useState<CategoryKey>("Roupas");
   const visible = items.filter((i) => i.category === category);
-  const allDone = items.filter((i) => i.status !== "A comprar").length;
+  const progress = enxovalProgress(items);
+  const allDone = progress.done;
 
   return (
     <div className="screen checklist">
       <div className="screen-intro">
         <h2 className="screen-title">Tudo no lugar, na hora certa</h2>
         <p className="screen-lead"><strong>{allDone} de {items.length}</strong> itens resolvidos. Toque em um item para ajustar quantidade e preço.</p>
+        <Progress value={progress.percent} label={`Enxoval: ${allDone} de ${items.length} itens resolvidos`} />
       </div>
       <div className="filter-row" role="group" aria-label="Categorias">
         {CATEGORIES.map((key) => (
-          <Pill key={key} active={category === key} onClick={() => setCategory(key)} testId={`button-phone-category-${key.toLowerCase()}`}>{key}</Pill>
+          <Pill key={key} active={category === key} onClick={() => setCategory(key)} testId={`button-phone-category-${key.toLowerCase()}`}>
+            <CategoryBadge category={key} small />{key}
+          </Pill>
         ))}
       </div>
       <section className="card checklist-card" aria-labelledby="checklist-category-title">
         <div className="card-header">
-          <h2 className="card-title" id="checklist-category-title">{category}</h2>
+          <h2 className="card-title card-title-with-badge" id="checklist-category-title"><CategoryBadge category={category} small />{category}</h2>
           <TinyButton onClick={() => onAdd(category)} label={`Adicionar item em ${category}`} testId="button-phone-add-item"><Plus size={18} /></TinyButton>
         </div>
         <div className="check-list" aria-busy={isActionPending}>
@@ -66,7 +73,10 @@ export function ChecklistPanel({
                 </span>
                 <span className="check-name">
                   <strong>{item.name}</strong>
-                  <small>{describeItemTotal(item)}</small>
+                  <small>
+                    {describeItemTotal(item)}
+                    {item.essential && <span className="badge badge-butter">Essencial</span>}
+                  </small>
                   {item.giftReservation && (
                     <span className="gift-reservation-owner">
                       <Gift size={11} />

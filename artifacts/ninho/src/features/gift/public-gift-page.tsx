@@ -33,7 +33,7 @@ export function PublicGiftPage() {
         <Brand />
         <div className="public-gift-invalid">
           <Link2 size={30} />
-          <span className="eyebrow">LINK INDISPONÍVEL</span>
+          <span className="eyebrow">Link indisponível</span>
           <h1>Esta lista não está mais disponível.</h1>
           <p>Ela pode ter sido revogada ou o endereço não está completo. Peça um novo link para quem compartilhou.</p>
         </div>
@@ -50,7 +50,7 @@ export function PublicGiftPage() {
         <span className="eyebrow">Lista compartilhada com carinho</span>
       </header>
       <section className="public-gift-hero">
-        <span className="eyebrow">CHEGADA EM PREPARO</span>
+        <span className="eyebrow">Chegada em preparo</span>
         <h1>{title}</h1>
         <p>{babyName ? `Para celebrar a chegada de ${babyName}.` : "Uma seleção de itens para cuidar da nova chegada."}</p>
         <div className="public-gift-summary"><Gift size={15} /><span>{available} {available === 1 ? "item disponível" : "itens disponíveis"} para presentear</span></div>

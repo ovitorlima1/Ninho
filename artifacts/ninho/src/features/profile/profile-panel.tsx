@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowUpRight, CalendarDays, Check, CheckCircle2, Star } from "lucide-react";
 import { type ServerGiftShare, type ServerProfile, type UpdateProfileInput } from "@/lib/api";
 import { calcGestation, formatGestation, getDueDateBounds, validateDueDate } from "@/lib/gestation";
+import { initialsFor } from "@/lib/format";
 import { GiftShareCard } from "@/features/profile/gift-share-card";
 import { AccountSection } from "@/features/profile/account-section";
 
@@ -52,7 +53,8 @@ export function ProfilePanel({
     });
   };
 
-  const initials = (profile.displayName || "?").slice(0, 2).toUpperCase();
+  // Mesma regra do avatar do topo (primeira e última palavra): antes, "Ana Lima" virava "AN" aqui e "AL" lá.
+  const initials = initialsFor(profile.displayName);
   const gestation = calcGestation(profile.dueDate);
   const week = gestation?.week ?? null;
   const canSave = isDirty && !dueDateError && saveState !== "saving";
@@ -73,30 +75,30 @@ export function ProfilePanel({
       <div className="card profile-form">
         <section className="profile-section">
           <div className="profile-section-heading">
-            <div><span className="eyebrow">QUEM ESTÁ PREPARANDO</span><h3>Sobre você</h3></div>
+            <div><span className="eyebrow">Quem está preparando</span><h3>Sobre você</h3></div>
           </div>
            <p className="profile-section-copy">Conte só o que fizer sentido para você.</p>
           <label>
-            NOME OU APELIDO
+            Nome ou apelido
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Como você prefere ser chamada?" data-testid="input-phone-profile-name" />
           </label>
           <label>
-            CIDADE
+            Cidade
             <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Onde você está?" data-testid="input-phone-profile-city" />
           </label>
         </section>
 
         <section className="profile-section">
           <div className="profile-section-heading">
-            <div><span className="eyebrow">A PEQUENA PESSOA</span><h3>Sobre o bebê</h3></div>
+            <div><span className="eyebrow">A pequena pessoa</span><h3>Sobre o bebê</h3></div>
           </div>
            <p className="profile-section-copy">Nome, apelido ou nada por enquanto — tudo bem.</p>
           <label>
-            NOME OU APELIDO DO BEBÊ
+            Nome ou apelido do bebê
             <input value={babyName} onChange={(e) => setBabyName(e.target.value)} placeholder="Como vocês chamam o bebê?" data-testid="input-phone-profile-baby-name" />
           </label>
           <label>
-            DATA PREVISTA DO PARTO
+            Data prevista do parto
             <input
               type="date"
               value={dueDate}
@@ -117,19 +119,19 @@ export function ProfilePanel({
 
         <section className="profile-section">
           <div className="profile-section-heading">
-            <div><span className="eyebrow">PARA CHEGAR COM CALMA</span><h3>Organização da chegada</h3></div>
+            <div><span className="eyebrow">Para chegar com calma</span><h3>Organização da chegada</h3></div>
           </div>
            <p className="profile-section-copy">Anote o que ajudar a organizar a chegada, no seu tempo.</p>
           <label>
-            MATERNIDADE OU HOSPITAL
+            Maternidade ou hospital
             <input value={hospital} onChange={(e) => setHospital(e.target.value)} placeholder="Onde você imagina a chegada?" data-testid="input-phone-profile-hospital" />
           </label>
           <label>
-            PESSOA DE APOIO
+            Pessoa de apoio
             <input value={supportPerson} onChange={(e) => setSupportPerson(e.target.value)} placeholder="Quem estará com você?" data-testid="input-phone-profile-support-person" />
           </label>
           <label className="profile-notes-label">
-            OBSERVAÇÕES PESSOAIS
+            Observações pessoais
             <textarea value={personalNotes} onChange={(e) => setPersonalNotes(e.target.value)} placeholder="Anote algo importante para lembrar depois." rows={3} data-testid="input-phone-profile-notes" />
           </label>
         </section>

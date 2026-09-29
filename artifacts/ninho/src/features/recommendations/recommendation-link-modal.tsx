@@ -32,7 +32,7 @@ export function RecommendationLinkModal({
     >
       <>
         <div className="modal-top">
-          <div><span className="eyebrow">PARA A SUA LISTA</span><h2 id={`recommendation-link-title-${recommendation.id}`}>Como salvar esta inspiração?</h2></div>
+          <div><span className="eyebrow">Para a sua lista</span><h2 id={`recommendation-link-title-${recommendation.id}`}>Como salvar esta inspiração?</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-recommendation-modal"><X size={17} /></TinyButton>
         </div>
         <p className="recommendation-link-description" id={`recommendation-link-description-${recommendation.id}`}>
@@ -42,7 +42,7 @@ export function RecommendationLinkModal({
           <Plus size={14} /> adicionar como item novo
         </button>
         <div className="recommendation-existing">
-          <span className="eyebrow">VINCULAR A UM ITEM EXISTENTE</span>
+          <span className="eyebrow">Vincular a um item existente</span>
           {items.map((item) => (
             <button type="button" className="recommendation-existing-item" key={item.id} onClick={() => onLink(item)} disabled={isPending} data-testid={`button-link-recommendation-${recommendation.id}-${item.id}`}>
               <span><strong>{item.name}</strong><small>{item.qty} un. · {item.status}</small></span>

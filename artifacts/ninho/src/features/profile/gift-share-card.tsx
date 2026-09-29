@@ -47,7 +47,7 @@ export function GiftShareCard({
     <section className="gift-share-card" aria-labelledby="gift-share-title">
       <div className="gift-share-icon"><Gift size={18} /></div>
       <div className="gift-share-copy">
-        <span className="eyebrow">LISTA PARA PRESENTES</span>
+        <span className="eyebrow">Lista para presentes</span>
         <h2 id="gift-share-title">Deixe quem ama vocês participar.</h2>
         <p>Compartilhe só os itens do enxoval. Seus dados pessoais e orçamento ficam no seu ninho.</p>
       </div>

@@ -10,7 +10,7 @@ Referências `arquivo:linha` conferidas no código em 2026-09-16.
 | Situação | Itens |
 |---|---|
 | ✅ Resolvidos (Fases 0–4) | C1–C5, A1–A12, M1–M14, B1, B2, B4 |
-| 🔶 Parciais | B3 (botão morto saiu; "Voltar" do onboarding continua à direita) |
+| 🔶 Parciais | — (B3 resolvido em 2026-09-23, `150f496`) |
 | ⛔ Abertos sem fase | ajustes de texto/UI, modo escuro, OpenAPI, docs antigas, política de privacidade, limites do deploy estático |
 
 ## Resolvidos
@@ -64,7 +64,7 @@ Resíduos frágeis dos resolvidos:
 
 ## Parciais
 
-### ⚪ B3 — Botão sem ação e "Voltar" à direita — 🔶 parcial
+### ⚪ B3 — Botão sem ação e "Voltar" à direita — ✅ resolvido (2026-09-23, `150f496`: o "Voltar" passou para antes do título)
 
 O `.desktop-help-button` sem `onClick` saiu com a casca nova (`109de56`). O "Voltar" do passo 2
 do onboarding continua no canto superior direito: é o último filho de `.modal-top`
@@ -77,7 +77,7 @@ do onboarding continua no canto superior direito: é o último filho de `.modal-
   - `RecommendationLinkModal`: "combina com itens de … **que já está**" — falta o plural
     ("estão"), e o ternário seguinte devolve "na sua lista" nos dois ramos
     (`features/recommendations/recommendation-link-modal.tsx:39`).
-  - Iniciais do avatar: o Perfil usa as 2 primeiras letras do nome
+  - ~~Iniciais do avatar~~ resolvido em 2026-09-23 (`dd3ad82`): o Perfil usa `initialsFor`. Antes, o Perfil usava as 2 primeiras letras do nome
     (`features/profile/profile-panel.tsx:58`, "Ana Paula" → "AN"), o topo usa `initialsFor`
     (primeira + última palavra, `lib/format.ts:14-18`, usado em `layout/app-shell.tsx:105` → "AP").
   - `GiftShareCard`: "gerar novo" confirma e chama o mesmo `onCreate` do "criar"
@@ -85,9 +85,6 @@ do onboarding continua no canto superior direito: é o último filho de `.modal-
     `POST /api/me/share` revoga o link ativo e cria outro token na mesma transação
     (`artifacts/api-server/src/routes/me.ts:74-103`), então o link antigo para de funcionar.
     Só o nome do handler engana.
-- **Textos em caixa alta escritos no JSX** (design novo, 2026-09-22): o CSS de `.eyebrow` não força mais caixa alta,
-  mas strings como "QUEM ESTÁ PREPARANDO", "A PEQUENA PESSOA", "BEM-VINDA DE VOLTA" e "LISTA PARA PRESENTES" estão
-  em caixa alta no próprio código (`features/profile/*`, `features/auth/auth-page.tsx`). Reescrever ao refazer cada tela.
 - **Modo escuro não implementado.** `index.html:19` declara `color-scheme: light` e nenhum arquivo
   de `src/styles/` tem `prefers-color-scheme`; os tokens (`styles/tokens.css`) estão prontos para
   receber uma paleta escura.

@@ -136,7 +136,7 @@ export function ConfirmDialog({
     <ModalShell labelledBy="confirm-dialog-title" onClose={onClose} onSubmit={() => { onConfirm(); onClose(); }}>
       <>
         <div className="modal-top">
-          <div><span className="eyebrow">CONFIRMAR</span><h2 id="confirm-dialog-title">{title}</h2></div>
+          <div><span className="eyebrow">Confirmar</span><h2 id="confirm-dialog-title">{title}</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-confirm"><X size={17} /></TinyButton>
         </div>
         <p>{description}</p>

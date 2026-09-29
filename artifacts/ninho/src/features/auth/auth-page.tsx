@@ -68,7 +68,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     <AuthLayout>
       <form className="auth-card" onSubmit={submit} noValidate>
           <div className="auth-card-header">
-            <span className="eyebrow">{isSignup ? "SEU ESPAÇO" : "BEM-VINDA DE VOLTA"}</span>
+            <span className="eyebrow">{isSignup ? "Seu espaço" : "Bem-vinda de volta"}</span>
             <h2>{isSignup ? "Crie seu ninho" : "Que bom ter você de volta"}</h2>
             <p>{isSignup ? "Comece a organizar a chegada com leveza." : "Entre para continuar preparando com calma."}</p>
           </div>
@@ -80,7 +80,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           )}
           <div className="auth-fields">
             <label className="auth-field">
-              E-MAIL
+              E-mail
               <input
                 ref={emailRef}
                 type="email"
@@ -95,7 +95,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               {fieldErrors.email && <span className="field-error" role="alert" id="auth-email-error">{fieldErrors.email}</span>}
             </label>
             <label className="auth-field">
-              SENHA
+              Senha
               <PasswordField
                 id="auth-password"
                 autoComplete={isSignup ? "new-password" : "current-password"}
@@ -119,7 +119,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             )}
             {isSignup && (
               <label className="auth-field">
-                CONFIRME A SENHA
+                Confirme a senha
                 <PasswordField
                   id="auth-confirmation"
                   autoComplete="new-password"

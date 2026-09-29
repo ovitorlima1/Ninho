@@ -49,3 +49,19 @@ export function calcSpentByCategory(
 ): number {
   return calcSpent(items.filter((item) => item.category === category));
 }
+
+/**
+ * Categorias que passaram do planejado, com o excesso em reais (design novo, 2026-09-23).
+ * Categoria sem valor planejado (0) não entra: sem meta, não há "estouro".
+ */
+export function calcOverBudget(
+  items: readonly (SpendableItem & { category: string })[],
+  planned: Readonly<Record<string, number>>,
+  categories: readonly string[],
+): { category: string; over: number }[] {
+  return categories.flatMap((category) => {
+    const plannedCents = toCents(planned[category] ?? 0);
+    const spentCents = calcSpentCents(items.filter((item) => item.category === category));
+    return plannedCents > 0 && spentCents > plannedCents ? [{ category, over: (spentCents - plannedCents) / 100 }] : [];
+  });
+}

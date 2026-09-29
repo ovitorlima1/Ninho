@@ -11,7 +11,8 @@ Códigos entre parênteses = achados da auditoria.
 | 3 | `fase-3-base-tecnica` | A11, A12, M7, M8, M9 | **Concluída** (2026-09-17) | — |
 | 4 | `fase-4-seguranca-privacidade` | A9 (persistente), M10, B4 | **Concluída** (2026-09-16) | — |
 | — | `lilas-e-foto-login` | — | **Concluída** (2026-09-18) | — |
-| — | `design-novo-inicio` | diagnóstico d01–d04, d06 | **Concluída na branch** (2026-09-22), PR pendente | — |
+| — | `design-novo-inicio` | diagnóstico d01–d04, d06 | **Concluída na branch** (2026-09-22), PR #5 | — |
+| — | `design-novo-telas` | diagnóstico d05, d07–d11; B3 | **Concluída na branch** (2026-09-23), PR pendente | — |
 
 ## Marcos
 
