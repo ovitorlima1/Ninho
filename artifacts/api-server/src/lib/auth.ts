@@ -122,6 +122,7 @@ export function verifySessionToken(token: string): SessionClaims | null {
   }
 }
 
+/** Token opaco de link (redefinir senha, confirmar e-mail): só o hash vai para o banco. */
 export function createPasswordResetToken(): { token: string; tokenHash: string } {
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token).digest("hex");

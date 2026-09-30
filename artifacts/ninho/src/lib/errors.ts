@@ -33,3 +33,10 @@ export function getFriendlyErrorMessage(error: unknown): string {
 }
 
 export const getAuthErrorMessage = getFriendlyErrorMessage;
+
+/** O login respondeu que a senha está certa, mas o e-mail ainda não foi confirmado. */
+export function isEmailNotVerified(error: unknown): boolean {
+  if (!error || typeof error !== "object" || !("data" in error)) return false;
+  const data = (error as { data?: unknown }).data;
+  return Boolean(data && typeof data === "object" && "code" in data && data.code === "email_not_verified");
+}

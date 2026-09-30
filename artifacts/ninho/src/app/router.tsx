@@ -12,6 +12,7 @@ const PasswordResetRequestPage = lazy(() =>
   import("@/features/auth/password-reset-pages").then((m) => ({ default: m.PasswordResetRequestPage })));
 const PasswordResetPage = lazy(() =>
   import("@/features/auth/password-reset-pages").then((m) => ({ default: m.PasswordResetPage })));
+const VerifyEmailPage = lazy(() => import("@/features/auth/verify-email").then((m) => ({ default: m.VerifyEmailPage })));
 const PublicGiftPage = lazy(() => import("@/features/gift/public-gift-page").then((m) => ({ default: m.PublicGiftPage })));
 const WorkspacePage = lazy(() => import("@/features/workspace/workspace-page").then((m) => ({ default: m.WorkspacePage })));
 
@@ -72,6 +73,7 @@ export function AppRouter() {
       <Route path="/sign-up"><Lazy><AuthPage mode="signup" /></Lazy></Route>
       <Route path="/forgot-password"><Lazy><PasswordResetRequestPage /></Lazy></Route>
       <Route path="/reset-password"><Lazy><PasswordResetPage /></Lazy></Route>
+      <Route path="/verify-email"><Lazy><VerifyEmailPage /></Lazy></Route>
       <Route path="/"><Redirect to={user ? "/dashboard" : "/sign-in"} /></Route>
       {user ? (
         <Route path="/:rest*"><AuthenticatedApp userId={user.id} /></Route>

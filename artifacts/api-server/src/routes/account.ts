@@ -7,6 +7,7 @@ import {
   budgetCategories,
   checklistItems,
   deleteAccountSchema,
+  emailVerificationTokens,
   giftReservations,
   giftShareLinks,
   milestones,
@@ -14,7 +15,7 @@ import {
   profiles,
 } from "@workspace/db/schema";
 import { expiredSessionCookie, verifyPassword } from "../lib/auth";
-import { accountDeletionLimiter, authAttemptLimiter, limiterKey, passwordResetEmailLimiter } from "../lib/rate-limit";
+import { accountDeletionLimiter, authAttemptLimiter, limiterKey, passwordResetEmailLimiter, verificationEmailLimiter } from "../lib/rate-limit";
 import { revokeAllSessions } from "../lib/sessions";
 import { firstIssueMessage } from "../lib/validation";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -119,6 +120,7 @@ router.delete("/account", requireAuth, async (req, res) => {
       await tx.delete(budgetCategories).where(eq(budgetCategories.userId, userId));
       await tx.delete(profiles).where(eq(profiles.userId, userId));
       await tx.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+      await tx.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userId));
       await tx.delete(authSessions).where(eq(authSessions.userId, userId));
       await tx.delete(authUsers).where(eq(authUsers.id, userId));
     });
@@ -130,6 +132,7 @@ router.delete("/account", requireAuth, async (req, res) => {
       deletionKey,
     ]);
     await passwordResetEmailLimiter.release([limiterKey("password-reset:account", user.email)]);
+    await verificationEmailLimiter.release([limiterKey("verification-resend:account", user.email)]);
 
     req.log.info({ event: "account_deleted" }, "account deleted");
     res.append("Set-Cookie", expiredSessionCookie());

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
+import { CONFIRM_SUBJECT, tokenFrom, waitForEmail } from "./mail";
 
 export const PASSWORD = "SenhaDeTeste2026!";
 
@@ -31,7 +32,7 @@ export function randomClientIp(): string {
 
 export type TestAccount = { email: string; displayName: string };
 
-/** Cria uma conta pela API, já com o onboarding feito, e deixa a sessão no navegador. */
+/** Cria uma conta pela API, confirma pelo link do e-mail, faz o onboarding e deixa a sessão no navegador. */
 export async function createAccount(
   page: Page,
   { displayName = "Ana", dueDate = isoDaysFromToday(100) }: { displayName?: string; dueDate?: string | null } = {},
@@ -41,7 +42,10 @@ export async function createAccount(
     data: { email, password: PASSWORD },
     headers: { "x-forwarded-for": randomClientIp() },
   });
-  expect(register.status(), await register.text()).toBe(201);
+  expect(register.status(), await register.text()).toBe(202);
+  const token = tokenFrom(await waitForEmail(email, CONFIRM_SUBJECT));
+  const verify = await page.request.post("/api/auth/verify-email", { data: { token } });
+  expect(verify.status(), await verify.text()).toBe(200);
 
   const workspace = await page.request.get("/api/me/workspace");
   expect(workspace.ok()).toBe(true);

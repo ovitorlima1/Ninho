@@ -3,8 +3,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { PasswordField } from "@/components/password-field";
 import { login, register, type AuthSession } from "@/lib/api";
-import { getFriendlyErrorMessage } from "@/lib/errors";
+import { getFriendlyErrorMessage, isEmailNotVerified } from "@/lib/errors";
 import { AuthLayout } from "@/features/auth/auth-layout";
+import { CheckEmailCard, ResendVerificationButton } from "@/features/auth/verify-email";
 
 export type AuthMode = "signin" | "signup";
 
@@ -20,19 +21,32 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
+  /** E-mail para onde foi o link de confirmação (depois do cadastro). */
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const searchParams = new URLSearchParams(window.location.search);
   const sessionExpired = !isSignup && searchParams.get("expirou") === "1";
   const accountDeleted = !isSignup && searchParams.get("conta-excluida") === "1";
   const mutation = useMutation({
-    mutationFn: () => isSignup ? register({ email, password }) : login({ email, password }),
+    mutationFn: async () => {
+      if (isSignup) {
+        await register({ email, password });
+        return null;
+      }
+      return login({ email, password });
+    },
     meta: { authFlow: true },
     onSuccess: (session) => {
+      if (!session) {
+        setSentTo(email.trim());
+        return;
+      }
       qc.clear();
       qc.setQueryData<AuthSession>(["auth-session"], session);
       setLocation("/dashboard");
     },
   });
+  const needsVerification = !isSignup && mutation.isError && isEmailNotVerified(mutation.error);
 
   /**
    * Valida todos os campos de uma vez e marca cada um: antes, um e-mail
@@ -63,6 +77,14 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     }
     mutation.mutate();
   };
+
+  if (sentTo) {
+    return (
+      <AuthLayout>
+        <CheckEmailCard email={sentTo} />
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout>
@@ -136,8 +158,9 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             )}
           </div>
           {mutation.isError && (
-            <p className="auth-error" role="alert">{getFriendlyErrorMessage(mutation.error)}</p>
+            <p className={needsVerification ? "auth-notice" : "auth-error"} role="alert">{getFriendlyErrorMessage(mutation.error)}</p>
           )}
+          {needsVerification && <ResendVerificationButton email={email} />}
           <button type="submit" className="primary-button auth-submit" disabled={mutation.isPending} data-testid="button-auth-submit">
             {mutation.isPending ? "Aguarde…" : isSignup ? "Criar minha conta" : "Entrar no meu ninho"}
           </button>
