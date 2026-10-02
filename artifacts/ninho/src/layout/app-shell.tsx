@@ -18,9 +18,9 @@ export const NAV_ITEMS: { path: NavPath; label: string; icon: typeof Home; testI
   { path: "/profile", label: "Perfil", icon: UserRound, testId: "perfil" },
 ];
 
-/** Inspirações mora dentro da Lista; rotas desconhecidas caem no Início. */
+/** Inspirações e Presentes moram dentro da Lista; rotas desconhecidas caem no Início. */
 export function navPathFor(location: string): NavPath {
-  if (location === "/recommendations") return "/checklist";
+  if (location === "/recommendations" || location === "/gifts" || location.startsWith("/gifts/")) return "/checklist";
   return NAV_ITEMS.find((item) => item.path === location)?.path ?? "/dashboard";
 }
 
@@ -74,7 +74,8 @@ export function AppShell({
   const firstRender = useRef(true);
 
   useEffect(() => {
-    document.title = `${location === "/recommendations" ? "Inspirações" : currentLabel} · Ninho`;
+    const title = location === "/recommendations" ? "Inspirações" : location.startsWith("/gifts") ? "Presentes" : currentLabel;
+    document.title = `${title} · Ninho`;
     if (firstRender.current) {
       firstRender.current = false;
       return;
@@ -128,16 +129,19 @@ export function AppShell({
   );
 }
 
-/** Lista com duas abas: os itens e as inspirações que combinam com eles. */
-export function ListScreen({ tab, onTab, children }: { tab: "itens" | "inspiracoes"; onTab: (tab: "itens" | "inspiracoes") => void; children: ReactNode }) {
+export type ListTab = "itens" | "presentes" | "inspiracoes";
+
+/** Lista com três abas: o enxoval, as listas de presentes e as inspirações. */
+export function ListScreen({ tab, onTab, children }: { tab: ListTab; onTab: (tab: ListTab) => void; children: ReactNode }) {
   const tabs = [
-    { id: "itens" as const, label: "Itens" },
+    { id: "itens" as const, label: "Enxoval" },
+    { id: "presentes" as const, label: "Presentes" },
     { id: "inspiracoes" as const, label: "Inspirações" },
   ];
   return (
     <div className="list-screen">
       <div className="segmented" role="tablist" aria-label="Seções da lista">
-        {tabs.map(({ id, label }) => (
+        {tabs.map(({ id, label }, index) => (
           <button
             type="button"
             key={id}
@@ -151,7 +155,8 @@ export function ListScreen({ tab, onTab, children }: { tab: "itens" | "inspiraco
             onKeyDown={(event) => {
               if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
                 event.preventDefault();
-                const next = id === "itens" ? "inspiracoes" : "itens";
+                const step = event.key === "ArrowRight" ? 1 : tabs.length - 1;
+                const next = tabs[(index + step) % tabs.length]!.id;
                 onTab(next);
                 requestAnimationFrame(() => document.getElementById(`list-tab-${next}`)?.focus());
               }

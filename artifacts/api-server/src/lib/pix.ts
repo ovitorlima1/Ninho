@@ -2,7 +2,7 @@
  * Pix "copia e cola" estático (BR Code, padrão EMV do Banco Central), montado
  * aqui mesmo: o dinheiro vai direto do convidado para a mãe, sem intermediário.
  */
-import { PIX_KEY_TYPES } from "@workspace/db/schema";
+import { type PIX_KEY_TYPES } from "@workspace/db/schema";
 
 export type PixKeyType = (typeof PIX_KEY_TYPES)[number];
 

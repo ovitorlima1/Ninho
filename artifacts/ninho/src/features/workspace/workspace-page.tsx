@@ -1,9 +1,11 @@
 import { ActionFeedbackBanner } from "@/components/action-feedback";
 import { ErrorState, LoadingSpinner } from "@/components/states";
-import { AppShell, ListScreen } from "@/layout/app-shell";
+import { AppShell, ListScreen, type ListTab } from "@/layout/app-shell";
 import { BudgetPanel } from "@/features/budget/budget-panel";
 import { ChecklistPanel } from "@/features/checklist/checklist-panel";
 import { AddItemModal, EditItemModal } from "@/features/checklist/item-modals";
+import { GiftListDetail } from "@/features/gift-lists/gift-list-detail";
+import { GiftListsPanel } from "@/features/gift-lists/gift-lists-panel";
 import { OnboardingModal } from "@/features/onboarding/onboarding-modal";
 import { OverviewPanel } from "@/features/overview/overview-panel";
 import { ProfilePanel } from "@/features/profile/profile-panel";
@@ -108,13 +110,19 @@ export function WorkspacePage({ userId: uid }: { userId: string }) {
     />
   );
 
-  const isListRoute = location === "/checklist" || location === "/recommendations";
+  const isGiftRoute = location === "/gifts" || location.startsWith("/gifts/");
+  const giftListId = Number(location.match(/^\/gifts\/(\d+)$/)?.[1] ?? 0);
+  const giftPanel = giftListId
+    ? <GiftListDetail key={giftListId} userId={uid} listId={giftListId} go={go} />
+    : <GiftListsPanel userId={uid} go={go} />;
+  const LIST_TAB_PATHS: Record<ListTab, string> = { itens: "/checklist", presentes: "/gifts", inspiracoes: "/recommendations" };
+  const isListRoute = location === "/checklist" || location === "/recommendations" || isGiftRoute;
   const content = isListRoute ? (
     <ListScreen
-      tab={location === "/recommendations" ? "inspiracoes" : "itens"}
-      onTab={(tab) => go(tab === "itens" ? "/checklist" : "/recommendations")}
+      tab={isGiftRoute ? "presentes" : location === "/recommendations" ? "inspiracoes" : "itens"}
+      onTab={(tab) => go(LIST_TAB_PATHS[tab])}
     >
-      {location === "/recommendations" ? recommendationsPanel : checklistPanel}
+      {isGiftRoute ? giftPanel : location === "/recommendations" ? recommendationsPanel : checklistPanel}
     </ListScreen>
   )
     : location === "/milestones" ? milestonePanel

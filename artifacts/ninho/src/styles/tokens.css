@@ -76,6 +76,8 @@
 
   /* Barra de progresso: pílula lisa, sem marcações */
   --color-progress: #b0569a;
+  /* Prometido, ainda não recebido: o tom claro da barra das listas de presentes. */
+  --color-progress-soft: #dba9cf;
   --tape-track: #efe2eb;
 
   /* Tipografia */
