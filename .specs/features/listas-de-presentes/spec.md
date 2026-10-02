@@ -5,7 +5,7 @@
 ("a pessoa pagar uma parte do valor e mostrar quanto falta"; "se alguém quiser comprar o item todo, deixar marcado";
 "foto do produto e link em cada item"). Itens p01–p12 do diagnóstico.
 **Desenho:** canvas "Ninho · Telas", etapas 6 a 9 — https://claude.ai/artifact/LC23F4YQ2QhTzVc42TPdHA
-**Estado desta spec:** só a especificação. Design técnico e tarefas vêm depois da aprovação.
+**Estado desta spec:** E1 construída (2026-10-02, branch `listas-de-presentes-e1`). E2 e E3 só especificadas.
 
 ## Decisões do dono
 
@@ -165,6 +165,6 @@
 
 | Requisitos | Entrega | Status |
 |---|---|---|
-| LP-R1 a LP-R32 | E1 | especificado |
+| LP-R1 a LP-R32 | E1 | concluído na branch (90/90 E2E; ver `SUMMARY.md`) |
 | LP-R33 a LP-R39 | E2 | especificado |
 | LP-R40 a LP-R45 | E3 | especificado |
