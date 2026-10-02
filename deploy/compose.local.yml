@@ -1,0 +1,16 @@
+# Teste do conjunto de produção no computador, sem o Traefik:
+#
+#   docker compose -f deploy/compose.prod.yml -f deploy/compose.local.yml --env-file deploy/.env.local up -d --build
+#
+# O front fica em http://localhost:8088. Não use na VPS.
+services:
+  migrate:
+    platform: linux/amd64
+  api:
+    platform: linux/amd64
+    environment:
+      PUBLIC_APP_URL: http://localhost:8088
+  web:
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:8088:8080"

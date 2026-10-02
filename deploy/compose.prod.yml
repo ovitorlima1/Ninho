@@ -1,0 +1,117 @@
+# Ninho em produção (VPS). Roda a partir da raiz do repositório:
+#
+#   docker compose -f deploy/compose.prod.yml --env-file deploy/.env up -d --build
+#
+# Quem recebe a internet é o Traefik que já existe na VPS (/docker/traefik): ele
+# enxerga o serviço `web` pelas labels e cuida do HTTPS. Nenhuma porta é publicada aqui.
+name: ninho
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+services:
+  postgres:
+    <<: *hardening
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ninho
+      POSTGRES_DB: ninho
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no deploy/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ninho -d ninho"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Aplica o schema e termina. A API só sobe se isto der certo.
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: migrate
+    image: ninho-migrate:${IMAGE_TAG:-latest}
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ninho:${POSTGRES_PASSWORD}@postgres:5432/ninho
+
+  api:
+    <<: *hardening
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: api
+    image: ninho-api:${IMAGE_TAG:-latest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://ninho:${POSTGRES_PASSWORD}@postgres:5432/ninho
+      SESSION_SECRET: ${SESSION_SECRET:?defina SESSION_SECRET no deploy/.env}
+      PUBLIC_APP_URL: https://${APP_DOMAIN:?defina APP_DOMAIN no deploy/.env}
+      # O Traefik e o Nginx chegam pela rede interna do Docker; só eles podem informar o IP de quem acessa.
+      TRUST_PROXY: loopback, uniquelocal
+      EMAIL_TRANSPORT: resend
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  web:
+    <<: *hardening
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: web
+    image: ninho-web:${IMAGE_TAG:-latest}
+    depends_on:
+      api:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=ninho_default
+      - traefik.http.routers.ninho.rule=Host(`${APP_DOMAIN}`)
+      - traefik.http.routers.ninho.entrypoints=websecure
+      - traefik.http.routers.ninho.tls.certresolver=letsencrypt
+      - traefik.http.services.ninho.loadbalancer.server.port=8080
+
+  # Cópia diária do banco, com retenção. Restauração: ver deploy/README.md.
+  pgbackups:
+    <<: *hardening
+    image: prodrigestivill/postgres-backup-local:16
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ninho
+      POSTGRES_USER: ninho
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 6
+      TZ: America/Sao_Paulo
+    volumes:
+      - pgbackups:/backups
+
+volumes:
+  pgdata:
+  pgbackups:
