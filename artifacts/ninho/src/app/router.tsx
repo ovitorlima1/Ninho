@@ -14,6 +14,8 @@ const PasswordResetPage = lazy(() =>
   import("@/features/auth/password-reset-pages").then((m) => ({ default: m.PasswordResetPage })));
 const VerifyEmailPage = lazy(() => import("@/features/auth/verify-email").then((m) => ({ default: m.VerifyEmailPage })));
 const PublicGiftPage = lazy(() => import("@/features/gift/public-gift-page").then((m) => ({ default: m.PublicGiftPage })));
+const PublicListPage = lazy(() =>
+  import("@/features/gift-lists/public/public-list-page").then((m) => ({ default: m.PublicListPage })));
 const WorkspacePage = lazy(() => import("@/features/workspace/workspace-page").then((m) => ({ default: m.WorkspacePage })));
 
 function FullPageSpinner() {
@@ -36,7 +38,8 @@ export function AuthenticatedApp({ userId }: { userId: string }) {
 
 export function AppRouter() {
   const [location] = useLocation();
-  const isPublicGiftRoute = location.startsWith("/gift/");
+  // Páginas de convidado: não dependem de sessão (link do enxoval e listas de presentes).
+  const isPublicGiftRoute = location.startsWith("/gift/") || location.startsWith("/lista/");
   const sessionQuery = useQuery({
     queryKey: ["auth-session"],
     queryFn: getSession,
@@ -58,6 +61,7 @@ export function AppRouter() {
     return (
       <Switch>
         <Route path="/gift/:token"><Lazy><PublicGiftPage /></Lazy></Route>
+        <Route path="/lista/:token"><Lazy><PublicListPage /></Lazy></Route>
         <Route><NotFound /></Route>
       </Switch>
     );
@@ -75,10 +79,11 @@ export function AppRouter() {
       <Route path="/reset-password"><Lazy><PasswordResetPage /></Lazy></Route>
       <Route path="/verify-email"><Lazy><VerifyEmailPage /></Lazy></Route>
       <Route path="/"><Redirect to={user ? "/dashboard" : "/sign-in"} /></Route>
+      {/* Rota sem caminho: pega qualquer endereço, inclusive os de dois níveis (/gifts/12). */}
       {user ? (
-        <Route path="/:rest*"><AuthenticatedApp userId={user.id} /></Route>
+        <Route><AuthenticatedApp userId={user.id} /></Route>
       ) : (
-        <Route path="/:rest*"><Redirect to="/sign-in" /></Route>
+        <Route><Redirect to="/sign-in" /></Route>
       )}
     </Switch>
   );

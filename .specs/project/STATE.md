@@ -27,6 +27,9 @@
 | 2026-09-17 | Login com foto de gestante sob véu roxo — desde 2026-09-18 a do Pexels (Jonathan Borba, Licença Pexels), trocada a pedido do dono; `login-pregnancy.png` apagado. A foto antiga é de banco pago (Shutterstock 1971086771 e outros, achada por busca reversa). | Escolha do dono entre foto gratuita e licenciar a original. |
 | 2026-09-22 | Design novo "Ninho Bento" (ameixa, blocos pastel, Plus Jakarta Sans, logo do dono) aplicado como base global + Início primeiro; nomes de token mantidos; navegação por faixa 600/1024px; web app só no navegador, sem instalação. | Escolha do dono (base global em vez de "só o Início"); design system e canvas no Claude Design. |
 
+| 2026-10-02 | Listas de presentes: o dinheiro não passa pelo Ninho (Pix estático direto para a mãe, confirmação manual "Recebi"); prometido conta para "quanto falta"; quem dá o item inteiro escolhe se o nome aparece; convidado sem conta, com link particular de gerenciamento. | Escolhas do dono; evita taxa, cadastro de empresa e estorno. |
+| 2026-10-02 | Produção vai para uma VPS (Docker Compose, Postgres na própria máquina), não para o Replit; fotos das listas (E2) ficam num volume da VPS. | Escolha do dono. |
+
 ## Bloqueios
 
 - Nenhum.

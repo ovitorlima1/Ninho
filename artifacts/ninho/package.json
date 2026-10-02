@@ -31,5 +31,8 @@
     "vite": "catalog:",
     "vitest": "^5.0.1",
     "wouter": "^3.3.5"
+  },
+  "dependencies": {
+    "qrcode-generator": "2.0.4"
   }
 }
