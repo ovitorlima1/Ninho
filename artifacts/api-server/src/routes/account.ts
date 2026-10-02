@@ -8,10 +8,14 @@ import {
   checklistItems,
   deleteAccountSchema,
   emailVerificationTokens,
+  giftListItems,
+  giftLists,
+  giftPledges,
   giftReservations,
   giftShareLinks,
   milestones,
   passwordResetTokens,
+  pixAccounts,
   profiles,
 } from "@workspace/db/schema";
 import { expiredSessionCookie, verifyPassword } from "../lib/auth";
@@ -53,6 +57,10 @@ router.get("/export", requireAuth, async (req, res) => {
     const budget = await db.select().from(budgetCategories).where(eq(budgetCategories.userId, userId));
     const shareLinks = await db.select().from(giftShareLinks).where(eq(giftShareLinks.userId, userId)).orderBy(asc(giftShareLinks.id));
     const reservations = await db.select().from(giftReservations).where(eq(giftReservations.userId, userId));
+    const lists = await db.select().from(giftLists).where(eq(giftLists.userId, userId)).orderBy(asc(giftLists.id));
+    const listItems = await db.select().from(giftListItems).where(eq(giftListItems.userId, userId)).orderBy(asc(giftListItems.id));
+    const pledges = await db.select().from(giftPledges).where(eq(giftPledges.userId, userId)).orderBy(asc(giftPledges.id));
+    const [pix] = await db.select().from(pixAccounts).where(eq(pixAccounts.userId, userId));
     const sessions = await db
       .select({ createdAt: authSessions.createdAt, lastSeenAt: authSessions.lastSeenAt, expiresAt: authSessions.expiresAt, revokedAt: authSessions.revokedAt })
       .from(authSessions)
@@ -71,6 +79,11 @@ router.get("/export", requireAuth, async (req, res) => {
       budget: budget.map((row) => ({ ...omitOwner(row), planned: Number(row.planned) })),
       giftShareLinks: shareLinks.map(({ id, createdAt, revokedAt }) => ({ id, createdAt, revokedAt, active: revokedAt === null })),
       giftReservations: reservations.map(omitOwner),
+      // Os tokens (link da lista e link de gerenciamento do convidado) são credenciais e ficam de fora.
+      giftLists: lists.map(({ token: _token, ...list }) => omitOwner(list)),
+      giftListItems: listItems.map(omitOwner),
+      giftPledges: pledges.map(({ manageTokenHash: _hash, ...pledge }) => omitOwner(pledge)),
+      pixAccount: pix ? omitOwner(pix) : null,
       sessions,
     };
 
@@ -114,6 +127,10 @@ router.delete("/account", requireAuth, async (req, res) => {
 
     await db.transaction(async (tx) => {
       await tx.delete(giftReservations).where(eq(giftReservations.userId, userId));
+      await tx.delete(giftPledges).where(eq(giftPledges.userId, userId));
+      await tx.delete(giftListItems).where(eq(giftListItems.userId, userId));
+      await tx.delete(giftLists).where(eq(giftLists.userId, userId));
+      await tx.delete(pixAccounts).where(eq(pixAccounts.userId, userId));
       await tx.delete(giftShareLinks).where(eq(giftShareLinks.userId, userId));
       await tx.delete(checklistItems).where(eq(checklistItems.userId, userId));
       await tx.delete(milestones).where(eq(milestones.userId, userId));
