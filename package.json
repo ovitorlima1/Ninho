@@ -15,9 +15,6 @@
     "test:e2e": "pnpm --filter @workspace/ninho run test:e2e"
   },
   "private": true,
-  "dependencies": {
-    "@replit/connectors-sdk": "^0.4.1"
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.10.0",

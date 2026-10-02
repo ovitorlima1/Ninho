@@ -1,18 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { ReplitConnectors } from "@replit/connectors-sdk";
 import { logger } from "./logger";
 
-const connectors = new ReplitConnectors();
+const RESEND_URL = "https://api.resend.com/emails";
+const RESEND_TIMEOUT_MS = 10_000;
 
 export type EmailMessage = { to: string; subject: string; text: string; html: string };
 export type EmailTransport = "resend" | "log" | "outbox";
 
 /**
  * Como o e-mail sai. Em produção só o Resend vale; fora dela dá para mandar
- * para o log (desenvolvimento local, onde o Resend não funciona) ou para uma
- * pasta de arquivos JSON (E2E, que lê o link de lá).
+ * para o log (desenvolvimento local, sem chave do Resend) ou para uma pasta de
+ * arquivos JSON (E2E, que lê o link de lá).
  */
 export function resolveEmailTransport(env: NodeJS.ProcessEnv = process.env): EmailTransport {
   const transport = env.EMAIL_TRANSPORT || "resend";
@@ -26,15 +26,21 @@ export function resolveEmailTransport(env: NodeJS.ProcessEnv = process.env): Ema
 }
 
 async function sendWithResend(message: EmailMessage): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY must be set to send e-mail.");
+  }
   if (!from) {
     throw new Error("RESEND_FROM_EMAIL must be set to a verified Resend sender.");
   }
 
-  const response = await connectors.proxy("resend", "/emails", {
+  const response = await fetch(RESEND_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({ from, to: [message.to], subject: message.subject, text: message.text, html: message.html }),
+    // Um Resend lento não pode segurar conexões abertas para sempre.
+    signal: AbortSignal.timeout(RESEND_TIMEOUT_MS),
   });
 
   if (!response.ok) {

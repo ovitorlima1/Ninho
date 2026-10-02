@@ -12,9 +12,12 @@ import {
 
 const app: Express = express();
 
-// The managed proxy reaches the service through loopback. Trust only that
-// address so a direct client cannot forge X-Forwarded-For to bypass limits.
-app.set("trust proxy", "loopback");
+// Só os proxies da frente podem dizer quem é o cliente (X-Forwarded-For): os
+// limites de tentativa são por origem. Por padrão vale o loopback (proxy do
+// Vite em desenvolvimento); em produção `TRUST_PROXY` nomeia a rede interna do
+// Docker, por onde chegam o Traefik e o Nginx (ex.: "loopback, uniquelocal").
+const trustedProxies = (process.env.TRUST_PROXY ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+app.set("trust proxy", trustedProxies.length > 0 ? trustedProxies : "loopback");
 app.disable("x-powered-by");
 
 app.use(
