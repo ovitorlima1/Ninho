@@ -48,4 +48,4 @@ Outras aplicações: `talentia` (whapro.digital) e `deskcomm`. O DNS de whapro.d
 
 | Requisito | Status |
 |---|---|
-| DV-R1 a DV-R8 | em andamento |
+| DV-R1 a DV-R8 | código pronto e conjunto testado na VPS em 2026-10-02 (projeto `ninho-test`, porta interna, desmontado depois); falta o deploy real |
