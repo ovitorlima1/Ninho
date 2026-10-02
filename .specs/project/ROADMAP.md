@@ -15,7 +15,8 @@ Códigos entre parênteses = achados da auditoria.
 | — | `design-novo-telas` | diagnóstico d05, d07–d11; B3 | **Concluída** (PR #6, na main em 2026-09-29) | — |
 | — | `busca-na-lista` | diagnóstico r08 | **Concluída** (PR #8, na main em 2026-09-29) | — |
 | — | `verificacao-email` | diagnóstico l02; resíduo de B4 | **Concluída** (PR #9, na main em 2026-09-29) | — |
-| — | `listas-de-presentes` (E1) | diagnóstico p01–p08, p10 | **E1 concluída na branch** (2026-10-02), PR pendente; E2 (fotos) e E3 (acompanhamento) especificadas | — |
+| — | `listas-de-presentes` (E1) | diagnóstico p01–p08, p10 | **E1 concluída** (PR #10, na main em 2026-10-02); E2 (fotos) e E3 (acompanhamento) especificadas | — |
+| — | `deploy-vps` | diagnóstico l04, l05, l09 | **Código pronto na branch** (2026-10-02); imagens ainda não construídas; falta o deploy na VPS | — |
 
 ## Marcos
 

@@ -13,24 +13,15 @@ repositório: o que existe é `.env.example` (sem valores) e o `.env` local (ign
 - Efeito: dependência de terceiro em tempo de render, com uma requisição
   desnecessária e uma cadeia bloqueante (`@import` dentro do CSS já bloqueante).
 
-## 2. Resend via Replit Connectors (e-mail transacional)
+## 2. Resend (e-mail transacional)
 
-- `artifacts/api-server/src/lib/email.ts`: `new ReplitConnectors()` e
-  `connectors.proxy("resend", "/emails", { method: "POST", … })` — o token do
-  Resend nunca aparece no código; o proxy do Replit o injeta.
-- Usos (todos em `routes/auth.ts`, *fire-and-forget* com `.catch` logado): link de confirmação do cadastro,
-  aviso "você já tem uma conta" (cadastro repetido de e-mail confirmado) e link de redefinição de senha.
-  **Sem e-mail funcionando em produção ninguém termina o cadastro** (desde a verificação de e-mail, 2026-09-29).
-- Transporte por `EMAIL_TRANSPORT` (`lib/email.ts`): `resend` (padrão, único aceito em produção), `log`
-  (desenvolvimento local) e `outbox` (E2E grava JSON em `EMAIL_OUTBOX_DIR` e lê o link de lá).
-- Requisitos: `RESEND_FROM_EMAIL` (remetente verificado; ausência → erro) e
-  `PUBLIC_APP_URL` HTTPS canônica (`getPublicAppUrl`, `routes/auth.ts:74`);
-  fora de produção aceita `https://$REPLIT_DEV_DOMAIN`.
-- O SDK (`@replit/connectors-sdk@0.4.1`, dependência da **raiz**, não do
-  api-server) lê `REPL_IDENTITY`, `WEB_REPL_RENEWAL`, `REPLIT_CONNECTORS_HOSTNAME`,
-  `REPLIT_CONNECTORS_AUDIENCE`, `CONNECTORS_HOST` — só existem dentro do Replit.
-- **Localmente o reset de senha não envia e-mail** (documentado em `.env.example`);
-  a rota continua respondendo 202 com a mensagem genérica.
+- `artifacts/api-server/src/lib/email.ts`: `POST https://api.resend.com/emails` com `Authorization: Bearer $RESEND_API_KEY`
+  e limite de 10 s. Desde 2026-10-02 não usa mais o conector do Replit (o pacote `@replit/connectors-sdk` saiu).
+- Usos (todos em `routes/auth.ts`, *fire-and-forget* com `.catch` logado): link de confirmação do cadastro, aviso
+  "você já tem uma conta" e link de redefinição de senha. **Sem e-mail funcionando em produção ninguém termina o cadastro.**
+- Requisitos: `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (remetente de domínio verificado) e `PUBLIC_APP_URL` em HTTPS.
+- Transporte por `EMAIL_TRANSPORT`: `resend` (padrão, único aceito em produção), `log` (desenvolvimento local) e
+  `outbox` (E2E grava JSON em `EMAIL_OUTBOX_DIR`).
 
 ## 3. Amazon (links de afiliado ainda não; só busca)
 

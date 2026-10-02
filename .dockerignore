@@ -1,0 +1,21 @@
+# O contexto de build é a raiz do repositório: fica de fora tudo que não entra na imagem.
+.git
+.github
+.claude
+.specs
+.local
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/test-results
+**/playwright-report
+artifacts/ninho/e2e
+attached_assets
+screenshots
+deploy/.env
+deploy/.env.*
+!deploy/.env.example
+.env
+.env.*
+*.jpeg
+*.md
