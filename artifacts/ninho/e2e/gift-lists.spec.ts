@@ -208,3 +208,23 @@ test("a mãe adiciona presente com link, marca “já tenho” e exclui a lista"
   await expect(guest.getByRole("heading", { name: "Esta lista não está mais disponível." })).toBeVisible();
   await guest.context().close();
 });
+
+test("a chave Pix cadastrada no Perfil vale nas listas", async ({ page }) => {
+  await createAccount(page);
+  await page.goto("/profile");
+  await expect(page.getByRole("heading", { name: "Pix para receber presentes" })).toBeVisible();
+  await page.getByTestId("button-profile-pix").click();
+  await page.getByTestId("input-pix-key").fill("ana@email.com");
+  await page.getByTestId("input-pix-name").fill("Ana Lima");
+  await page.getByTestId("input-pix-city").fill("Recife");
+  await page.getByTestId("button-save-pix").click();
+  await expect(page.getByRole("heading", { name: "Confira no seu banco" })).toBeVisible();
+  await page.getByTestId("button-pix-done").click();
+  await expect(page.getByText("an***@email.com")).toBeVisible();
+  await expect(page.getByTestId("button-profile-pix")).toHaveText("trocar chave");
+  await expectAccessible(page);
+
+  await createListFromTemplate(page, "cha-de-bebe");
+  await expect(page.getByText("an***@email.com")).toBeVisible();
+  await expect(page.getByText("Cadastre sua chave Pix para os convidados contribuírem com valor.")).toHaveCount(0);
+});
