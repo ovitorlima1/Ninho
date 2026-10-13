@@ -78,7 +78,7 @@
 ## Ideias adiadas
 
 - Listas do Enxoval: mover item entre listas, reordenar listas e categorias, escolher a cor da categoria, compartilhar outra lista que não a primeira, e um "apagar as sugestões que não mexi" no aviso.
-- Apagar a tabela `budget_categories` (vazia desde `listas-e-categorias`), à mão na VPS, depois do deploy.
+- Apagar a tabela `budget_categories` (vazia em produção desde o deploy de `listas-e-categorias`, em 2026-10-13), à mão na VPS.
 - Mover catálogo de inspirações para o banco/CMS (Fase 3+).
 
 ## Preferências
