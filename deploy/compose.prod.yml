@@ -70,9 +70,13 @@ services:
       EMAIL_TRANSPORT: resend
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+      MEDIA_DIR: /data/media
     read_only: true
     tmpfs:
       - /tmp
+    # Fotos dos produtos: o único lugar em que a API grava.
+    volumes:
+      - media:/data/media
 
   web:
     <<: *hardening
@@ -112,6 +116,28 @@ services:
     volumes:
       - pgbackups:/backups
 
+  # Cópia diária das fotos, ao lado das cópias do banco (7 dias). Restauração: ver deploy/README.md.
+  mediabackups:
+    <<: *hardening
+    image: alpine:3.22
+    read_only: true
+    environment:
+      TZ: America/Sao_Paulo
+    volumes:
+      - media:/data/media:ro
+      - pgbackups:/backups
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          mkdir -p /backups/media
+          tar -czf "/backups/media/ninho-media-$$(date +%Y%m%d).tar.gz" -C /data media \
+            && find /backups/media -name 'ninho-media-*.tar.gz' -mtime +7 -delete
+          sleep 86400
+        done
+
 volumes:
   pgdata:
   pgbackups:
+  media:
