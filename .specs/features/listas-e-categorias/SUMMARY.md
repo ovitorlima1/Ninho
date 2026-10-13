@@ -1,6 +1,6 @@
 # Listas e categorias do Enxoval — resumo
 
-Construída em 2026-10-13 na branch `listas-e-categorias`. Spec: LC-R1 a LC-R30, todos atendidos.
+Na main pelo PR #12 e no ar desde 2026-10-13. Spec: LC-R1 a LC-R30, todos atendidos.
 
 ## O que mudou para a mãe
 
@@ -34,12 +34,22 @@ Construída em 2026-10-13 na branch `listas-e-categorias`. Spec: LC-R1 a LC-R30,
   séria nas telas e nos diálogos novos.
 - Capturas conferidas em 375, 834, 1024 e 1280px.
 
-## Antes de divulgar
+## Deploy (2026-10-13)
 
-- O deploy na VPS aplica o schema e migra as contas sozinho. Quem estiver com o app aberto na hora precisa
-  recarregar a página.
-- Os itens dos modelos novos (Mala da maternidade, Quarto do bebê) são uma curadoria inicial: vale o dono revisar a
-  tabela "Modelos de lista" da spec.
+- Backup do banco logo antes (`ninho-20261013-141636.sql.gz`, no volume `ninho_pgbackups`).
+- O `migrate` aplicou o schema e terminou com "Exited (0)"; a API registrou "Legacy checklists migrated" com 3 contas.
+- Antes e depois: 3 contas, 30 itens e R$ 7.242,00 planejados (12 linhas de orçamento viraram 12 categorias).
+  Depois: 3 listas "Enxoval do bebê", nenhum item sem lista ou categoria, 25 itens com a etiqueta "Sugestão" e
+  `budget_categories` vazia.
+- `api`, `web`, `postgres` e `pgbackups` saudáveis; `/api/healthz` e a página respondendo 200 de fora.
+- Não conferido: entrar com uma conta real em produção e abrir a Lista.
+
+## Ainda vale o dono olhar
+
+- Os itens dos modelos novos (Mala da maternidade, Quarto do bebê) são uma curadoria inicial: a tabela "Modelos de
+  lista" da spec.
+- As decisões assumidas na spec (nome "Enxoval do bebê", link público e inspirações na primeira lista, cor
+  automática da categoria).
 
 ## Fica para depois
 
