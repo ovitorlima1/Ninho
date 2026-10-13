@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Browser, type Page } from "@playwright/test";
 import { CONFIRM_SUBJECT, tokenFrom, waitForEmail } from "./mail";
 
 export const PASSWORD = "SenhaDeTeste2026!";
@@ -55,6 +55,14 @@ export async function createAccount(
   });
   expect(profile.ok()).toBe(true);
   return { email, displayName };
+}
+
+/** Cada convidado é outro navegador, sem sessão e com outra origem (o limite de reservas é por origem). */
+export async function openAsGuest(browser: Browser, baseURL: string | undefined, link: string): Promise<Page> {
+  const context = await browser.newContext({ baseURL, extraHTTPHeaders: { "x-forwarded-for": randomClientIp() } });
+  const page = await context.newPage();
+  await page.goto(new URL(link).pathname + new URL(link).hash);
+  return page;
 }
 
 /** Linha da lista pelo nome do item. */
