@@ -1854,6 +1854,110 @@
   .public-gift-invalid h1 { font-size: var(--text-xl); }
   .public-gift-note { color: var(--color-ink-muted); font-size: var(--text-sm); text-align: center; }
 
+  /* ── Listas do Enxoval, categorias livres e sugestões ──────────────────── */
+  /* Seletor de listas: fichas maiores que as pílulas de categoria, para não confundir as duas filas. */
+  .list-switcher {
+    display: flex;
+    gap: var(--space-2);
+    margin: 0 calc(var(--space-4) * -1);
+    padding: 0 var(--space-4) var(--space-1);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .list-switcher::-webkit-scrollbar { display: none; }
+  .list-chip {
+    display: inline-flex;
+    flex: none;
+    min-height: var(--touch-target);
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+    color: var(--color-ink);
+    background: var(--color-surface);
+    font-size: var(--text-base);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .list-chip.is-current {
+    border-color: var(--color-brand);
+    color: var(--color-on-tile-lilac);
+    background: var(--color-tile-lilac);
+    box-shadow: inset 0 0 0 1px var(--color-brand);
+  }
+  /* "Criar" é tracejado nas duas filas: lista nova e categoria nova. */
+  .list-chip-add,
+  .pill-add {
+    border-style: dashed;
+    border-color: var(--color-line-strong);
+    color: var(--color-brand);
+    background: transparent;
+  }
+  .list-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+  .list-heading .screen-title { min-width: 0; overflow-wrap: anywhere; }
+  .card-header-actions { display: flex; flex: none; gap: var(--space-2); }
+
+  /* Manteiga é a cor das dicas no design system. */
+  .suggestion-notice {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    color: var(--color-on-tile-butter);
+    background: var(--color-tile-butter);
+  }
+  .suggestion-notice-icon { display: grid; height: 24px; place-items: center; }
+  .suggestion-notice .secondary-button { grid-column: 2; justify-self: start; }
+  /* Tracejado como os botões de criar: é um ponto de partida, ainda não é "da mãe". */
+  .badge-suggestion {
+    border: 1px dashed var(--color-line-strong);
+    color: var(--color-ink-muted);
+    background: var(--color-surface-sunk);
+  }
+
+  .icon-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+  .icon-option {
+    display: grid;
+    min-height: var(--touch-target);
+    place-items: center;
+    border: 0;
+    border-radius: var(--radius-md);
+    color: var(--color-ink);
+    background: var(--color-surface);
+    box-shadow: inset 0 0 0 1px var(--color-line-strong);
+    cursor: pointer;
+  }
+  .icon-option.is-selected { color: var(--color-on-tile-lilac); background: var(--color-tile-lilac); box-shadow: inset 0 0 0 2px var(--color-brand); }
+  .modal-label select {
+    width: 100%;
+    min-height: var(--touch-target);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-md);
+    color: var(--color-ink);
+    background: var(--color-surface);
+    font: inherit;
+    font-weight: 500;
+  }
+  .modal-label select:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 0; }
+
+  .budget-group-title {
+    padding: var(--space-4) 0 var(--space-2);
+    border-top: 1px solid var(--color-line);
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  @media (min-width: 600px) {
+    .suggestion-notice { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+    .suggestion-notice .secondary-button { grid-column: auto; }
+    .icon-picker { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  }
+
   /* ── Hover só onde existe mouse ────────────────────────────────────────── */
   @media (hover: hover) {
     .card-link:hover { border-color: var(--color-line-strong); box-shadow: var(--shadow-md); }
@@ -1874,6 +1978,8 @@
     .check-item:hover .check-item-edit-hint { color: var(--color-brand); }
     .milestone-item:hover:not(:disabled) { border-color: var(--color-line-strong); }
     .icon-button:hover { background: var(--color-brand-soft); }
+    .list-chip:hover:not(.is-current),
+    .icon-option:hover:not(.is-selected) { box-shadow: inset 0 0 0 1px var(--color-brand); }
     .recommendation-existing-item:hover { border-color: var(--color-brand); }
   }
 
@@ -1905,7 +2011,8 @@
     .item-form-row { grid-template-columns: 1fr 1.3fr; }
     .category-progress { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-6); }
     .modal-backdrop { place-items: center; }
-    .filter-row { margin: 0; padding: 0 0 var(--space-1); }
+    .filter-row,
+    .list-switcher { margin: 0; padding: 0 0 var(--space-1); }
     .auth-form-panel { padding-top: var(--space-7); }
     .public-gift-page { padding-inline: var(--space-6); }
   }

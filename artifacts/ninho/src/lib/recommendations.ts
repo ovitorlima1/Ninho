@@ -1,6 +1,8 @@
 type ReviewDate = `${number}-${number}-${number}`;
 export type RecommendationVisibility = "visible" | "hidden";
-export type RecommendationCategory = "Roupas" | "Higiene" | "Alimentação" | "Acessórios";
+/** As categorias do catálogo são fixas; as da lista da mãe são dela e podem ter outros nomes. */
+export const RECOMMENDATION_CATEGORIES = ["Roupas", "Higiene", "Alimentação", "Acessórios"] as const;
+export type RecommendationCategory = (typeof RECOMMENDATION_CATEGORIES)[number];
 
 export type Recommendation = {
   id: string;

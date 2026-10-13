@@ -11,7 +11,7 @@ const AUTH_API = `${BASE}/api/auth`;
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ItemStatus = "A comprar" | "Comprado" | "Ganhei";
-export type CategoryKey = "Roupas" | "Higiene" | "Alimentação" | "Acessórios";
+export type ChecklistTemplate = "enxoval" | "mala-maternidade" | "quarto-do-bebe" | "em-branco";
 
 export interface ServerProfile {
   id: number;
@@ -28,16 +28,46 @@ export interface ServerProfile {
   updatedAt: string;
 }
 
-export interface ServerChecklistItem {
+/** Uma lista do Enxoval (Enxoval do bebê, Mala da maternidade…). */
+export interface ServerChecklist {
   id: number;
   userId: string;
   name: string;
+  suggestionsNoticeDismissed: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Categoria de uma lista; `planned` é o valor do Orçamento. */
+export interface ServerCategory {
+  id: number;
+  userId: string;
+  listId: number;
+  name: string;
+  icon: string;
+  tone: string;
+  planned: string; // numeric as string
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ServerChecklistItem {
+  id: number;
+  userId: string;
+  listId: number;
+  categoryId: number;
+  name: string;
+  /** Nome da categoria, mantido pelo servidor. */
   category: string;
   group: string;
   qty: number;
   status: string;
   price: string; // numeric as string from DB
   essential: boolean;
+  /** Veio pronto de um modelo e ainda não foi mexido. */
+  suggested: boolean;
   recommendationId: string | null;
   sortOrder: number;
   createdAt: string;
@@ -55,21 +85,13 @@ export interface ServerMilestone {
   createdAt: string;
 }
 
-export interface ServerBudgetCategory {
-  id: number;
-  userId: string;
-  category: string;
-  planned: string; // numeric as string
-  createdAt: string;
-  updatedAt: string;
-}
-
 export type GiftReservationStatus = "vou presentear" | "presenteado";
 export interface Workspace {
   profile: ServerProfile;
+  lists: ServerChecklist[];
+  categories: ServerCategory[];
   items: ServerChecklistItem[];
   milestones: ServerMilestone[];
-  budget: ServerBudgetCategory[];
   giftReservations: ServerGiftReservation[];
 }
 
@@ -77,6 +99,7 @@ export interface PublicGiftItem {
   id: number;
   name: string;
   category: string;
+  categoryIcon: string | null;
   qty: number;
   reserved: boolean;
   reservation: { status: GiftReservationStatus; guestName: string | null } | null;
@@ -187,7 +210,8 @@ export async function updateProfile(data: UpdateProfileInput): Promise<ServerPro
 
 export interface CreateItemInput {
   name: string;
-  category?: CategoryKey;
+  /** Sem categoria só quando vem de uma inspiração: o servidor escolhe a de mesmo nome. */
+  categoryId?: number;
   group?: string;
   qty?: number;
   price?: number;
@@ -203,7 +227,7 @@ export async function createChecklistItem(data: CreateItemInput): Promise<Server
 
 export interface UpdateItemInput {
   name?: string;
-  category?: CategoryKey;
+  categoryId?: number;
   status?: ItemStatus;
   qty?: number;
   price?: number;
@@ -239,14 +263,48 @@ export async function toggleMilestone(
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
 export interface BudgetInput {
-  categories: Array<{ category: string; planned: number }>;
+  categories: Array<{ categoryId: number; planned: number }>;
 }
 
-export async function updateBudget(data: BudgetInput): Promise<ServerBudgetCategory[]> {
-  return customFetch<ServerBudgetCategory[]>(`${API}/budget`, {
+/** Devolve todas as categorias da conta, já com o valor planejado novo. */
+export async function updateBudget(data: BudgetInput): Promise<ServerCategory[]> {
+  return customFetch<ServerCategory[]>(`${API}/budget`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
+}
+
+// ─── Listas e categorias do Enxoval ───────────────────────────────────────────
+
+export async function createChecklist(
+  data: { template: ChecklistTemplate; name: string },
+): Promise<{ list: ServerChecklist; categories: ServerCategory[]; items: ServerChecklistItem[] }> {
+  return customFetch(`${API}/checklists`, { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateChecklist(
+  id: number,
+  data: { name?: string; suggestionsNoticeDismissed?: true },
+): Promise<ServerChecklist> {
+  return customFetch<ServerChecklist>(`${API}/checklists/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+export async function deleteChecklist(id: number): Promise<void> {
+  return customFetch<void>(`${API}/checklists/${id}`, { method: "DELETE" });
+}
+
+export async function createCategory(listId: number, data: { name: string; icon: string }): Promise<ServerCategory> {
+  return customFetch<ServerCategory>(`${API}/checklists/${listId}/categories`, { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateCategory(id: number, data: { name?: string; icon?: string }): Promise<ServerCategory> {
+  return customFetch<ServerCategory>(`${API}/checklist-categories/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+/** `moveTo` leva os itens para outra categoria; sem ele, os itens são apagados junto. */
+export async function deleteCategory(id: number, moveTo: number | null): Promise<void> {
+  const query = moveTo === null ? "items=delete" : `moveTo=${moveTo}`;
+  return customFetch<void>(`${API}/checklist-categories/${id}?${query}`, { method: "DELETE" });
 }
 
 export async function getGiftShare(): Promise<ServerGiftShare | null> {

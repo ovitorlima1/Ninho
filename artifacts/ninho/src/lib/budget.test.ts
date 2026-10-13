@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
-  calcOverBudget,
+  calcBudgetRows,
   calcSpent,
-  calcSpentByCategory,
   calcSpentCents,
   toCents,
   type SpendableItem,
@@ -56,27 +55,36 @@ test("lista vazia soma zero", () => {
   assert.equal(calcSpent([]), 0);
 });
 
-test("soma por categoria considera só a categoria pedida", () => {
+test("linha do orçamento soma só o que foi comprado na própria categoria", () => {
   const items = [
-    { ...item({ price: 74, qty: 5 }), category: "Roupas" },
-    { ...item({ price: 58, qty: 2 }), category: "Higiene" },
-    { ...item({ status: "Ganhei", price: 96, qty: 1 }), category: "Higiene" },
+    { ...item({ price: 74, qty: 5 }), categoryId: 1 },
+    { ...item({ price: 58, qty: 2 }), categoryId: 2 },
+    { ...item({ status: "Ganhei", price: 96, qty: 1 }), categoryId: 2 },
   ];
+  const rows = calcBudgetRows(items, [{ id: 1, planned: 0 }, { id: 2, planned: 0 }, { id: 4, planned: 0 }]);
 
-  assert.equal(calcSpentByCategory(items, "Roupas"), 370);
-  assert.equal(calcSpentByCategory(items, "Higiene"), 116);
-  assert.equal(calcSpentByCategory(items, "Acessórios"), 0);
+  assert.deepEqual(rows.map((row) => row.spent), [370, 116, 0]);
 });
 
 test("categoria estourada: só quem tem planejado e gastou mais, com o excesso exato", () => {
   const items = [
-    { category: "Alimentação", status: "Comprado", price: 240, qty: 3 },
-    { category: "Roupas", status: "Comprado", price: 100, qty: 2 },
-    { category: "Higiene", status: "Comprado", price: 50, qty: 1 },
-    { category: "Acessórios", status: "Ganhei", price: 900, qty: 1 },
+    { categoryId: 3, status: "Comprado", price: 240, qty: 3 },
+    { categoryId: 1, status: "Comprado", price: 100, qty: 2 },
+    { categoryId: 2, status: "Comprado", price: 50, qty: 1 },
+    { categoryId: 4, status: "Ganhei", price: 900, qty: 1 },
   ];
-  const planned = { Alimentação: 600, Roupas: 200, Higiene: 0, Acessórios: 100 };
-  assert.deepEqual(calcOverBudget(items, planned, ["Roupas", "Higiene", "Alimentação", "Acessórios"]), [
-    { category: "Alimentação", over: 120 },
+  const rows = calcBudgetRows(items, [
+    { id: 1, planned: 200 },
+    { id: 2, planned: 0 },
+    { id: 3, planned: 600 },
+    { id: 4, planned: 100 },
   ]);
+
+  assert.deepEqual(rows.filter((row) => row.over > 0), [{ id: 3, spent: 720, planned: 600, over: 120 }]);
+  // Sem valor planejado não há estouro, por mais que se gaste.
+  assert.equal(rows[1]!.over, 0);
+});
+
+test("categoria criada agora entra com zero planejado e zero gasto", () => {
+  assert.deepEqual(calcBudgetRows([], [{ id: 9, planned: 0 }]), [{ id: 9, spent: 0, planned: 0, over: 0 }]);
 });

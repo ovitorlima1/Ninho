@@ -84,10 +84,9 @@ export async function migrateLegacyUser(userId: string): Promise<boolean> {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`checklists:${userId}`}))`);
     if (await primaryChecklist(tx, userId)) return false;
 
-    const [items, budget] = await Promise.all([
-      tx.select().from(checklistItems).where(eq(checklistItems.userId, userId)),
-      tx.select().from(budgetCategories).where(eq(budgetCategories.userId, userId)),
-    ]);
+    // Uma transação é uma conexão só: as consultas vão uma depois da outra.
+    const items = await tx.select().from(checklistItems).where(eq(checklistItems.userId, userId));
+    const budget = await tx.select().from(budgetCategories).where(eq(budgetCategories.userId, userId));
     const plan = planLegacyMigration(items, budget);
 
     const [list] = await tx.insert(checklists).values({ userId, name: DEFAULT_CHECKLIST_NAME }).returning();

@@ -17,7 +17,7 @@ import { useWorkspace } from "@/features/workspace/use-workspace";
 
 export function WorkspacePage({ userId: uid }: { userId: string }) {
   const ws = useWorkspace(uid);
-  const { workspaceQuery, location, items, go } = ws;
+  const { workspaceQuery, location, items, lists, categories, activeList, go } = ws;
 
   // ── Loading / Error states ───────────────────────────────────────────────
 
@@ -29,7 +29,8 @@ export function WorkspacePage({ userId: uid }: { userId: string }) {
     );
   }
 
-  if (workspaceQuery.isError || !workspaceQuery.data) {
+  // Toda conta tem pelo menos uma lista (a API cria ou migra no primeiro acesso).
+  if (workspaceQuery.isError || !workspaceQuery.data || !activeList) {
     return (
       <div className="ninho-app" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
         <ErrorState message="Não foi possível carregar seus dados. Verifique sua conexão." onRetry={() => workspaceQuery.refetch()} />
@@ -37,7 +38,7 @@ export function WorkspacePage({ userId: uid }: { userId: string }) {
     );
   }
 
-  const { profile, milestones: miles, budget } = workspaceQuery.data;
+  const { profile, milestones: miles } = workspaceQuery.data;
 
   // ── Onboarding ──────────────────────────────────────────────────────────
 
@@ -51,14 +52,22 @@ export function WorkspacePage({ userId: uid }: { userId: string }) {
 
   // ── Panel content ────────────────────────────────────────────────────────
 
+  const categoriesOfList = (listId: number | undefined) => categories.filter((category) => category.listId === listId);
+
   const overviewPanel = (
-    <OverviewPanel items={items} profile={profile} milestones={miles} budget={budget}
+    <OverviewPanel items={items} lists={lists} categories={categories} profile={profile} milestones={miles}
       setLocation={go}
     />
   );
   const checklistPanel = (
     <ChecklistPanel
-      items={items}
+      key={activeList.id}
+      lists={lists}
+      list={activeList}
+      categories={categories.filter((category) => category.listId === activeList.id)}
+      items={items.filter((item) => item.listId === activeList.id)}
+      actions={ws.checklistActions}
+      onSelectList={ws.selectList}
       onToggle={ws.handleToggle}
       onAdd={ws.openAdd}
       onEdit={ws.setEditingItem}
@@ -76,9 +85,10 @@ export function WorkspacePage({ userId: uid }: { userId: string }) {
   );
   const budgetPanel = (
     <BudgetPanel
-      key={budget.map((b) => `${b.category}:${b.planned}`).join("|")}
+      key={categories.map((c) => `${c.id}:${c.name}:${c.planned}`).join("|")}
       items={items}
-      budget={budget}
+      lists={lists}
+      categories={categories}
       onSave={ws.handleBudgetSave}
       onEdit={ws.handleBudgetEdit}
       saveState={ws.budgetSaveState}
@@ -96,6 +106,7 @@ export function WorkspacePage({ userId: uid }: { userId: string }) {
       onRevokeShare={ws.handleRevokeShare}
       shareLoading={ws.shareLoading}
       shareError={ws.shareError}
+      sharedListName={lists.length > 1 ? lists[0]!.name : null}
     />
   );
   const recommendationsPanel = (
@@ -135,8 +146,23 @@ export function WorkspacePage({ userId: uid }: { userId: string }) {
       <AppShell location={location} go={go} profile={profile}>
         {content}
       </AppShell>
-      {ws.addOpen && <AddItemModal onClose={ws.closeAdd} onAdd={ws.handleAddItem} category={ws.addCategory} returnFocusTestId={ws.addTrigger ?? undefined} />}
-      {ws.editingItem && <EditItemModal item={ws.editingItem} onClose={() => ws.setEditingItem(null)} onSave={ws.handleEditItem} />}
+      {ws.addOpen && ws.addCategoryId !== null && (
+        <AddItemModal
+          onClose={ws.closeAdd}
+          onAdd={ws.handleAddItem}
+          categoryId={ws.addCategoryId}
+          categories={categoriesOfList(categories.find((category) => category.id === ws.addCategoryId)?.listId)}
+          returnFocusTestId={ws.addTrigger ?? undefined}
+        />
+      )}
+      {ws.editingItem && (
+        <EditItemModal
+          item={ws.editingItem}
+          categories={categoriesOfList(ws.editingItem.listId)}
+          onClose={() => ws.setEditingItem(null)}
+          onSave={ws.handleEditItem}
+        />
+      )}
       <ActionFeedbackBanner feedback={ws.actionFeedback} onDismiss={ws.dismissActionFeedback} />
     </div>
   );
