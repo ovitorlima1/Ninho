@@ -1,10 +1,11 @@
 import { CalendarDays, ChevronRight, Sparkles, WalletCards } from "lucide-react";
 import { Progress } from "@/components/progress";
-import { type ServerBudgetCategory, type ServerMilestone, type ServerProfile } from "@/lib/api";
+import { type ServerMilestone, type ServerProfile } from "@/lib/api";
 import { calcSpent } from "@/lib/budget";
+import { progressByList, type Checklist, type ListCategory } from "@/lib/checklists";
 import { formatDate } from "@/lib/format";
 import { calcGestation, formatGestation } from "@/lib/gestation";
-import { CATEGORIES, type ChecklistItem } from "@/lib/items";
+import { type ChecklistItem } from "@/lib/items";
 import { getNextMilestone } from "@/lib/milestones";
 import { enxovalProgress, itemsToBuy, moneyShort } from "@/lib/overview";
 import { ArrivalNotice } from "@/features/timeline/arrival-notice";
@@ -15,18 +16,28 @@ import { ArrivalNotice } from "@/features/timeline/arrival-notice";
  * A ordem do HTML é a do celular; tablet e computador só reorganizam com grid.
  */
 export function OverviewPanel({
-  items, profile, milestones: miles, budget, setLocation,
+  items, lists, categories, profile, milestones: miles, setLocation,
 }: {
+  /** Itens de todas as listas: o Início soma tudo (LC-R23). */
   items: ChecklistItem[];
+  lists: Checklist[];
+  categories: ListCategory[];
   profile: ServerProfile;
   milestones: ServerMilestone[];
-  budget: ServerBudgetCategory[];
   setLocation: (path: string) => void;
 }) {
   const progress = enxovalProgress(items);
   const gestation = calcGestation(profile.dueDate);
   const spent = calcSpent(items);
-  const totalPlanned = budget.reduce((sum, b) => sum + (parseFloat(b.planned) || 0), 0);
+  const totalPlanned = categories.reduce((sum, c) => sum + c.planned, 0);
+  // Com uma lista só, o progresso é por categoria; com várias, por lista.
+  const progressRows = lists.length > 1
+    ? progressByList(lists, items).map(({ list, done, total, percent }) => ({ id: list.id, name: list.name, done, total, percent }))
+    : categories.map((category) => {
+      const inCategory = items.filter((i) => i.categoryId === category.id);
+      const done = inCategory.filter((i) => i.status !== "A comprar").length;
+      return { id: category.id, name: category.name, done, total: inCategory.length, percent: inCategory.length ? (done / inCategory.length) * 100 : 0 };
+    });
   const nextMilestone = getNextMilestone(miles, gestation?.week ?? null);
   const milestoneLate = Boolean(nextMilestone && gestation && nextMilestone.week < gestation.week);
   const toBuy = itemsToBuy(items);
@@ -143,20 +154,15 @@ export function OverviewPanel({
       </section>
 
       <section className="card overview-categories" aria-labelledby="overview-categories-title">
-        <h2 className="card-title" id="overview-categories-title">Por categoria</h2>
+        <h2 className="card-title" id="overview-categories-title">{lists.length > 1 ? "Por lista" : "Por categoria"}</h2>
         <ul className="category-progress">
-          {CATEGORIES.map((category) => {
-            const inCategory = items.filter((i) => i.category === category);
-            const resolved = inCategory.filter((i) => i.status !== "A comprar").length;
-            const pct = inCategory.length ? (resolved / inCategory.length) * 100 : 0;
-            return (
-              <li key={category}>
-                <span className="category-progress-name">{category}</span>
-                <span className="category-progress-count">{resolved}/{inCategory.length}</span>
-                <Progress value={pct} label={`${category}: ${resolved} de ${inCategory.length} resolvidos`} />
-              </li>
-            );
-          })}
+          {progressRows.map((row) => (
+            <li key={row.id}>
+              <span className="category-progress-name">{row.name}</span>
+              <span className="category-progress-count">{row.done}/{row.total}</span>
+              <Progress value={row.percent} label={`${row.name}: ${row.done} de ${row.total} resolvidos`} />
+            </li>
+          ))}
         </ul>
       </section>
     </div>

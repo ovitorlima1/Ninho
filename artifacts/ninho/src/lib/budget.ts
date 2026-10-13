@@ -42,26 +42,28 @@ export function calcSpent(items: readonly SpendableItem[]): number {
   return calcSpentCents(items) / 100;
 }
 
-/** Total já gasto em uma categoria, em reais. */
-export function calcSpentByCategory(
-  items: readonly (SpendableItem & { category: string })[],
-  category: string,
-): number {
-  return calcSpent(items.filter((item) => item.category === category));
-}
+export type BudgetRow = {
+  id: number;
+  /** Gasto na categoria, em reais. */
+  spent: number;
+  /** Planejado para a categoria, em reais. */
+  planned: number;
+  /** Quanto passou do planejado, em reais; 0 quando não passou ou não há valor planejado. */
+  over: number;
+};
 
 /**
- * Categorias que passaram do planejado, com o excesso em reais (design novo, 2026-09-23).
- * Categoria sem valor planejado (0) não entra: sem meta, não há "estouro".
+ * Uma linha do Orçamento por categoria, na ordem recebida. Categoria sem valor planejado (0)
+ * nunca "estoura": sem meta, não há excesso.
  */
-export function calcOverBudget(
-  items: readonly (SpendableItem & { category: string })[],
-  planned: Readonly<Record<string, number>>,
-  categories: readonly string[],
-): { category: string; over: number }[] {
-  return categories.flatMap((category) => {
-    const plannedCents = toCents(planned[category] ?? 0);
-    const spentCents = calcSpentCents(items.filter((item) => item.category === category));
-    return plannedCents > 0 && spentCents > plannedCents ? [{ category, over: (spentCents - plannedCents) / 100 }] : [];
+export function calcBudgetRows(
+  items: readonly (SpendableItem & { categoryId: number })[],
+  categories: readonly { id: number; planned: number }[],
+): BudgetRow[] {
+  return categories.map(({ id, planned }) => {
+    const plannedCents = toCents(planned);
+    const spentCents = calcSpentCents(items.filter((item) => item.categoryId === id));
+    const over = plannedCents > 0 && spentCents > plannedCents ? (spentCents - plannedCents) / 100 : 0;
+    return { id, spent: spentCents / 100, planned: plannedCents / 100, over };
   });
 }

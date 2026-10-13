@@ -5,13 +5,15 @@ import { type ServerGiftShare } from "@/lib/api";
 import { basePath } from "@/lib/format";
 
 export function GiftShareCard({
-  share, onCreate, onRevoke, isLoading, error,
+  share, onCreate, onRevoke, isLoading, error, sharedListName,
 }: {
   share: ServerGiftShare | null | undefined;
   onCreate: () => void;
   onRevoke: () => void;
   isLoading: boolean;
   error: string | null;
+  /** Com mais de uma lista, o cartão diz qual delas o link mostra. */
+  sharedListName: string | null;
 }) {
   const [copied, setCopied] = useState(false);
   const [confirming, setConfirming] = useState<"regenerate" | "revoke" | null>(null);
@@ -49,7 +51,12 @@ export function GiftShareCard({
       <div className="gift-share-copy">
         <span className="eyebrow">Lista para presentes</span>
         <h2 id="gift-share-title">Deixe quem ama vocês participar.</h2>
-        <p>Compartilhe só os itens do enxoval. Seus dados pessoais e orçamento ficam no seu ninho.</p>
+        <p>
+          {sharedListName
+            ? <>O link mostra só os itens da lista <strong data-testid="text-shared-list">{sharedListName}</strong>. </>
+            : "Compartilhe só os itens do enxoval. "}
+          Seus dados pessoais e orçamento ficam no seu ninho.
+        </p>
       </div>
       {share ? (
         <>

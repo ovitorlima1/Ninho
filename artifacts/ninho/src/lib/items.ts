@@ -1,5 +1,4 @@
 import {
-  type CategoryKey,
   type ItemStatus,
   type ServerChecklistItem,
   type ServerGiftReservation,
@@ -8,13 +7,18 @@ import { money } from "@/lib/format";
 
 export type ChecklistItem = {
   id: number;
+  listId: number;
+  categoryId: number;
   name: string;
-  category: CategoryKey;
+  /** Nome da categoria, para mostrar; o vínculo é pelo `categoryId`. */
+  category: string;
   group: string;
   qty: number;
   status: ItemStatus;
   price: number;
   essential: boolean;
+  /** Veio pronto de um modelo e ainda não foi mexido: mostra a etiqueta "Sugestão". */
+  suggested: boolean;
   recommendationId: string | null;
   giftReservation: ServerGiftReservation | null;
 };
@@ -22,13 +26,16 @@ export type ChecklistItem = {
 export function adaptItem(s: ServerChecklistItem, giftReservation: ServerGiftReservation | null = null): ChecklistItem {
   return {
     id: s.id,
+    listId: s.listId,
+    categoryId: s.categoryId,
     name: s.name,
-    category: s.category as CategoryKey,
+    category: s.category,
     group: s.group,
     qty: s.qty,
     status: s.status as ItemStatus,
     price: parseFloat(s.price) || 0,
     essential: s.essential,
+    suggested: s.suggested,
     recommendationId: s.recommendationId,
     giftReservation,
   };
@@ -47,8 +54,6 @@ export function describeItemTotal(item: { qty: number; price: number; status: It
   if (item.qty <= 1) return money(item.price);
   return `${item.qty} un. × ${money(item.price)} · ${money(item.price * item.qty)}`;
 }
-
-export const CATEGORIES: CategoryKey[] = ["Roupas", "Higiene", "Alimentação", "Acessórios"];
 
 /** Campo de dinheiro em pt-BR: aceita vírgula, recusa negativo. */
 export function parsePriceInput(value: string): number | null {
@@ -69,17 +74,18 @@ export function normalizeSearch(text: string): string {
 }
 
 /**
- * Itens cujo nome ou grupo contém o texto buscado, agrupados na ordem das categorias.
+ * Itens cujo nome ou grupo contém o texto buscado, agrupados na ordem das categorias recebidas.
  * Categorias sem resultado ficam de fora.
  */
-export function searchItems<T extends { name: string; group: string; category: CategoryKey }>(
+export function searchItems<T extends { name: string; group: string; categoryId: number }, C extends { id: number }>(
   items: T[],
   query: string,
-): { category: CategoryKey; items: T[] }[] {
+  categories: C[],
+): { category: C; items: T[] }[] {
   const q = normalizeSearch(query);
   if (!q) return [];
   const hits = items.filter((i) => normalizeSearch(i.name).includes(q) || normalizeSearch(i.group).includes(q));
-  return CATEGORIES
-    .map((category) => ({ category, items: hits.filter((i) => i.category === category) }))
+  return categories
+    .map((category) => ({ category, items: hits.filter((i) => i.categoryId === category.id) }))
     .filter((g) => g.items.length > 0);
 }

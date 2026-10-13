@@ -3,8 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { type ActionFeedback, type RecommendationFeedback } from "@/components/action-feedback";
 import {
+  createCategory,
+  createChecklist,
   createChecklistItem,
   createGiftShare,
+  deleteCategory,
+  deleteChecklist,
   deleteChecklistItem,
   deleteGiftReservation,
   fetchWorkspace,
@@ -12,19 +16,44 @@ import {
   revokeGiftShare,
   toggleMilestone,
   updateBudget,
+  updateCategory,
+  updateChecklist,
   updateChecklistItem,
   updateGiftReservation,
   updateProfile,
-  type CategoryKey,
+  type ChecklistTemplate,
   type GiftReservationStatus,
   type ItemStatus,
   type ServerChecklistItem,
+  type UpdateItemInput,
   type UpdateProfileInput,
   type Workspace,
 } from "@/lib/api";
+import { adaptCategory, adaptChecklist, pickActiveList } from "@/lib/checklists";
 import { getAuthErrorMessage } from "@/lib/errors";
 import { adaptItem, type ChecklistItem } from "@/lib/items";
 import { type Recommendation } from "@/lib/recommendations";
+
+/** A última lista aberta fica só neste aparelho (LC-R18); sem armazenamento, vale a primeira. */
+const rememberedListKey = (uid: string) => `ninho:lista-aberta:${uid}`;
+
+function readRememberedList(uid: string): number | null {
+  try {
+    const stored = Number(window.localStorage.getItem(rememberedListKey(uid)));
+    return Number.isInteger(stored) && stored > 0 ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Tira do cache os itens apagados junto com uma lista ou categoria, e as reservas deles. */
+function withoutItems(workspace: Workspace, isGone: (item: ServerChecklistItem) => boolean): Pick<Workspace, "items" | "giftReservations"> {
+  const gone = new Set(workspace.items.filter(isGone).map((item) => item.id));
+  return {
+    items: workspace.items.filter((item) => !gone.has(item.id)),
+    giftReservations: workspace.giftReservations.filter((reservation) => !gone.has(reservation.checklistItemId)),
+  };
+}
 
 /**
  * Estado das telas logadas: a query do workspace, a do link de presentes, todas
@@ -60,7 +89,8 @@ export function useWorkspace(uid: string) {
 
   const [location, setLocation] = useLocation();
   const [addOpen, setAddOpen] = useState(false);
-  const [addCategory, setAddCategory] = useState<CategoryKey>("Roupas");
+  const [addCategoryId, setAddCategoryId] = useState<number | null>(null);
+  const [rememberedListId, setRememberedListId] = useState<number | null>(() => readRememberedList(uid));
   const [addTrigger, setAddTrigger] = useState<string | null>(null);
   const [recommendationFocusId, setRecommendationFocusId] = useState<string | null>(null);
   const [recommendationFeedback, setRecommendationFeedback] = useState<RecommendationFeedback | null>(null);
@@ -99,16 +129,19 @@ export function useWorkspace(uid: string) {
   const addItemMutation = useMutation({
     mutationFn: createChecklistItem,
     onSuccess: (item) => {
+      const known = qc.getQueryData<Workspace>(wqKey)?.categories.some((category) => category.id === item.categoryId);
       qc.setQueryData<Workspace>(wqKey, (old) =>
         old ? { ...old, items: [...old.items, item] } : old,
       );
+      // Uma inspiração pode recriar a categoria dela no servidor: aí o cache precisa buscá-la.
+      if (!known) void qc.invalidateQueries({ queryKey: wqKey });
       showActionFeedback({ tone: "success", message: "Item adicionado à sua lista." });
     },
     onError: () => showActionFeedback({ tone: "error", message: "Não foi possível adicionar o item. Tente novamente." }),
   });
 
   const updateItemMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { name?: string; category?: CategoryKey; status?: ItemStatus; qty?: number; price?: number; recommendationId?: string | null } }) =>
+    mutationFn: ({ id, data }: { id: number; data: UpdateItemInput }) =>
       updateChecklistItem(id, data),
     onMutate: async ({ id, data }) => {
       await qc.cancelQueries({ queryKey: wqKey });
@@ -117,6 +150,10 @@ export function useWorkspace(uid: string) {
       const { price, ...rest } = data;
       const patch: Partial<ServerChecklistItem> =
         price === undefined ? rest : { ...rest, price: String(price) };
+      // O servidor faz o mesmo: mexeu no item, ele deixa de ser sugestão; mudou a categoria, muda o nome.
+      if (!("recommendationId" in data)) patch.suggested = false;
+      const target = prev?.categories.find((category) => category.id === data.categoryId);
+      if (target) patch.category = target.name;
       qc.setQueryData<Workspace>(wqKey, (old) =>
         old ? { ...old, items: old.items.map((i) => i.id === id ? { ...i, ...patch } : i) } : old,
       );
@@ -224,14 +261,125 @@ export function useWorkspace(uid: string) {
   });
 
   const budgetMutation = useMutation({
-    mutationFn: (categories: Array<{ category: string; planned: number }>) =>
+    mutationFn: (categories: Array<{ categoryId: number; planned: number }>) =>
       updateBudget({ categories }),
     // A confirmação e o erro aparecem dentro do próprio card do orçamento
     // (BudgetPanel), junto dos valores: um aviso só, no lugar certo.
-    onSuccess: (budget) => {
-      qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, budget } : old);
+    onSuccess: (categories) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, categories } : old);
     },
   });
+
+  // ── Listas e categorias ──────────────────────────────────────────────────
+  // O erro aparece dentro do diálogo que pediu a ação, com o que foi digitado; aqui só o sucesso.
+
+  const selectList = (id: number) => {
+    setRememberedListId(id);
+    try {
+      window.localStorage.setItem(rememberedListKey(uid), String(id));
+    } catch {
+      // Navegação privada ou armazenamento bloqueado: a escolha vale só até recarregar.
+    }
+  };
+
+  const createListMutation = useMutation({
+    mutationFn: createChecklist,
+    onSuccess: ({ list, categories, items }) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old ? {
+        ...old,
+        lists: [...old.lists, list],
+        categories: [...old.categories, ...categories],
+        items: [...old.items, ...items],
+      } : old);
+      selectList(list.id);
+      showActionFeedback({ tone: "success", message: `Lista “${list.name}” criada.` });
+    },
+  });
+
+  const renameListMutation = useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) => updateChecklist(id, { name }),
+    onSuccess: (list) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, lists: old.lists.map((l) => l.id === list.id ? list : l) } : old);
+      showActionFeedback({ tone: "success", message: "Nome da lista atualizado." });
+    },
+  });
+
+  const deleteListMutation = useMutation({
+    mutationFn: deleteChecklist,
+    onSuccess: (_result, id) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old ? {
+        ...old,
+        lists: old.lists.filter((list) => list.id !== id),
+        categories: old.categories.filter((category) => category.listId !== id),
+        ...withoutItems(old, (item) => item.listId === id),
+      } : old);
+      showActionFeedback({ tone: "success", message: "Lista excluída." });
+    },
+  });
+
+  const dismissNoticeMutation = useMutation({
+    mutationFn: (id: number) => updateChecklist(id, { suggestionsNoticeDismissed: true }),
+    onMutate: (id) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old ? {
+        ...old,
+        lists: old.lists.map((list) => list.id === id ? { ...list, suggestionsNoticeDismissed: true } : list),
+      } : old);
+    },
+    onError: () => {
+      void qc.invalidateQueries({ queryKey: wqKey });
+      showActionFeedback({ tone: "error", message: "Não foi possível fechar o aviso agora. Tente de novo." });
+    },
+  });
+
+  const createCategoryMutation = useMutation({
+    mutationFn: ({ listId, data }: { listId: number; data: { name: string; icon: string } }) => createCategory(listId, data),
+    onSuccess: (category) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, categories: [...old.categories, category] } : old);
+      showActionFeedback({ tone: "success", message: `Categoria “${category.name}” criada.` });
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { name: string; icon: string } }) => updateCategory(id, data),
+    onSuccess: (category) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => old ? {
+        ...old,
+        categories: old.categories.map((c) => c.id === category.id ? category : c),
+        // O item guarda o nome da categoria para exibição.
+        items: old.items.map((item) => item.categoryId === category.id ? { ...item, category: category.name } : item),
+      } : old);
+      showActionFeedback({ tone: "success", message: "Categoria atualizada." });
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: ({ id, moveTo }: { id: number; moveTo: number | null }) => deleteCategory(id, moveTo),
+    onSuccess: (_result, { id, moveTo }) => {
+      qc.setQueryData<Workspace>(wqKey, (old) => {
+        if (!old) return old;
+        const target = old.categories.find((category) => category.id === moveTo);
+        const categories = old.categories.filter((category) => category.id !== id);
+        if (!target) return { ...old, categories, ...withoutItems(old, (item) => item.categoryId === id) };
+        return {
+          ...old,
+          categories,
+          items: old.items.map((item) => item.categoryId === id ? { ...item, categoryId: target.id, category: target.name } : item),
+        };
+      });
+      showActionFeedback({ tone: "success", message: "Categoria excluída." });
+    },
+  });
+
+  const checklistActions = {
+    createList: (data: { template: ChecklistTemplate; name: string }) => createListMutation.mutateAsync(data),
+    renameList: (id: number, name: string) => renameListMutation.mutateAsync({ id, name }),
+    deleteList: (id: number) => deleteListMutation.mutateAsync(id),
+    dismissNotice: (id: number) => dismissNoticeMutation.mutate(id),
+    createCategory: async (listId: number, data: { name: string; icon: string }) =>
+      adaptCategory(await createCategoryMutation.mutateAsync({ listId, data })),
+    updateCategory: (id: number, data: { name: string; icon: string }) => updateCategoryMutation.mutateAsync({ id, data }),
+    deleteCategory: (id: number, moveTo: number | null) => deleteCategoryMutation.mutateAsync({ id, moveTo }),
+  };
 
   const profileSaveState: "idle" | "saving" | "error" | "success" = profileMutation.isPending
     ? "saving"
@@ -254,14 +402,17 @@ export function useWorkspace(uid: string) {
   const giftReservations = workspaceQuery.data?.giftReservations ?? [];
   const reservationsByItem = new Map(giftReservations.map((reservation) => [reservation.checklistItemId, reservation]));
   const items = (workspaceQuery.data?.items ?? []).map((item) => adaptItem(item, reservationsByItem.get(item.id) ?? null));
+  const lists = (workspaceQuery.data?.lists ?? []).map(adaptChecklist);
+  const categories = (workspaceQuery.data?.categories ?? []).map(adaptCategory);
+  const activeList = pickActiveList(lists, rememberedListId);
 
   // ── Navigation helpers ───────────────────────────────────────────────────
 
   const go = (path: string) => setLocation(path);
 
-  const openAdd = (cat: CategoryKey) => {
+  const openAdd = (categoryId: number) => {
     setAddTrigger(document.activeElement?.getAttribute("data-testid") ?? null);
-    setAddCategory(cat);
+    setAddCategoryId(categoryId);
     setAddOpen(true);
   };
 
@@ -271,12 +422,12 @@ export function useWorkspace(uid: string) {
       : deleteItemMutation.isPending ? deleteItemMutation.variables ?? null
         : null;
 
-  const handleAddItem = async (values: { name: string; category: CategoryKey; qty: number; price: number }) => {
+  const handleAddItem = async (values: { name: string; categoryId: number; qty: number; price: number }) => {
     await addItemMutation.mutateAsync(values);
     setAddOpen(false);
   };
 
-  const handleEditItem = async (id: number, values: { name: string; category: CategoryKey; qty: number; price: number }) => {
+  const handleEditItem = async (id: number, values: { name: string; categoryId: number; qty: number; price: number }) => {
     await updateItemMutation.mutateAsync({ id, data: values });
   };
 
@@ -296,7 +447,7 @@ export function useWorkspace(uid: string) {
           label: "Desfazer",
           onAction: () => addItemMutation.mutate({
             name: item.name,
-            category: item.category,
+            categoryId: item.categoryId,
             group: item.group,
             qty: item.qty,
             price: item.price,
@@ -311,7 +462,7 @@ export function useWorkspace(uid: string) {
     addItemMutation.mutate(
       {
         name: recommendation.name,
-        category: recommendation.category,
+        // Sem categoria: o servidor põe na de mesmo nome da primeira lista (LC-R25).
         group: "Inspiração Ninho",
         price: recommendation.price ?? 0,
         recommendationId: recommendation.id,
@@ -362,7 +513,7 @@ export function useWorkspace(uid: string) {
     profileMutation.mutate(data);
   };
 
-  const handleBudgetSave = (cats: Array<{ category: string; planned: number }>) => {
+  const handleBudgetSave = (cats: Array<{ categoryId: number; planned: number }>) => {
     budgetMutation.mutate(cats);
   };
 
@@ -404,9 +555,14 @@ export function useWorkspace(uid: string) {
     shareQuery,
     location,
     items,
+    lists,
+    categories,
+    activeList,
+    selectList,
+    checklistActions,
     go,
     addOpen,
-    addCategory,
+    addCategoryId,
     addTrigger,
     closeAdd: () => setAddOpen(false),
     editingItem,

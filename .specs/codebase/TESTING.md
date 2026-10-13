@@ -101,7 +101,19 @@ e o job `checks` do CI. A correção é renovar a curadoria em `artifacts/ninho/
 1. cabeçalhos de segurança e sem X-Powered-By
 2. outro site não consegue alterar dados (Origin e `Sec-Fetch-Site`)
 3. corpo que não é JSON é recusado com mensagem em português
-4. orçamento só aceita as quatro categorias conhecidas
+4. orçamento só aceita categorias da própria conta
+
+`e2e/checklists.spec.ts` (9; listas, categorias e sugestões — feature `listas-e-categorias`)
+1. conta nova mostra o aviso e as etiquetas; mexer no item tira a etiqueta e "entendi" fecha o aviso de vez
+2. o aviso some sozinho quando a última sugestão é mexida, e a busca mostra a etiqueta
+3. criar categoria, usar num item e ver a linha no orçamento; renomear muda nos dois lugares
+4. nome repetido é recusado; excluir categoria com itens pede o destino
+5. criar lista pelo modelo, alternar, renomear e excluir
+6. lista em branco começa com uma categoria e sem aviso; o link público mostra só a primeira lista
+7. a API recusa lista e categoria de outra conta, nomes repetidos e o que passa dos limites
+8. inspiração entra na primeira lista, na categoria de mesmo nome, recriada se preciso
+9. conta de antes das listas abre com os mesmos itens, o mesmo orçamento e as sugestões certas
+   (devolve a conta ao formato antigo com `withTestDb` e confere a migração)
 
 `e2e/checklist.spec.ts` (8; `beforeEach` cria conta e abre `/checklist`)
 1. status muda direto, sem ciclo escondido

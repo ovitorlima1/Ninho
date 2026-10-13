@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Sparkles, X } from "lucide-react";
 import { type RecommendationFeedback } from "@/components/action-feedback";
 import { Pill } from "@/components/controls";
-import { type CategoryKey } from "@/lib/api";
-import { CATEGORIES, type ChecklistItem } from "@/lib/items";
-import { getVisibleRecommendations, type Recommendation } from "@/lib/recommendations";
+import { sameName } from "@/lib/checklists";
+import { type ChecklistItem } from "@/lib/items";
+import { RECOMMENDATION_CATEGORIES, getVisibleRecommendations, type Recommendation, type RecommendationCategory } from "@/lib/recommendations";
 import { RecommendationCard } from "@/features/recommendations/recommendation-card";
 import { RecommendationLinkModal } from "@/features/recommendations/recommendation-link-modal";
 import { useRecommendationClock } from "@/features/recommendations/use-recommendation-clock";
@@ -26,14 +26,17 @@ export function RecommendationsPanel({
   feedback: RecommendationFeedback | null;
   focusId: string | null;
 }) {
-  const [category, setCategory] = useState<"Para você" | CategoryKey>("Para você");
+  const [category, setCategory] = useState<"Para você" | RecommendationCategory>("Para você");
   const [linkingRecommendation, setLinkingRecommendation] = useState<Recommendation | null>(null);
   const [availabilityNotice, setAvailabilityNotice] = useState<string | null>(null);
   const handledFocusId = useRef<string | null>(null);
   const now = useRecommendationClock();
   const recommendations = getVisibleRecommendations(now);
+  // Categorias do catálogo que ainda têm item a comprar. As da mãe podem ter outros nomes:
+  // sem nenhuma correspondência, "Para você" cai nos destaques.
   const pendingCategories = useMemo(
-    () => new Set(items.filter((item) => item.status === "A comprar").map((item) => item.category)),
+    () => new Set(RECOMMENDATION_CATEGORIES.filter((name) =>
+      items.some((item) => item.status === "A comprar" && sameName(item.category, name)))),
     [items],
   );
   const hasPersonalizedSuggestions = pendingCategories.size > 0;
@@ -76,7 +79,7 @@ export function RecommendationsPanel({
       </div>
       <div className="filter-row recommendation-filters" aria-label="Filtrar inspirações">
         <Pill active={category === "Para você"} onClick={() => setCategory("Para você")} testId="button-recommendation-for-you">Para você</Pill>
-        {CATEGORIES.map((key) => (
+        {RECOMMENDATION_CATEGORIES.map((key) => (
           <Pill key={key} active={category === key} onClick={() => setCategory(key)} testId={`button-recommendation-category-${key.toLowerCase()}`}>{key}</Pill>
         ))}
       </div>
@@ -86,7 +89,7 @@ export function RecommendationsPanel({
         {visible.map((recommendation) => (
           (() => {
             const linkedItem = items.find((item) => item.recommendationId === recommendation.id);
-            const matchingItems = items.filter((item) => item.category === recommendation.category && !item.recommendationId);
+            const matchingItems = items.filter((item) => sameName(item.category, recommendation.category) && !item.recommendationId);
             return (
               <RecommendationCard
                 key={recommendation.id}
@@ -114,7 +117,7 @@ export function RecommendationsPanel({
       {linkingRecommendation && (
         <RecommendationLinkModal
           recommendation={linkingRecommendation}
-          items={items.filter((item) => item.category === linkingRecommendation.category && !item.recommendationId)}
+          items={items.filter((item) => sameName(item.category, linkingRecommendation.category) && !item.recommendationId)}
           onClose={() => setLinkingRecommendation(null)}
           onCreate={() => { onAddRecommendation(linkingRecommendation); setLinkingRecommendation(null); }}
           onLink={(item) => { onLinkRecommendation(linkingRecommendation, item); setLinkingRecommendation(null); }}

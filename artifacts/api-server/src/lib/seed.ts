@@ -1,24 +1,7 @@
 import { db } from "@workspace/db";
-import {
-  budgetCategories,
-  checklistItems,
-  milestones,
-  profiles,
-} from "@workspace/db/schema";
+import { DEFAULT_CHECKLIST_NAME, milestones, profiles } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-
-const DEFAULT_ITEMS = [
-  { name: "Body manga curta",       category: "Roupas",      group: "RN · essenciais",  qty: 6, status: "A comprar", price: "38",  essential: true,  sortOrder: 1 },
-  { name: "Macacão de algodão",     category: "Roupas",      group: "0–3 meses",         qty: 5, status: "A comprar", price: "74",  essential: true,  sortOrder: 2 },
-  { name: "Cueiro leve",            category: "Roupas",      group: "Primeiros dias",    qty: 3, status: "A comprar", price: "42",  essential: false, sortOrder: 3 },
-  { name: "Toalha com capuz",       category: "Higiene",     group: "Banho",             qty: 2, status: "A comprar", price: "58",  essential: true,  sortOrder: 4 },
-  { name: "Fralda de pano",         category: "Higiene",     group: "Troca",             qty: 8, status: "A comprar", price: "12",  essential: true,  sortOrder: 5 },
-  { name: "Kit primeiros cuidados", category: "Higiene",     group: "Farmacinha",        qty: 1, status: "A comprar", price: "96",  essential: false, sortOrder: 6 },
-  { name: "Mamadeira anticólica",   category: "Alimentação", group: "Apoio",             qty: 2, status: "A comprar", price: "64",  essential: false, sortOrder: 7 },
-  { name: "Babador de tecido",      category: "Alimentação", group: "Dia a dia",         qty: 5, status: "A comprar", price: "16",  essential: false, sortOrder: 8 },
-  { name: "Trocador portátil",      category: "Acessórios",  group: "Passeio",           qty: 1, status: "A comprar", price: "88",  essential: false, sortOrder: 9 },
-  { name: "Bolsa da maternidade",   category: "Acessórios",  group: "Maternidade",       qty: 1, status: "A comprar", price: "310", essential: true,  sortOrder: 10 },
-] as const;
+import { createChecklistFromTemplate } from "./checklist-store";
 
 const DEFAULT_MILESTONES = [
   { week: 20, title: "Defina o estilo do quarto",    note: "feito com calma" },
@@ -27,17 +10,11 @@ const DEFAULT_MILESTONES = [
   { week: 36, title: "Mala da maternidade pronta",   note: "mais à frente" },
 ] as const;
 
-const DEFAULT_BUDGET = [
-  { category: "Roupas",      planned: "1240" },
-  { category: "Higiene",     planned: "680"  },
-  { category: "Alimentação", planned: "520"  },
-  { category: "Acessórios",  planned: "940"  },
-] as const;
-
 /**
- * Atomically creates a user profile and seeds default checklist, milestones,
- * and budget in a single transaction. Uses INSERT ... ON CONFLICT DO NOTHING
- * so concurrent first-login requests are safe: only the request whose INSERT
+ * Atomically creates a user profile and seeds the default list (categories with
+ * their planned budget, items marked as suggestions) and milestones in a single
+ * transaction. Uses INSERT ... ON CONFLICT DO NOTHING so concurrent first-login
+ * requests are safe: only the request whose INSERT
  * wins the uniqueness race creates data; the other gets isNew=false.
  *
  * Seeding is tied to profile creation, NOT to checklist emptiness, so a user
@@ -67,14 +44,9 @@ export async function initializeUser(userId: string): Promise<{
     // New user: seed all default data inside the same transaction so the
     // data is visible atomically once the transaction commits. A transaction
     // is a single connection, so the inserts run one after the other.
-    await tx.insert(checklistItems).values(
-      DEFAULT_ITEMS.map((item) => ({ ...item, userId })),
-    );
+    await createChecklistFromTemplate(tx, userId, "enxoval", DEFAULT_CHECKLIST_NAME);
     await tx.insert(milestones).values(
       DEFAULT_MILESTONES.map((m) => ({ ...m, userId, completed: false })),
-    );
-    await tx.insert(budgetCategories).values(
-      DEFAULT_BUDGET.map((b) => ({ ...b, userId })),
     );
 
     return { profile: inserted, isNew: true };

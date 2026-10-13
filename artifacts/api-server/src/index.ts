@@ -1,4 +1,5 @@
 import app from "./app";
+import { backfillLegacyChecklists } from "./lib/checklist-store";
 import { logger } from "./lib/logger";
 
 const rawPort = process.env["PORT"];
@@ -13,6 +14,15 @@ const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+// Contas de antes das listas são migradas antes de a API atender (LC-R26). Se a varredura
+// falhar, a API sobe assim mesmo: o GET /workspace migra a conta no primeiro acesso.
+try {
+  const migrated = await backfillLegacyChecklists();
+  if (migrated > 0) logger.info({ migrated }, "Legacy checklists migrated");
+} catch (err) {
+  logger.error({ err }, "Legacy checklist backfill error");
 }
 
 app.listen(port, (err) => {

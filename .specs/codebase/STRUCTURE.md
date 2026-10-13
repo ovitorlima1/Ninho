@@ -28,7 +28,8 @@ Estado depois da Fase 3 (branch `fase-0-correcoes-urgentes`, até `0c7ca8d`).
 │  ├─ db/                    @workspace/db
 │  │  ├─ src/index.ts        Pool pg + drizzle(db) + reexport do schema (lança sem DATABASE_URL)
 │  │  ├─ src/schema/         authUsers, profiles, checklistItems (+ RECOMMENDATION_IDS),
-│  │  │                      milestones, budgetCategories (+ upsertBudgetSchema), giftSharing
+│  │  │                      checklists (listas e categorias do Enxoval, + updateBudgetSchema),
+│  │  │                      milestones, budgetCategories (legado, sem uso), giftSharing
 │  │  ├─ drizzle/            6 migrações SQL (0000–0005) + meta/
 │  │  ├─ drizzle.config.ts   drizzle-kit (usa DATABASE_URL)
 │  │  ├─ package.json        scripts push e push-force (este usado pelo globalSetup do E2E)
@@ -109,10 +110,11 @@ artifacts/ninho/
    │     └─ use-workspace.ts         446  query do workspace + mutations (setQueryData; invalida só em erro) + handlers
    ├─ lib/                      TS puro, testável (nenhum arquivo importa React)
    │  ├─ api.ts                284  cliente REST tipado à mão sobre customFetch
-   │  ├─ budget.ts              51  calcSpentCents/calcSpent/calcSpentByCategory (+ budget.test.ts, 68)
+   │  ├─ budget.ts                  calcSpentCents/calcSpent/calcBudgetRows (+ budget.test.ts)
+   │  ├─ checklists.ts              listas e categorias: lista aberta, nome repetido, aviso de sugestões (+ checklists.test.ts)
    │  ├─ gestation.ts          102  calcGestation, semana/dias, limites da data prevista (+ gestation.test.ts, 78)
    │  ├─ recommendations.ts    216  catálogo estático (vence 2026-12-10) + regras de validade (+ recommendations.test.ts, 91)
-   │  ├─ items.ts               64  ChecklistItem, adaptItem, CATEGORIES, opções de status, preço
+   │  ├─ items.ts                   ChecklistItem, adaptItem, busca por categoria, opções de status, preço
    │  ├─ milestones.ts          12  getNextMilestone
    │  ├─ format.ts              20  basePath, money, formatDate, todayLabel, initialsFor
    │  └─ errors.ts              35  isUnauthorized, getFriendlyErrorMessage (= getAuthErrorMessage)
@@ -155,7 +157,8 @@ artifacts/api-server/
    │  ├─ index.ts           14  monta health, /auth, /me e /gift
    │  ├─ health.ts          11  GET /healthz
    │  ├─ auth.ts           352  register (chama initializeUser), login, session, password-reset/request|complete, logout
-   │  ├─ me.ts             388  workspace (ensureUserInitialized), share, gift-reservations, profile, checklist, milestones, budget
+   │  ├─ me.ts                  workspace (ensureUserInitialized + migração de conta antiga), share, gift-reservations, profile, checklist, milestones, budget
+   │  ├─ checklists.ts          listas do Enxoval e categorias (criar, renomear, excluir)
    │  └─ gift.ts           144  GET /:token e POST /:token/reservations (público)
    ├─ middlewares/requireAuth.ts  34  valida JWT + sessionVersion
    └─ lib/

@@ -28,6 +28,9 @@
 | 2026-09-22 | Design novo "Ninho Bento" (ameixa, blocos pastel, Plus Jakarta Sans, logo do dono) aplicado como base global + Início primeiro; nomes de token mantidos; navegação por faixa 600/1024px; web app só no navegador, sem instalação. | Escolha do dono (base global em vez de "só o Início"); design system e canvas no Claude Design. |
 
 | 2026-10-02 | Listas de presentes: o dinheiro não passa pelo Ninho (Pix estático direto para a mãe, confirmação manual "Recebi"); prometido conta para "quanto falta"; quem dá o item inteiro escolhe se o nome aparece; convidado sem conta, com link particular de gerenciamento. | Escolhas do dono; evita taxa, cadastro de empresa e estorno. |
+| 2026-10-13 | Enxoval com várias listas (modelos: Mala da maternidade, Quarto do bebê, Enxoval do bebê, em branco), categorias que a mãe cria, renomeia e exclui (cada uma com linha no Orçamento) e itens do modelo marcados como "Sugestão" até ela mexer, com aviso que dá para fechar. | Escolhas do dono. |
+| 2026-10-13 | O planejado do Orçamento mora na categoria (`checklist_categories.planned`); `budget_categories` fica vazia no schema. Dado antigo é migrado pela API ao subir, porque o deploy usa `drizzle-kit push`, que não roda script de dados. | Push só acrescenta; apagar a tabela é limpeza manual futura. |
+| 2026-10-13 | O link público do Perfil e as inspirações usam a primeira lista; com mais de uma lista, o Orçamento agrupa por lista e o Início mostra "Por lista". | Assumido na spec `listas-e-categorias`; o dono pode mudar. |
 | 2026-10-02 | Produção vai para uma VPS (Docker Compose, Postgres na própria máquina), não para o Replit; fotos das listas (E2) ficam num volume da VPS. | Escolha do dono. |
 
 ## Bloqueios
@@ -57,6 +60,9 @@
 - Medir no navegador (script que varre `getComputedStyle`) achou coisas que o CSS sozinho escondia: o piso de 12px exigiu 133 trocas, mas nenhuma tela quebrou porque a medição rodou em 320, 375 e 1024px.
 - Sub-agentes em arquivos disjuntos (catálogo e API) rodaram em paralelo sem conflito; quem commita é sempre o orquestrador.
 
+- Validar a migração numa cópia do banco de dev (`CREATE DATABASE … TEMPLATE ninho`, `push` sem `--force`, varredura por script) mostrou em minutos que o schema só acrescenta e que as contas antigas chegam inteiras — antes de escrever uma linha de tela.
+- Captura tirada logo depois de um clique pode pegar o primeiro quadro da transição de cor (o ícone antigo ainda pintado): conferir pelo `aria-checked`/classe ou mover o mouse e capturar de novo antes de concluir que há bug.
+
 ## Todos
 
 - [x] Atualizar `replit.md` com a nova regra de "investido" (feito na Fase 0).
@@ -71,6 +77,8 @@
 
 ## Ideias adiadas
 
+- Listas do Enxoval: mover item entre listas, reordenar listas e categorias, escolher a cor da categoria, compartilhar outra lista que não a primeira, e um "apagar as sugestões que não mexi" no aviso.
+- Apagar a tabela `budget_categories` (vazia desde `listas-e-categorias`), à mão na VPS, depois do deploy.
 - Mover catálogo de inspirações para o banco/CMS (Fase 3+).
 
 ## Preferências

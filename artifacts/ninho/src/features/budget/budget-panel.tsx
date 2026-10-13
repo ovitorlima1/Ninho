@@ -3,40 +3,76 @@ import { AlertCircle, Check, CheckCircle2 } from "lucide-react";
 import { CategoryBadge } from "@/components/category-icon";
 import { DraftNumberInput } from "@/components/draft-number-input";
 import { Progress } from "@/components/progress";
-import { type ServerBudgetCategory } from "@/lib/api";
-import { calcOverBudget, calcSpent, calcSpentByCategory } from "@/lib/budget";
+import { calcBudgetRows, calcSpent } from "@/lib/budget";
+import { type Checklist, type ListCategory } from "@/lib/checklists";
 import { money } from "@/lib/format";
-import { CATEGORIES, formatPriceInput, parsePriceInput, type ChecklistItem } from "@/lib/items";
+import { formatPriceInput, parsePriceInput, type ChecklistItem } from "@/lib/items";
 
+/**
+ * Orçamento: uma linha por categoria, com o valor planejado editável (LC-R13). Com mais de uma
+ * lista, as linhas vêm agrupadas por lista; "investido" e "planejado" somam todas (LC-R22).
+ */
 export function BudgetPanel({
-  items, budget, onSave, onEdit, saveState,
+  items, lists, categories, onSave, onEdit, saveState,
 }: {
   items: ChecklistItem[];
-  budget: ServerBudgetCategory[];
-  onSave: (categories: Array<{ category: string; planned: number }>) => void;
+  lists: Checklist[];
+  categories: ListCategory[];
+  onSave: (categories: Array<{ categoryId: number; planned: number }>) => void;
   onEdit: () => void;
   saveState: "idle" | "saving" | "success" | "error";
 }) {
-  const [planned, setPlanned] = useState<Record<string, number>>(() => {
-    const r: Record<string, number> = {};
-    for (const b of budget) r[b.category] = parseFloat(b.planned) || 0;
+  const [planned, setPlanned] = useState<Record<number, number>>(() => {
+    const r: Record<number, number> = {};
+    for (const c of categories) r[c.id] = c.planned;
     return r;
   });
   // Sem effect de sincronia: o Workspace remonta este painel (key) quando o orçamento salvo muda.
   const [dirty, setDirty] = useState(false);
 
   const spent = calcSpent(items);
-  const total = Object.values(planned).reduce((s, v) => s + v, 0);
-  const overBudget = calcOverBudget(items, planned, CATEGORIES);
+  const rows = calcBudgetRows(items, categories.map((c) => ({ id: c.id, planned: planned[c.id] ?? 0 })));
+  const rowById = new Map(rows.map((row) => [row.id, row]));
+  const total = rows.reduce((sum, row) => sum + row.planned, 0);
+  const grouped = lists.length > 1;
+  const nameOf = (c: ListCategory) => grouped ? `${c.name} (${lists.find((l) => l.id === c.listId)?.name})` : c.name;
+  const overBudget = categories.filter((c) => (rowById.get(c.id)?.over ?? 0) > 0);
 
-  const handleChange = (cat: string, val: number) => {
-    setPlanned((p) => ({ ...p, [cat]: val }));
+  const handleChange = (categoryId: number, val: number) => {
+    setPlanned((p) => ({ ...p, [categoryId]: val }));
     setDirty(true);
     onEdit();
   };
 
   const save = () => {
-    onSave(CATEGORIES.map((c) => ({ category: c, planned: planned[c] || 0 })));
+    onSave(categories.map((c) => ({ categoryId: c.id, planned: planned[c.id] || 0 })));
+  };
+
+  const renderRow = (c: ListCategory) => {
+    const row = rowById.get(c.id)!;
+    return (
+      <label className="budget-row" key={c.id}>
+        <span className="budget-row-label">
+          <span className="budget-row-name"><CategoryBadge icon={c.icon} tone={c.tone} small />{c.name}</span>
+          <small>{money(row.spent)} de {money(row.planned)}</small>
+          <Progress value={row.planned > 0 ? (row.spent / row.planned) * 100 : 0} label={`${nameOf(c)}: gasto em relação ao planejado`} tone={row.spent > row.planned ? "brand" : "accent"} />
+        </span>
+        <span className="price-input budget-price-input">
+          <span aria-hidden>R$</span>
+          <DraftNumberInput
+            inputMode="decimal"
+            value={row.planned}
+            parse={parsePriceInput}
+            format={formatPriceInput}
+            aria-label={`Orçamento planejado para ${nameOf(c)}, em reais`}
+            onChange={(value) => handleChange(c.id, value)}
+            disabled={saveState === "saving"}
+            placeholder="0,00"
+            data-testid={`input-phone-budget-${c.id}`}
+          />
+        </span>
+      </label>
+    );
   };
 
   return (
@@ -55,39 +91,20 @@ export function BudgetPanel({
         <p className="budget-over" role="status" data-testid="budget-over-notice">
           <AlertCircle size={18} aria-hidden />
           <span>
-            {overBudget.map(({ category, over }) => `${category} passou ${money(over)} do previsto`).join("; ")}.
+            {overBudget.map((c) => `${nameOf(c)} passou ${money(rowById.get(c.id)!.over)} do previsto`).join("; ")}.
           </span>
         </p>
       )}
       <section className="card budget-list" aria-busy={saveState === "saving"} aria-labelledby="budget-list-title" data-testid="budget-edit-card">
         <div className="card-header"><h2 className="card-title" id="budget-list-title">Por categoria</h2><span className="card-meta">planejado editável</span></div>
-        {CATEGORIES.map((cat) => {
-          const spentHere = calcSpentByCategory(items, cat);
-          const plannedHere = planned[cat] ?? 0;
-          return (
-            <label className="budget-row" key={cat}>
-              <span className="budget-row-label">
-                <span className="budget-row-name"><CategoryBadge category={cat} small />{cat}</span>
-                <small>{money(spentHere)} de {money(plannedHere)}</small>
-                <Progress value={plannedHere > 0 ? (spentHere / plannedHere) * 100 : 0} label={`${cat}: gasto em relação ao planejado`} tone={spentHere > plannedHere ? "brand" : "accent"} />
-              </span>
-              <span className="price-input budget-price-input">
-                <span aria-hidden>R$</span>
-                <DraftNumberInput
-                  inputMode="decimal"
-                  value={plannedHere}
-                  parse={parsePriceInput}
-                  format={formatPriceInput}
-                  aria-label={`Orçamento planejado para ${cat}, em reais`}
-                  onChange={(planned) => handleChange(cat, planned)}
-                  disabled={saveState === "saving"}
-                  placeholder="0,00"
-                  data-testid={`input-phone-budget-${cat.toLowerCase()}`}
-                />
-              </span>
-            </label>
-          );
-        })}
+        {grouped
+          ? lists.map((list) => (
+            <div className="budget-group" role="group" aria-labelledby={`budget-group-${list.id}`} key={list.id}>
+              <h3 className="budget-group-title" id={`budget-group-${list.id}`}>{list.name}</h3>
+              {categories.filter((c) => c.listId === list.id).map(renderRow)}
+            </div>
+          ))
+          : categories.map(renderRow)}
         {saveState === "success" && !dirty && (
           <div className="budget-save-message budget-save-success" role="status">
             <CheckCircle2 size={14} /> Orçamento salvo.

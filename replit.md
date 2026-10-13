@@ -49,7 +49,7 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 - `artifacts/api-server/src/lib/sessions.ts` — sessões por aparelho (`auth_sessions`); `lib/rate-limit.ts` — limites de tentativa no Postgres (`auth_attempts`)
 - `artifacts/api-server/src/middlewares/security.ts` — cabeçalhos, checagem de origem, 404 e erros em JSON
 - `artifacts/api-server/src/middlewares/requireAuth.ts` — valida o JWT e a sessão registrada no banco
-- `lib/db/src/schema/` — tabelas Drizzle (authUsers com sessões e tentativas, profiles, checklistItems, milestones, budgetCategories, giftSharing) e os schemas Zod de validação
+- `lib/db/src/schema/` — tabelas Drizzle (authUsers com sessões e tentativas, profiles, checklists com as categorias, checklistItems, milestones, giftSharing; budgetCategories é legado) e os schemas Zod de validação
 - `lib/db/drizzle.config.ts` — configuração do Drizzle Kit
 - `lib/api-spec/openapi.yaml` — spec OpenAPI (source of truth para codegen)
 - `lib/api-client-react/src/` — hooks React Query gerados pelo Orval
@@ -57,8 +57,8 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 ## Architecture decisions
 
 - **ID próprio como chave de ownership**: contas novas recebem UUIDs próprios, usados em todas as tabelas do workspace. Dados legados de outras identidades não são reutilizados.
-- **Seed no cadastro**: `initializeUser()` cria perfil, itens, marcos e orçamento na mesma requisição do cadastro; `GET /api/me/workspace` é só leitura (`ensureUserInitialized` inicializa apenas contas antigas sem perfil).
-- **Workspace endpoint único**: `GET /api/me/workspace` retorna todo o estado do usuário (profile + items + milestones + budget) em uma só chamada para reduzir round-trips.
+- **Seed no cadastro**: `initializeUser()` cria perfil, a lista "Enxoval do bebê" (categorias com o valor planejado e itens marcados como sugestão) e os marcos na mesma requisição do cadastro; `GET /api/me/workspace` é só leitura (`ensureUserInitialized` inicializa apenas contas antigas sem perfil).
+- **Workspace endpoint único**: `GET /api/me/workspace` retorna todo o estado do usuário (profile + lists + categories + items + milestones) em uma só chamada para reduzir round-trips.
 - **Otimismo no cliente**: mutações de checklist e marcos usam `onMutate` para atualização otimista e gravam a resposta da API no cache; o workspace só é recarregado em caso de erro.
 - **Onboarding na primeira entrada**: quando `profile.onboardingComplete === false`, o app exibe um modal de onboarding para capturar nome e data prevista antes de entrar no dashboard.
 - **Shower/chá de bebê**: funcionalidade removida do MVP — não há backend. O link foi removido de todos os painéis.
@@ -70,10 +70,10 @@ Um app web mobile-first para gestantes organizarem o enxoval do bebê com checkl
 
 ## Product
 
-- **Checklist de enxoval**: categorias (Roupas, Higiene, Alimentação, Acessórios), status por item (A comprar / Comprado / Ganhei), adicionar itens personalizados, remover itens
+- **Checklist de enxoval**: várias listas (Enxoval do bebê, Mala da maternidade, Quarto do bebê ou em branco; até 10), cada uma com categorias que a mãe cria, renomeia e exclui (até 12); itens que vêm do modelo mostram a etiqueta "Sugestão" até ela mexer; status por item (A comprar / Comprado / Ganhei), adicionar itens personalizados, remover itens
 - **Dashboard**: progresso real calculado dos dados salvos, próximo marco, orçamento investido
 - **Linha do tempo**: marcos de preparação semanais com toggle de conclusão; estado vazio amigável quando data prevista não está configurada
-- **Orçamento**: planejado por categoria com total calculado; o "investido" soma preço unitário × quantidade só dos itens **Comprado** — "Ganhei" é presente e não conta como gasto (regra em `artifacts/ninho/src/lib/budget.ts`, com testes)
+- **Orçamento**: planejado por categoria (o valor mora na categoria; com mais de uma lista, agrupado por lista) com total calculado; o "investido" soma preço unitário × quantidade só dos itens **Comprado** — "Ganhei" é presente e não conta como gasto (regra em `artifacts/ninho/src/lib/budget.ts`, com testes)
 - **Perfil**: nome, cidade, data prevista do parto (usada para calcular semana atual), link de presentes e "Sua conta" (sair deste aparelho, sair de todos, exportar dados, excluir conta)
 - **Onboarding**: modal de boas-vindas para novos usuários configurarem nome e data prevista
 
