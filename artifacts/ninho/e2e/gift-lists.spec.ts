@@ -1,13 +1,5 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
-import { createAccount, expectAccessible, isoDaysFromToday, randomClientIp } from "./support";
-
-/** Cada convidado é outro navegador, sem sessão e com outra origem (o limite de reservas é por origem). */
-async function openAsGuest(browser: Browser, baseURL: string | undefined, link: string): Promise<Page> {
-  const context = await browser.newContext({ baseURL, extraHTTPHeaders: { "x-forwarded-for": randomClientIp() } });
-  const page = await context.newPage();
-  await page.goto(new URL(link).pathname + new URL(link).hash);
-  return page;
-}
+import { expect, test, type Page } from "@playwright/test";
+import { createAccount, expectAccessible, isoDaysFromToday, openAsGuest, randomClientIp } from "./support";
 
 const guestItem = (page: Page, name: string) => page.locator(".guest-item", { has: page.getByRole("heading", { name, exact: true }) });
 const ownerItem = (page: Page, name: string) => page.locator(".gift-item-row", { hasText: name });

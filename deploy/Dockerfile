@@ -1,6 +1,6 @@
 # Imagens do Ninho para a VPS. Contexto de build: a raiz do repositório.
 #
-#   api     → API (Node), bundle único do esbuild
+#   api     → API (Node), bundle único do esbuild + as dependências que não entram no bundle (sharp)
 #   web     → front estático no Nginx, que também repassa /api para a API
 #   migrate → aplica o schema no banco (drizzle-kit push) e termina
 #
@@ -17,6 +17,9 @@ RUN pnpm install --frozen-lockfile
 # ── Builds ────────────────────────────────────────────────────────────────────
 FROM deps AS build-api
 RUN pnpm --filter @workspace/api-server run build
+# O sharp (tratamento das fotos) é nativo e fica fora do bundle. As dependências de produção
+# da API vão numa pasta à parte, nas versões do lockfile, e a imagem final leva só essa pasta.
+RUN pnpm --filter @workspace/api-server deploy --legacy --prod /runtime
 
 FROM deps AS build-web
 # PORT só é exigido pelo vite.config; no build ele não abre porta nenhuma.
@@ -31,9 +34,13 @@ CMD ["pnpm", "--filter", "@workspace/db", "run", "push"]
 
 # ── API ───────────────────────────────────────────────────────────────────────
 FROM node:24-bookworm-slim AS api
-ENV NODE_ENV=production PORT=8080
+ENV NODE_ENV=production PORT=8080 MEDIA_DIR=/data/media
 WORKDIR /app
 COPY --from=build-api --chown=node:node /repo/artifacts/api-server/dist ./dist
+COPY --from=build-api --chown=node:node /runtime/node_modules ./node_modules
+# Pasta das fotos. O volume nasce com o dono desta pasta, e é assim que a API (usuário node)
+# consegue gravar nele mesmo com o resto do container somente leitura.
+RUN mkdir -p /data/media && chown node:node /data/media
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \

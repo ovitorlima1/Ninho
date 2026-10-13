@@ -1,6 +1,7 @@
 import app from "./app";
 import { backfillLegacyChecklists } from "./lib/checklist-store";
 import { logger } from "./lib/logger";
+import { runMediaCleanup } from "./lib/media-store";
 
 const rawPort = process.env["PORT"];
 
@@ -24,6 +25,10 @@ try {
 } catch (err) {
   logger.error({ err }, "Legacy checklist backfill error");
 }
+
+// Fotos de itens apagados somem aqui: ao subir e de hora em hora (FP-R13).
+await runMediaCleanup();
+setInterval(() => void runMediaCleanup(), 60 * 60_000).unref();
 
 app.listen(port, (err) => {
   if (err) {

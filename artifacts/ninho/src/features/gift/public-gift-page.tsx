@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Brand } from "@/components/brand";
 import { CategoryIcon } from "@/components/category-icon";
+import { ItemPhoto } from "@/components/item-photo";
 import { LoadingSpinner } from "@/components/states";
 import { fetchPublicGiftList, type PublicGiftItem } from "@/lib/api";
 import { GiftReservationModal } from "@/features/gift/gift-reservation-modal";
@@ -61,7 +62,9 @@ export function PublicGiftPage() {
         ) : items.map((item) => {
           return (
             <article className={`public-gift-item ${item.reserved ? "is-reserved" : ""}`} key={item.id}>
-              <span className="public-gift-item-icon"><CategoryIcon category={item.category} icon={item.categoryIcon} size={17} /></span>
+              {item.photoKey
+                ? <ItemPhoto photoKey={item.photoKey} name={item.name} />
+                : <span className="public-gift-item-icon"><CategoryIcon category={item.category} icon={item.categoryIcon} size={17} /></span>}
               <div className="public-gift-item-copy">
                 <small>{item.category} · {item.qty} {item.qty === 1 ? "unidade" : "unidades"}</small>
                 <h2>{item.name}</h2>

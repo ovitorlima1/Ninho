@@ -115,6 +115,17 @@ e o job `checks` do CI. A correção é renovar a curadoria em `artifacts/ninho/
 9. conta de antes das listas abre com os mesmos itens, o mesmo orçamento e as sugestões certas
    (devolve a conta ao formato antigo com `withTestDb` e confere a migração)
 
+`e2e/photos.spec.ts` (6; foto do produto — feature `foto-do-produto`; a API de teste grava em `E2E_MEDIA_DIR`)
+1. Enxoval: adicionar item com foto, trocar e remover
+2. desfazer a remoção devolve o item com a foto; a foto de item apagado some na limpeza
+3. arquivo que não é foto, grande demais ou de outra conta é recusado
+4. exportação lista as fotos; excluir a conta apaga os arquivos
+5. presente com foto aparece para a mãe e para o convidado
+6. a página pública do Perfil mostra a foto do item do enxoval
+
+Unitário da API para imagem: `src/lib/photo.test.ts` gera as fotos de teste com o próprio sharp (inclusive uma com
+GPS no EXIF) e confere redução, orientação, metadados apagados e recusas.
+
 `e2e/checklist.spec.ts` (8; `beforeEach` cria conta e abre `/checklist`)
 1. status muda direto, sem ciclo escondido
 2. marcar um item faz só o PATCH, sem recarregar o workspace (M9)

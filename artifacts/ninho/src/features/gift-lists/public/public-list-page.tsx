@@ -3,6 +3,7 @@ import { CalendarDays, CheckCircle2, ExternalLink, Gift, Link2, MapPin, QrCode, 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Brand } from "@/components/brand";
+import { ItemPhoto } from "@/components/item-photo";
 import { TinyButton } from "@/components/controls";
 import { ModalShell } from "@/components/modal-shell";
 import { PixCode } from "@/components/pix-code";
@@ -143,7 +144,9 @@ export function PublicListPage() {
               const text = progressText(item);
               return (
                 <li className="guest-item" key={item.id} data-testid={`guest-item-${item.id}`}>
-                  <span className="guest-item-icon" aria-hidden><Gift size={22} /></span>
+                  {item.photoKey
+                    ? <ItemPhoto photoKey={item.photoKey} name={item.name} size="md" />
+                    : <span className="guest-item-icon" aria-hidden><Gift size={22} /></span>}
                   <div className="guest-item-copy">
                     <div className="guest-item-head">
                       <h2>{item.name}</h2>

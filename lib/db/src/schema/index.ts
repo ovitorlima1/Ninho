@@ -6,3 +6,4 @@ export * from "./milestones";
 export * from "./budgetCategories";
 export * from "./giftSharing";
 export * from "./giftLists";
+export * from "./media";

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, Check, Copy, ExternalLink, Pencil, Plus, QrCode, TriangleAlert, Users } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ItemPhoto } from "@/components/item-photo";
 import { SplitProgress } from "@/components/progress";
 import { ErrorState, LoadingSpinner } from "@/components/states";
 import { copyText } from "@/lib/clipboard";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { basePath } from "@/lib/format";
 import { daysUntil, eventLabel, KIND_LABELS, percentOf, progressText } from "@/lib/gift-lists";
+import { type PhotoDraft } from "@/lib/photos";
 import {
   createGiftItem,
   deleteGiftItem,
@@ -15,6 +17,8 @@ import {
   fetchPixAccount,
   reorderGiftItems,
   updateGiftItem,
+  uploadGiftItemPhoto,
+  deleteGiftItemPhoto,
   updateGiftList,
   updatePledgeStatus,
   type OwnerGiftItem,
@@ -40,12 +44,27 @@ export function GiftListDetail({ userId, listId, go }: { userId: string; listId:
   const [editing, setEditing] = useState<OwnerGiftItem | null>(null);
   const [pledgesOf, setPledgesOf] = useState<number | null>(null);
   const [copied, setCopied] = useState<boolean | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const refresh = async () => {
     await Promise.all([
       qc.invalidateQueries({ queryKey: key }),
       qc.invalidateQueries({ queryKey: ["gift-lists", userId] }),
     ]);
+  };
+  /**
+   * Grava o que mudou na foto depois que o presente já está salvo (FP-R4). Se a foto falhar, o
+   * presente fica: o aviso aparece na lista, e o diálogo fecha para ninguém salvar duas vezes.
+   */
+  const savePhoto = async (itemId: number, currentKey: string | null, photo: PhotoDraft) => {
+    setPhotoError(null);
+    try {
+      if (photo.file) await uploadGiftItemPhoto(listId, itemId, photo.file);
+      else if (photo.remove && currentKey) await deleteGiftItemPhoto(listId, itemId);
+    } catch (error) {
+      setPhotoError(`O presente foi salvo, mas a foto não: ${getFriendlyErrorMessage(error)}`);
+    }
+    await refresh();
   };
   const pledgeMutation = useMutation({
     mutationFn: ({ pledgeId, status }: { pledgeId: number; status: PledgeStatus }) => updatePledgeStatus(listId, pledgeId, status),
@@ -147,13 +166,15 @@ export function GiftListDetail({ userId, listId, go }: { userId: string; listId:
             </button>
           </div>
         )}
+        {photoError && <p className="field-error" role="alert" data-testid="gift-photo-error">{photoError}</p>}
         <ul className="gift-item-list" aria-busy={orderMutation.isPending}>
           {list.items.map((item, index) => {
             const { summary } = item;
             const count = summary.active;
             return (
               <li className={`gift-item-row ${item.hidden ? "is-hidden" : ""}`} key={item.id} data-testid={`gift-item-${item.id}`}>
-                <button type="button" className="gift-item-main" onClick={() => setEditing(item)} data-testid={`button-edit-gift-item-${item.id}`}>
+                <button type="button" className={`gift-item-main ${item.photoKey ? "has-photo" : ""}`.trim()} onClick={() => setEditing(item)} data-testid={`button-edit-gift-item-${item.id}`}>
+                  {item.photoKey && <ItemPhoto photoKey={item.photoKey} name={item.name} />}
                   <span className="gift-item-name">
                     <strong>{item.name}</strong>
                     <span className="badge">{KIND_LABELS[item.kind].title}</span>
@@ -220,14 +241,20 @@ export function GiftListDetail({ userId, listId, go }: { userId: string; listId:
         <GiftItemModal
           item={null}
           onClose={() => setModal(null)}
-          onSave={async (input) => { await createGiftItem(listId, input); await refresh(); }}
+          onSave={async (input, photo) => {
+            const { item } = await createGiftItem(listId, input);
+            await savePhoto(item.id, null, photo);
+          }}
         />
       )}
       {editing && (
         <GiftItemModal
           item={editing}
           onClose={() => setEditing(null)}
-          onSave={async (input) => { await updateGiftItem(listId, editing.id, input); await refresh(); }}
+          onSave={async (input, photo) => {
+            await updateGiftItem(listId, editing.id, input);
+            await savePhoto(editing.id, editing.photoKey, photo);
+          }}
           onDelete={async () => { await deleteGiftItem(listId, editing.id); await refresh(); }}
         />
       )}

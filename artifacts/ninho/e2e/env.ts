@@ -16,6 +16,9 @@ export const E2E_SESSION_SECRET =
  */
 export const E2E_OUTBOX_DIR = process.env.E2E_OUTBOX_DIR ?? path.join(os.tmpdir(), "ninho-e2e-outbox");
 
+/** Pasta onde a API de teste guarda as fotos enviadas (MEDIA_DIR). */
+export const E2E_MEDIA_DIR = process.env.E2E_MEDIA_DIR ?? path.join(os.tmpdir(), "ninho-e2e-media");
+
 /** Trava de segurança: o E2E cria contas e nunca deve rodar no banco de dev. */
 export function assertTestDatabase(url: string): URL {
   const parsed = new URL(url);

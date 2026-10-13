@@ -56,3 +56,6 @@ Thumbs.db
 playwright-report/
 test-results/
 blob-report/
+
+# fotos enviadas em desenvolvimento (MEDIA_DIR padrão)
+.data/

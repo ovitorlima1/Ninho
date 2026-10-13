@@ -53,6 +53,7 @@ export interface OwnerGiftItem {
   note: string | null;
   similarOk: boolean;
   storeUrl: string | null;
+  photoKey: string | null;
   allowWhole: boolean;
   hidden: boolean;
   sortOrder: number;
@@ -130,6 +131,11 @@ export const deleteGiftList = (id: number) => customFetch<void>(`${ME}/lists/${i
 export const createGiftItem = (listId: number, data: GiftItemInput) => customFetch<{ item: OwnerGiftItem }>(`${ME}/lists/${listId}/items`, json("POST", data));
 export const updateGiftItem = (listId: number, itemId: number, data: Partial<GiftItemInput>) =>
   customFetch<{ item: OwnerGiftItem }>(`${ME}/lists/${listId}/items/${itemId}`, json("PATCH", data));
+/** Envia a foto do presente: o corpo é o próprio arquivo, não JSON. */
+export const uploadGiftItemPhoto = (listId: number, itemId: number, file: File) =>
+  customFetch<{ photoKey: string }>(`${ME}/lists/${listId}/items/${itemId}/photo`, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+export const deleteGiftItemPhoto = (listId: number, itemId: number) =>
+  customFetch<{ photoKey: null }>(`${ME}/lists/${listId}/items/${itemId}/photo`, { method: "DELETE" });
 export const deleteGiftItem = (listId: number, itemId: number) => customFetch<void>(`${ME}/lists/${listId}/items/${itemId}`, json("DELETE"));
 export const reorderGiftItems = (listId: number, ids: number[]) => customFetch<void>(`${ME}/lists/${listId}/items/order`, json("PUT", { ids }));
 export const updatePledgeStatus = (listId: number, pledgeId: number, status: PledgeStatus) =>
@@ -152,6 +158,7 @@ export interface PublicGiftListItem {
   similarOk: boolean;
   storeUrl: string | null;
   storeDomain: string | null;
+  photoKey: string | null;
   state: GiftItemState;
   goal: number;
   committed: number;

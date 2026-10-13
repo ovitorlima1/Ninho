@@ -19,6 +19,8 @@ export const VERIFICATION_EMAIL_POLICY: LimitPolicy = { windowMs: HOUR_MS, block
 export const VERIFICATION_ORIGIN_POLICY: LimitPolicy = { windowMs: HOUR_MS, blockMs: HOUR_MS, maxAttempts: 10 };
 export const ACCOUNT_DELETION_POLICY: LimitPolicy = { windowMs: 15 * MINUTE_MS, blockMs: 15 * MINUTE_MS, maxAttempts: 5 };
 export const GIFT_RESERVATION_POLICY: LimitPolicy = { windowMs: HOUR_MS, blockMs: HOUR_MS, maxAttempts: 20 };
+/** Tratar imagem custa processamento: 30 envios por hora por conta (FP-R19). */
+export const PHOTO_UPLOAD_POLICY: LimitPolicy = { windowMs: HOUR_MS, blockMs: 10 * MINUTE_MS, maxAttempts: 30 };
 
 export type AttemptState = {
   count: number;

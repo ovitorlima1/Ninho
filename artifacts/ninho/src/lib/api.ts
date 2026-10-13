@@ -69,6 +69,8 @@ export interface ServerChecklistItem {
   /** Veio pronto de um modelo e ainda não foi mexido. */
   suggested: boolean;
   recommendationId: string | null;
+  /** Foto do produto: a chave de `/api/media/<chave>`. */
+  photoKey: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -100,6 +102,7 @@ export interface PublicGiftItem {
   name: string;
   category: string;
   categoryIcon: string | null;
+  photoKey: string | null;
   qty: number;
   reserved: boolean;
   reservation: { status: GiftReservationStatus; guestName: string | null } | null;
@@ -216,6 +219,8 @@ export interface CreateItemInput {
   qty?: number;
   price?: number;
   recommendationId?: string | null;
+  /** "Desfazer" de uma remoção: religa a foto que o item tinha. */
+  photoKey?: string;
 }
 
 export async function createChecklistItem(data: CreateItemInput): Promise<ServerChecklistItem> {
@@ -246,6 +251,19 @@ export async function updateChecklistItem(
 
 export async function deleteChecklistItem(id: number): Promise<void> {
   return customFetch<void>(`${API}/checklist/${id}`, { method: "DELETE" });
+}
+
+/** Envia a foto do produto: o corpo é o próprio arquivo, não JSON. */
+export async function uploadChecklistItemPhoto(id: number, file: File): Promise<ServerChecklistItem> {
+  return customFetch<ServerChecklistItem>(`${API}/checklist/${id}/photo`, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+}
+
+export async function deleteChecklistItemPhoto(id: number): Promise<ServerChecklistItem> {
+  return customFetch<ServerChecklistItem>(`${API}/checklist/${id}/photo`, { method: "DELETE" });
 }
 
 // ─── Milestones ───────────────────────────────────────────────────────────────

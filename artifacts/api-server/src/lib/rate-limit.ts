@@ -9,6 +9,7 @@ import {
   GIFT_RESERVATION_POLICY,
   PASSWORD_RESET_EMAIL_POLICY,
   PASSWORD_RESET_ORIGIN_POLICY,
+  PHOTO_UPLOAD_POLICY,
   VERIFICATION_EMAIL_POLICY,
   VERIFICATION_ORIGIN_POLICY,
   type AttemptLimitResult,
@@ -126,3 +127,4 @@ export const verificationEmailLimiter = new PersistentLimiter(VERIFICATION_EMAIL
 export const verificationOriginLimiter = new PersistentLimiter(VERIFICATION_ORIGIN_POLICY);
 export const accountDeletionLimiter = new PersistentLimiter(ACCOUNT_DELETION_POLICY);
 export const giftReservationLimiter = new PersistentLimiter(GIFT_RESERVATION_POLICY);
+export const photoUploadLimiter = new PersistentLimiter(PHOTO_UPLOAD_POLICY);

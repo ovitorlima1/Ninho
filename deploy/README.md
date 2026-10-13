@@ -15,9 +15,10 @@ Cada comando abaixo diz **onde** rodar:
 |---|---|
 | `postgres` | Banco do Ninho (só dele), com os dados no volume `ninho_pgdata`. |
 | `migrate` | Aplica o schema no banco e termina. A API só sobe se isto der certo. |
-| `api` | A API (Node). Não publica porta; só o `web` fala com ela. |
+| `api` | A API (Node). Não publica porta; só o `web` fala com ela. Grava as fotos dos produtos no volume `ninho_media`. |
 | `web` | Nginx com o front e o repasse de `/api`. É o único que o Traefik enxerga. |
 | `pgbackups` | Cópia diária do banco no volume `ninho_pgbackups` (7 dias, 4 semanas, 6 meses). |
+| `mediabackups` | Cópia diária das fotos dos produtos, no mesmo volume das cópias do banco (7 dias). |
 
 ## Antes do primeiro deploy
 
@@ -171,6 +172,24 @@ cd /docker/ninho && docker compose -f deploy/compose.prod.yml --env-file deploy/
 ```bash
 cd /docker/ninho && docker compose -f deploy/compose.prod.yml --env-file deploy/.env start api web
 ```
+
+### Fotos dos produtos
+
+As fotos ficam no volume `ninho_media` e o `mediabackups` guarda um arquivo por dia em `/backups/media`, por 7 dias.
+Para fazer uma cópia agora:
+
+```bash
+cd /docker/ninho && docker compose -f deploy/compose.prod.yml --env-file deploy/.env exec mediabackups sh -c 'tar -czf /backups/media/ninho-media-$(date +%Y%m%d).tar.gz -C /data media && ls -lh /backups/media'
+```
+
+Para **restaurar** as fotos de um dia (troque a data pelo arquivo que a listagem mostrou; fotos enviadas depois dessa
+cópia continuam lá):
+
+```bash
+docker run --rm -v ninho_media:/data/media -v ninho_pgbackups:/backups:ro alpine:3.22 tar -xzf /backups/media/ninho-media-AAAAMMDD.tar.gz -C /data
+```
+
+O banco diz qual foto é de qual item. Ao restaurar um backup antigo do banco, restaure as fotos do mesmo dia.
 
 A cópia fica na própria VPS. A Hostinger também faz backup semanal da máquina inteira. **Falta** mandar a cópia diária para
 fora da VPS (rclone para um armazenamento externo): é o próximo passo depois do lançamento.

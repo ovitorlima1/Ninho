@@ -1,6 +1,7 @@
 import { boolean, integer, numeric, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { MEDIA_KEY_PATTERN } from "./media";
 
 export const ITEM_STATUSES = ["A comprar", "Comprado", "Ganhei"] as const;
 export const ITEM_CATEGORIES = ["Roupas", "Higiene", "Alimentação", "Acessórios"] as const;
@@ -42,6 +43,8 @@ export const checklistItems = pgTable("checklist_items", {
   /** Veio pronto de um modelo e a mãe ainda não mexeu: mostra a etiqueta "Sugestão". */
   suggested: boolean("suggested").notNull().default(false),
   recommendationId: text("recommendation_id"),
+  /** Foto do produto (`media_files.key`), se a mãe enviou uma. */
+  photoKey: text("photo_key"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -78,6 +81,8 @@ export const createChecklistItemSchema = z.object({
   price: z.number().min(0).max(99999).default(0),
   essential: z.boolean().default(false),
   recommendationId: z.enum(RECOMMENDATION_IDS).nullable().optional(),
+  // "Desfazer" de uma remoção: religa a foto que o item tinha, se ela ainda está solta.
+  photoKey: z.string().regex(MEDIA_KEY_PATTERN).optional(),
 });
 
 export type ChecklistItem = typeof checklistItems.$inferSelect;

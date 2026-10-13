@@ -52,6 +52,8 @@ monta `health`, `/auth`, `/me` (todas atrás de `requireAuth`) e `/gift`.
 | POST/PATCH/DELETE | `/api/me/checklists[/:id]` (listas do Enxoval) | `routes/checklists.ts` |
 | POST | `/api/me/checklists/:id/categories` | `routes/checklists.ts` |
 | PATCH/DELETE | `/api/me/checklist-categories/:id` (`?moveTo=` ou `?items=delete`) | `routes/checklists.ts` |
+| PUT/DELETE | `/api/me/checklist/:id/photo`, `/api/me/lists/:id/items/:itemId/photo` (corpo = a imagem) | `routes/me.ts`, `routes/lists.ts`, `lib/photo-upload.ts` |
+| GET | `/api/media/:key` (pública, foto em WebP com cache longo) | `routes/media.ts` |
 | PATCH | `/api/me/milestones/:id` | `routes/me.ts:328` |
 | GET/POST/DELETE | `/api/me/share` | `routes/me.ts:65,75,106` |
 | PATCH/DELETE | `/api/me/gift-reservations/:id` | `routes/me.ts:129,152` |

@@ -3,21 +3,28 @@ import { Check, Plus, X } from "lucide-react";
 import { Pill, TinyButton } from "@/components/controls";
 import { DraftNumberInput, parseQtyInput } from "@/components/draft-number-input";
 import { ModalShell } from "@/components/modal-shell";
+import { PhotoField } from "@/components/photo-field";
 import { type ListCategory } from "@/lib/checklists";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { formatPriceInput, parsePriceInput, type ChecklistItem } from "@/lib/items";
+import { NO_PHOTO_CHANGE, type PhotoDraft } from "@/lib/photos";
 
 export type ItemFormValues = { name: string; categoryId: number; qty: number; price: number };
 
 /** Campos compartilhados por adicionar e editar item. */
 export function ItemFields({
-  values, onChange, priceError, categories,
+  values, onChange, priceError, categories, photoKey, photo, onPhotoChange, disabled,
 }: {
   values: ItemFormValues;
   onChange: (values: ItemFormValues) => void;
   priceError: string | null;
   /** As categorias da lista do item (LC-R14). */
   categories: ListCategory[];
+  /** Foto que o item já tem, e o que a mãe mexeu nela neste diálogo. */
+  photoKey: string | null;
+  photo: PhotoDraft;
+  onPhotoChange: (photo: PhotoDraft) => void;
+  disabled: boolean;
 }) {
   return (
     <>
@@ -67,6 +74,7 @@ export function ItemFields({
         </label>
       </div>
       {priceError && <p className="field-error" role="alert" id="item-price-error">{priceError}</p>}
+      <PhotoField photoKey={photoKey} name={values.name} draft={photo} onChange={onPhotoChange} disabled={disabled} />
       <p>Este item entra em <strong>{categories.find((c) => c.id === values.categoryId)?.name}</strong>.</p>
     </>
   );
@@ -76,12 +84,13 @@ export function AddItemModal({
   onClose, onAdd, categoryId, categories, returnFocusTestId,
 }: {
   onClose: () => void;
-  onAdd: (values: ItemFormValues) => Promise<void>;
+  onAdd: (values: ItemFormValues, photo: PhotoDraft) => Promise<void>;
   categoryId: number;
   categories: ListCategory[];
   returnFocusTestId?: string;
 }) {
   const [values, setValues] = useState<ItemFormValues>({ name: "", categoryId, qty: 1, price: 0 });
+  const [photo, setPhoto] = useState<PhotoDraft>(NO_PHOTO_CHANGE);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -91,7 +100,7 @@ export function AddItemModal({
     setIsSaving(true);
     setError(null);
     try {
-      await onAdd({ ...values, name: values.name.trim() });
+      await onAdd({ ...values, name: values.name.trim() }, photo);
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
     } finally {
@@ -106,7 +115,7 @@ export function AddItemModal({
           <div><span className="eyebrow">Sua lista, suas regras</span><h2 id="add-item-title">Adicionar item</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-add-item"><X size={17} /></TinyButton>
         </div>
-        <ItemFields values={values} onChange={setValues} priceError={null} categories={categories} />
+        <ItemFields values={values} onChange={setValues} priceError={null} categories={categories} photoKey={null} photo={photo} onPhotoChange={setPhoto} disabled={isSaving} />
         {error && <p className="field-error" role="alert">{error}</p>}
         <button type="submit" className="primary-button" disabled={!values.name.trim() || isSaving} data-testid="button-confirm-add-item">
           <Plus size={15} /> {isSaving ? "salvando…" : "colocar na lista"}
@@ -122,7 +131,7 @@ export function EditItemModal({
   item: ChecklistItem;
   categories: ListCategory[];
   onClose: () => void;
-  onSave: (id: number, values: ItemFormValues) => Promise<void>;
+  onSave: (id: number, values: ItemFormValues, photo: PhotoDraft) => Promise<void>;
 }) {
   const [values, setValues] = useState<ItemFormValues>({
     name: item.name,
@@ -130,6 +139,7 @@ export function EditItemModal({
     qty: item.qty,
     price: item.price,
   });
+  const [photo, setPhoto] = useState<PhotoDraft>(NO_PHOTO_CHANGE);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -138,7 +148,7 @@ export function EditItemModal({
     setIsSaving(true);
     setError(null);
     try {
-      await onSave(item.id, { ...values, name: values.name.trim() });
+      await onSave(item.id, { ...values, name: values.name.trim() }, photo);
       onClose();
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
@@ -154,7 +164,7 @@ export function EditItemModal({
           <div><span className="eyebrow">Ajustar item</span><h2 id="edit-item-title">{item.name}</h2></div>
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-edit-item"><X size={17} /></TinyButton>
         </div>
-        <ItemFields values={values} onChange={setValues} priceError={null} categories={categories} />
+        <ItemFields values={values} onChange={setValues} priceError={null} categories={categories} photoKey={item.photoKey} photo={photo} onPhotoChange={setPhoto} disabled={isSaving} />
         {error && <p className="field-error" role="alert">{error}</p>}
         <button type="submit" className="primary-button" disabled={!values.name.trim() || isSaving} data-testid="button-confirm-edit-item">
           <Check size={15} /> {isSaving ? "salvando…" : "salvar alterações"}

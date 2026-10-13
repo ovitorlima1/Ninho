@@ -10,6 +10,7 @@ import {
   deleteCategory,
   deleteChecklist,
   deleteChecklistItem,
+  deleteChecklistItemPhoto,
   deleteGiftReservation,
   fetchWorkspace,
   getGiftShare,
@@ -21,6 +22,7 @@ import {
   updateChecklistItem,
   updateGiftReservation,
   updateProfile,
+  uploadChecklistItemPhoto,
   type ChecklistTemplate,
   type GiftReservationStatus,
   type ItemStatus,
@@ -30,8 +32,9 @@ import {
   type Workspace,
 } from "@/lib/api";
 import { adaptCategory, adaptChecklist, pickActiveList } from "@/lib/checklists";
-import { getAuthErrorMessage } from "@/lib/errors";
+import { getAuthErrorMessage, getFriendlyErrorMessage } from "@/lib/errors";
 import { adaptItem, type ChecklistItem } from "@/lib/items";
+import { type PhotoDraft } from "@/lib/photos";
 import { type Recommendation } from "@/lib/recommendations";
 
 /** A última lista aberta fica só neste aparelho (LC-R18); sem armazenamento, vale a primeira. */
@@ -422,13 +425,29 @@ export function useWorkspace(uid: string) {
       : deleteItemMutation.isPending ? deleteItemMutation.variables ?? null
         : null;
 
-  const handleAddItem = async (values: { name: string; categoryId: number; qty: number; price: number }) => {
-    await addItemMutation.mutateAsync(values);
+  /**
+   * Grava o que a mãe mexeu na foto, depois que o item já está salvo (FP-R4). Uma falha aqui
+   * não desfaz o item: ela vira um aviso dizendo que a foto não foi.
+   */
+  const savePhoto = async (item: ServerChecklistItem, photo: PhotoDraft) => {
+    if (!photo.file && !(photo.remove && item.photoKey)) return;
+    try {
+      const updated = photo.file ? await uploadChecklistItemPhoto(item.id, photo.file) : await deleteChecklistItemPhoto(item.id);
+      qc.setQueryData<Workspace>(wqKey, (old) => old ? { ...old, items: old.items.map((i) => i.id === updated.id ? updated : i) } : old);
+    } catch (error) {
+      showActionFeedback({ tone: "error", message: `O item foi salvo, mas a foto não: ${getFriendlyErrorMessage(error)}` });
+    }
+  };
+
+  const handleAddItem = async (values: { name: string; categoryId: number; qty: number; price: number }, photo: PhotoDraft) => {
+    const item = await addItemMutation.mutateAsync(values);
+    await savePhoto(item, photo);
     setAddOpen(false);
   };
 
-  const handleEditItem = async (id: number, values: { name: string; categoryId: number; qty: number; price: number }) => {
-    await updateItemMutation.mutateAsync({ id, data: values });
+  const handleEditItem = async (id: number, values: { name: string; categoryId: number; qty: number; price: number }, photo: PhotoDraft) => {
+    const item = await updateItemMutation.mutateAsync({ id, data: values });
+    await savePhoto(item, photo);
   };
 
   const handleToggle = (id: number, status: ItemStatus) => {
@@ -451,6 +470,8 @@ export function useWorkspace(uid: string) {
             group: item.group,
             qty: item.qty,
             price: item.price,
+            // A foto fica guardada por alguns minutos depois da remoção: o desfazer a religa (FP-R13).
+            photoKey: item.photoKey ?? undefined,
           }),
         },
       }),

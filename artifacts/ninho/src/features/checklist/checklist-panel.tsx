@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Activity, Check, Gift, Heart, Pencil, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import { CategoryBadge } from "@/components/category-icon";
 import { Pill, TinyButton } from "@/components/controls";
+import { ItemPhoto } from "@/components/item-photo";
 import { Progress } from "@/components/progress";
 import { type ChecklistTemplate, type GiftReservationStatus, type ItemStatus } from "@/lib/api";
 import {
@@ -286,6 +287,7 @@ function ItemRow({
           {item.status === "Comprado" && <Check size={12} />}
           {item.status === "Ganhei" && <Heart size={10} />}
         </span>
+        {item.photoKey && <ItemPhoto photoKey={item.photoKey} name={item.name} />}
         <span className="check-name">
           <strong>{item.name}</strong>
           <small>
