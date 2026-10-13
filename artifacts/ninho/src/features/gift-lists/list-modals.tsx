@@ -4,6 +4,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { TinyButton } from "@/components/controls";
 import { DraftNumberInput, parseQtyInput } from "@/components/draft-number-input";
 import { ConfirmDialog, ModalShell } from "@/components/modal-shell";
+import { PhotoField } from "@/components/photo-field";
+import { NO_PHOTO_CHANGE, type PhotoDraft } from "@/lib/photos";
 import { PixCode } from "@/components/pix-code";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { formatCents, formatCentsInput, KIND_LABELS, parseCentsInput, TEMPLATE_LABELS } from "@/lib/gift-lists";
@@ -183,10 +185,12 @@ export function GiftItemModal({
   /** Sem item, o diálogo cria um presente novo. */
   item: OwnerGiftItem | null;
   onClose: () => void;
-  onSave: (input: GiftItemInput) => Promise<unknown>;
+  /** Salva o presente e, em seguida, o que mudou na foto. */
+  onSave: (input: GiftItemInput, photo: PhotoDraft) => Promise<unknown>;
   onDelete?: () => Promise<unknown>;
 }) {
   const [name, setName] = useState(item?.name ?? "");
+  const [photo, setPhoto] = useState<PhotoDraft>(NO_PHOTO_CHANGE);
   const [kind, setKind] = useState<GiftItemKind>(item?.kind ?? "single");
   const [goalCents, setGoalCents] = useState<number | null>(item?.goalCents ?? null);
   const [goalUnits, setGoalUnits] = useState(item?.goalUnits ?? 1);
@@ -210,7 +214,7 @@ export function GiftItemModal({
       similarOk,
       allowWhole,
       hidden,
-    }),
+    }, photo),
     onSuccess: onClose,
   });
   const remove = useMutation({ mutationFn: async () => onDelete?.(), onSuccess: onClose });
@@ -244,6 +248,7 @@ export function GiftItemModal({
           Nome do presente
           <input value={name} maxLength={120} onChange={(event) => setName(event.target.value)} placeholder="ex.: carrinho de bebê" data-testid="input-gift-item-name" />
         </label>
+        <PhotoField photoKey={item?.photoKey ?? null} name={name} draft={photo} onChange={setPhoto} disabled={save.isPending} />
         <fieldset className="kind-picker">
           <legend>Como os convidados podem dar?</legend>
           <div className="segmented" role="radiogroup" aria-label="Tipo de meta">

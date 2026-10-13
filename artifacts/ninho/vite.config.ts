@@ -40,7 +40,8 @@ const CONTENT_SECURITY_POLICY = [
   "script-src 'self'",
   "style-src 'self' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
-  "img-src 'self' data:",
+  // blob: é a prévia da foto escolhida no aparelho, antes de enviar.
+  "img-src 'self' data: blob:",
   "connect-src 'self'",
   "base-uri 'self'",
   "form-action 'self'",

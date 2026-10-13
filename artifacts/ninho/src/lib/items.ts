@@ -20,6 +20,7 @@ export type ChecklistItem = {
   /** Veio pronto de um modelo e ainda não foi mexido: mostra a etiqueta "Sugestão". */
   suggested: boolean;
   recommendationId: string | null;
+  photoKey: string | null;
   giftReservation: ServerGiftReservation | null;
 };
 
@@ -37,6 +38,7 @@ export function adaptItem(s: ServerChecklistItem, giftReservation: ServerGiftRes
     essential: s.essential,
     suggested: s.suggested,
     recommendationId: s.recommendationId,
+    photoKey: s.photoKey,
     giftReservation,
   };
 }

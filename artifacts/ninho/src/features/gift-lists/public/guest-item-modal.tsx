@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, Copy, ExternalLink, Gift, Heart, Minus, Plus, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { TinyButton } from "@/components/controls";
+import { ItemPhoto } from "@/components/item-photo";
 import { ModalShell } from "@/components/modal-shell";
 import { PixCode } from "@/components/pix-code";
 import { SplitProgress } from "@/components/progress";
@@ -106,11 +107,15 @@ export function GuestItemModal({
   });
   const onSubmit = step === "amount" ? submitAmount : step === "units" ? submitUnits : step === "whole" ? submitWhole : undefined;
 
+  // A foto maior aparece só no primeiro passo: nos seguintes o espaço é do formulário.
   const top = (eyebrow: string, title: string) => (
-    <div className="modal-top">
-      <div><span className="eyebrow">{eyebrow}</span><h2 id="guest-item-title">{title}</h2></div>
-      <TinyButton onClick={onClose} label="Fechar" testId="button-close-guest-item"><X size={17} /></TinyButton>
-    </div>
+    <>
+      <div className="modal-top">
+        <div><span className="eyebrow">{eyebrow}</span><h2 id="guest-item-title">{title}</h2></div>
+        <TinyButton onClick={onClose} label="Fechar" testId="button-close-guest-item"><X size={17} /></TinyButton>
+      </div>
+      {item.photoKey && step === firstStep(item) && <ItemPhoto photoKey={item.photoKey} name={item.name} size="lg" />}
+    </>
   );
   const nameField = (
     <label className="modal-label">

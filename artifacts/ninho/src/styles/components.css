@@ -1958,6 +1958,43 @@
     .icon-picker { grid-template-columns: repeat(8, minmax(0, 1fr)); }
   }
 
+  /* ── Foto do produto ───────────────────────────────────────────────────── */
+  /* Miniaturas com tamanho fixo: a lista não pula quando a foto chega. */
+  .item-photo {
+    flex: none;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-sunk);
+    object-fit: cover;
+  }
+  .item-photo-sm { width: 48px; height: 48px; }
+  .item-photo-md { width: 72px; height: 72px; }
+  /* No diálogo do convidado a foto aparece inteira, sem cortar o produto. */
+  .item-photo-lg { width: 100%; height: auto; max-height: 260px; object-fit: contain; }
+  /* No cartão do convidado a foto ocupa o lugar do ícone, do mesmo tamanho: os nomes continuam alinhados. */
+  .guest-item > .item-photo { width: 56px; height: 56px; }
+  .gift-item-main.has-photo { grid-template-columns: 48px minmax(0, 1fr); column-gap: var(--space-3); }
+  .gift-item-main.has-photo > .item-photo { grid-row: 1 / span 3; }
+  .gift-item-main.has-photo > :not(.item-photo) { grid-column: 2; }
+
+  .photo-field { display: grid; gap: var(--space-2); }
+  .photo-field-title { font-size: var(--text-sm); font-weight: 700; }
+  .photo-field-title small { font-weight: 500; }
+  .photo-field-row { display: flex; align-items: center; gap: var(--space-3); }
+  .photo-field-empty {
+    display: grid;
+    flex: none;
+    width: 72px;
+    height: 72px;
+    place-items: center;
+    border: 1px dashed var(--color-line-strong);
+    border-radius: var(--radius-md);
+    color: var(--color-ink-muted);
+  }
+  .photo-field-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); }
+  .photo-field-pick { cursor: pointer; }
+  .photo-field-pick:focus-within { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+  .photo-field-pick.is-disabled { cursor: not-allowed; opacity: 0.55; }
+
   /* ── Hover só onde existe mouse ────────────────────────────────────────── */
   @media (hover: hover) {
     .card-link:hover { border-color: var(--color-line-strong); box-shadow: var(--shadow-md); }
