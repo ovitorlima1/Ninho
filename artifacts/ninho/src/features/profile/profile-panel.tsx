@@ -4,6 +4,7 @@ import { type ServerGiftShare, type ServerProfile, type UpdateProfileInput } fro
 import { calcGestation, formatGestation, getDueDateBounds, validateDueDate } from "@/lib/gestation";
 import { initialsFor } from "@/lib/format";
 import { GiftShareCard } from "@/features/profile/gift-share-card";
+import { PixCard } from "@/features/gift-lists/pix-card";
 import { AccountSection } from "@/features/profile/account-section";
 
 export function ProfilePanel({
@@ -162,6 +163,7 @@ export function ProfilePanel({
         isLoading={shareLoading}
         error={shareError}
       />
+      <PixCard userId={profile.userId} />
       <AccountSection />
     </div>
   );
