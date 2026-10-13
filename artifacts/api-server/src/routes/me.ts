@@ -4,20 +4,24 @@ import { eq, and, desc, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   profiles,
+  checklistCategories,
   checklistItems,
   milestones,
-  budgetCategories,
   updateProfileSchema,
   createChecklistItemSchema,
   updateChecklistItemSchema,
+  MAX_CHECKLIST_CATEGORIES,
   RECOMMENDATION_CATEGORY_BY_ID,
-  upsertBudgetSchema,
+  updateBudgetSchema,
   toggleMilestoneSchema,
   giftReservations,
   giftShareLinks,
   updateGiftReservationSchema,
+  type ChecklistCategory,
 } from "@workspace/db/schema";
 import { requireAuth } from "../middlewares/requireAuth";
+import { clearsSuggestion, defaultLook, nextTone, normalizeName } from "../lib/checklist-rules";
+import { listCategories, listChecklists, migrateLegacyUser, primaryChecklist } from "../lib/checklist-store";
 import { ensureUserInitialized } from "../lib/seed";
 import { firstIssueMessage } from "../lib/validation";
 
@@ -32,7 +36,7 @@ router.use(requireAuth);
 
 // ─── Workspace ────────────────────────────────────────────────────────────────
 
-/** GET /api/me/workspace — full user workspace (profile + items + milestones + budget) */
+/** GET /api/me/workspace — full user workspace (profile + lists + categories + items + milestones) */
 router.get("/workspace", async (req, res) => {
   const userId = res.locals.userId as string;
   try {
@@ -41,14 +45,21 @@ router.get("/workspace", async (req, res) => {
     // lista esvaziada de propósito nunca é repovoada.
     const profile = await ensureUserInitialized(userId);
 
-    const [items, userMilestones, budget, reservations] = await Promise.all([
+    // Rede de segurança da varredura feita ao subir: conta de antes das listas é migrada aqui.
+    let lists = await listChecklists(db, userId);
+    if (lists.length === 0) {
+      await migrateLegacyUser(userId);
+      lists = await listChecklists(db, userId);
+    }
+
+    const [categories, items, userMilestones, reservations] = await Promise.all([
+      listCategories(db, userId),
       db.select().from(checklistItems).where(eq(checklistItems.userId, userId)).orderBy(checklistItems.sortOrder, checklistItems.createdAt),
       db.select().from(milestones).where(eq(milestones.userId, userId)).orderBy(milestones.week),
-      db.select().from(budgetCategories).where(eq(budgetCategories.userId, userId)),
       db.select().from(giftReservations).where(eq(giftReservations.userId, userId)),
     ]);
 
-    res.json({ profile, items, milestones: userMilestones, budget, giftReservations: reservations });
+    res.json({ profile, lists, categories, items, milestones: userMilestones, giftReservations: reservations });
   } catch (err) {
     req.log.error({ err }, "workspace error");
     res.status(500).json({ error: "Não foi possível carregar seu ninho agora." });
@@ -192,6 +203,35 @@ router.put("/profile", async (req, res) => {
 
 // ─── Checklist ────────────────────────────────────────────────────────────────
 
+/**
+ * Categoria que recebe uma inspiração: a de mesmo nome na primeira lista (LC-R25). Se a mãe
+ * renomeou ou apagou essa categoria, ela é recriada; no limite de categorias, vai para a primeira.
+ */
+async function categoryForRecommendation(userId: string, name: string): Promise<ChecklistCategory | undefined> {
+  const list = await primaryChecklist(db, userId);
+  if (!list) return undefined;
+  const categories = (await listCategories(db, userId)).filter((category) => category.listId === list.id);
+  const match = categories.find((category) => normalizeName(category.name) === normalizeName(name));
+  if (match) return match;
+  if (categories.length >= MAX_CHECKLIST_CATEGORIES) return categories[0];
+  const look = defaultLook(name) ?? { icon: "heart" as const, tone: nextTone(categories.length) };
+  const [created] = await db.insert(checklistCategories).values({
+    userId,
+    listId: list.id,
+    name,
+    ...look,
+    sortOrder: Math.max(-1, ...categories.map((category) => category.sortOrder)) + 1,
+  }).returning();
+  return created;
+}
+
+/** Categoria da conta pelo id; o que é de outra conta não existe (LC-R27). */
+async function findCategory(userId: string, categoryId: number): Promise<ChecklistCategory | undefined> {
+  const [category] = await db.select().from(checklistCategories)
+    .where(and(eq(checklistCategories.id, categoryId), eq(checklistCategories.userId, userId)));
+  return category;
+}
+
 /** POST /api/me/checklist — add a new checklist item */
 router.post("/checklist", async (req, res) => {
   const userId = res.locals.userId as string;
@@ -201,13 +241,14 @@ router.post("/checklist", async (req, res) => {
     return;
   }
   try {
-    if (parsed.data.recommendationId) {
+    const { categoryId, category: categoryName, ...fields } = parsed.data;
+    if (fields.recommendationId) {
       const [existing] = await db
         .select({ id: checklistItems.id })
         .from(checklistItems)
         .where(and(
           eq(checklistItems.userId, userId),
-          eq(checklistItems.recommendationId, parsed.data.recommendationId),
+          eq(checklistItems.recommendationId, fields.recommendationId),
         ))
         .limit(1);
       if (existing) {
@@ -215,15 +256,38 @@ router.post("/checklist", async (req, res) => {
         return;
       }
     }
-    const data = parsed.data.recommendationId
-      ? {
-          ...parsed.data,
-          category: RECOMMENDATION_CATEGORY_BY_ID[parsed.data.recommendationId],
-        }
-      : parsed.data;
+
+    let category: ChecklistCategory | undefined;
+    if (fields.recommendationId) {
+      category = await categoryForRecommendation(userId, RECOMMENDATION_CATEGORY_BY_ID[fields.recommendationId]);
+    } else if (categoryId !== undefined) {
+      category = await findCategory(userId, categoryId);
+    } else if (categoryName) {
+      // Front antigo em cache: o nome vale para a primeira lista.
+      const list = await primaryChecklist(db, userId);
+      category = (await listCategories(db, userId)).find((candidate) =>
+        candidate.listId === list?.id && normalizeName(candidate.name) === normalizeName(categoryName));
+    } else {
+      res.status(400).json({ error: "Escolha uma categoria para o item." });
+      return;
+    }
+    if (!category) {
+      res.status(404).json({ error: "Não encontramos essa categoria. Atualize a página e tente de novo." });
+      return;
+    }
+
     const [item] = await db
       .insert(checklistItems)
-      .values({ ...data, price: String(data.price), userId })
+      .values({
+        ...fields,
+        price: String(fields.price),
+        userId,
+        listId: category.listId,
+        categoryId: category.id,
+        category: category.name,
+        // O que a mãe adiciona é dela, nunca sugestão (LC-R5).
+        suggested: false,
+      })
       .returning();
     res.status(201).json(item);
   } catch (err) {
@@ -249,7 +313,7 @@ router.patch("/checklist/:id", async (req, res) => {
   }
   try {
     const [currentItem] = await db
-      .select({ id: checklistItems.id, category: checklistItems.category })
+      .select({ id: checklistItems.id, category: checklistItems.category, listId: checklistItems.listId })
       .from(checklistItems)
       .where(and(eq(checklistItems.id, id), eq(checklistItems.userId, userId)))
       .limit(1);
@@ -257,8 +321,18 @@ router.patch("/checklist/:id", async (req, res) => {
       res.status(404).json({ error: "Não encontramos esse item. Atualize a página e tente de novo." });
       return;
     }
+    let target: ChecklistCategory | undefined;
+    if (parsed.data.categoryId !== undefined) {
+      target = await findCategory(userId, parsed.data.categoryId);
+      // Mover para outra lista fica fora desta feature: a categoria tem de ser da lista do item.
+      if (!target || target.listId !== currentItem.listId) {
+        res.status(404).json({ error: "Não encontramos essa categoria. Atualize a página e tente de novo." });
+        return;
+      }
+    }
     if (parsed.data.recommendationId) {
-      if (currentItem.category !== RECOMMENDATION_CATEGORY_BY_ID[parsed.data.recommendationId]) {
+      const itemCategory = target?.name ?? currentItem.category;
+      if (normalizeName(itemCategory) !== normalizeName(RECOMMENDATION_CATEGORY_BY_ID[parsed.data.recommendationId])) {
         res.status(400).json({ error: "A recomendação precisa pertencer à mesma categoria do item." });
         return;
       }
@@ -278,6 +352,8 @@ router.patch("/checklist/:id", async (req, res) => {
     }
     const update: Record<string, unknown> = { ...parsed.data, updatedAt: new Date() };
     if (parsed.data.price !== undefined) update.price = String(parsed.data.price);
+    if (target) update.category = target.name;
+    if (clearsSuggestion(parsed.data)) update.suggested = false;
     const [updated] = await db
       .update(checklistItems)
       .set(update)
@@ -355,29 +431,29 @@ router.patch("/milestones/:id", async (req, res) => {
 
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
-/** PUT /api/me/budget — upsert all budget categories */
+/** PUT /api/me/budget — valor planejado de cada categoria (LC-R13) */
 router.put("/budget", async (req, res) => {
   const userId = res.locals.userId as string;
-  const parsed = upsertBudgetSchema.safeParse(req.body);
+  const parsed = updateBudgetSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: firstIssueMessage(parsed.error) });
     return;
   }
   try {
-    // Delete and re-insert inside a transaction so a failure cannot leave
-    // the user with a partial (or empty) budget.
+    const owned = new Set((await listCategories(db, userId)).map((category) => category.id));
+    if (parsed.data.categories.some((entry) => !owned.has(entry.categoryId))) {
+      res.status(400).json({ error: "Escolha uma das categorias da lista." });
+      return;
+    }
+    // Tudo numa transação: uma falha não deixa o orçamento pela metade.
     const result = await db.transaction(async (tx) => {
-      await tx.delete(budgetCategories).where(eq(budgetCategories.userId, userId));
-      if (parsed.data.categories.length > 0) {
-        await tx.insert(budgetCategories).values(
-          parsed.data.categories.map((c: { category: string; planned: number }) => ({
-            userId,
-            category: c.category,
-            planned: String(c.planned),
-          })),
-        );
+      const now = new Date();
+      for (const entry of parsed.data.categories) {
+        await tx.update(checklistCategories)
+          .set({ planned: String(entry.planned), updatedAt: now })
+          .where(and(eq(checklistCategories.id, entry.categoryId), eq(checklistCategories.userId, userId)));
       }
-      return tx.select().from(budgetCategories).where(eq(budgetCategories.userId, userId));
+      return listCategories(tx, userId);
     });
     res.json(result);
   } catch (err) {

@@ -47,22 +47,47 @@ test("corpo que não é JSON é recusado com mensagem em português", async ({ p
   expect(await broken.json()).toEqual({ error: "Não conseguimos ler os dados enviados." });
 });
 
-test("orçamento só aceita as quatro categorias conhecidas", async ({ page }) => {
+test("orçamento só aceita categorias da própria conta", async ({ page, browser }) => {
   await createAccount(page);
-  const unknown = await page.request.put("/api/me/budget", {
-    data: { categories: [{ category: "Carro", planned: 100 }] },
+  const mine = (await (await page.request.get("/api/me/workspace")).json()) as { categories: Array<{ id: number; name: string }> };
+  const roupas = mine.categories.find((category) => category.name === "Roupas")!;
+
+  // Outra conta, em outro navegador: a categoria dela não existe para esta.
+  const otherContext = await browser.newContext();
+  const otherPage = await otherContext.newPage();
+  await createAccount(otherPage);
+  const theirs = (await (await otherPage.request.get("/api/me/workspace")).json()) as { categories: Array<{ id: number; planned: string }> };
+  const foreign = await page.request.put("/api/me/budget", {
+    data: { categories: [{ categoryId: theirs.categories[0]!.id, planned: 1 }] },
   });
-  expect(unknown.status()).toBe(400);
-  expect(await unknown.json()).toEqual({ error: "Escolha uma das categorias da lista." });
+  expect(foreign.status()).toBe(400);
+  expect(await foreign.json()).toEqual({ error: "Escolha uma das categorias da lista." });
+  const untouched = (await (await otherPage.request.get("/api/me/workspace")).json()) as typeof theirs;
+  expect(untouched.categories[0]!.planned).toBe(theirs.categories[0]!.planned);
+  await otherContext.close();
+
+  // O formato antigo (pelo nome) não vale mais.
+  const byName = await page.request.put("/api/me/budget", {
+    data: { categories: [{ category: "Roupas", planned: 100 }] },
+  });
+  expect(byName.status()).toBe(400);
 
   const repeated = await page.request.put("/api/me/budget", {
-    data: { categories: [{ category: "Roupas", planned: 1 }, { category: "Roupas", planned: 2 }] },
+    data: { categories: [{ categoryId: roupas.id, planned: 1 }, { categoryId: roupas.id, planned: 2 }] },
   });
   expect(repeated.status()).toBe(400);
+  expect(await repeated.json()).toEqual({ error: "Cada categoria aparece uma vez só." });
 
   const tooMany = await page.request.put("/api/me/budget", {
-    data: { categories: Array.from({ length: 500 }, () => ({ category: "Roupas", planned: 1 })) },
+    data: { categories: Array.from({ length: 500 }, (_, index) => ({ categoryId: index + 1, planned: 1 })) },
   });
   expect(tooMany.status()).toBe(400);
-  expect(await tooMany.json()).toEqual({ error: "São no máximo quatro categorias." });
+  expect(await tooMany.json()).toEqual({ error: "São categorias demais para um orçamento só." });
+
+  const saved = await page.request.put("/api/me/budget", {
+    data: { categories: [{ categoryId: roupas.id, planned: 1500.5 }] },
+  });
+  expect(saved.status()).toBe(200);
+  const after = (await saved.json()) as Array<{ id: number; planned: string }>;
+  expect(after.find((category) => category.id === roupas.id)!.planned).toBe("1500.50");
 });

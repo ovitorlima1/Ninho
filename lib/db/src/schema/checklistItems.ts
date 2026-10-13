@@ -29,12 +29,18 @@ export const checklistItems = pgTable("checklist_items", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
   name: text("name").notNull(),
+  /** Lista e categoria do item. Anuláveis só porque contas antigas são migradas pela API ao subir. */
+  listId: integer("list_id"),
+  categoryId: integer("category_id"),
+  /** Nome da categoria, mantido pelo servidor (criar, mover, renomear): é o que o link público e a exportação leem. */
   category: text("category").notNull(),
   group: text("group").notNull().default(""),
   qty: integer("qty").notNull().default(1),
   status: text("status").notNull().default("A comprar"),
   price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0"),
   essential: boolean("essential").notNull().default(false),
+  /** Veio pronto de um modelo e a mãe ainda não mexeu: mostra a etiqueta "Sugestão". */
+  suggested: boolean("suggested").notNull().default(false),
   recommendationId: text("recommendation_id"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -52,7 +58,7 @@ export const insertChecklistItemSchema = createInsertSchema(checklistItems).omit
 
 export const updateChecklistItemSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  category: z.enum(ITEM_CATEGORIES).optional(),
+  categoryId: z.number().int().positive().optional(),
   group: z.string().max(100).optional(),
   qty: z.number().int().min(1).max(999).optional(),
   status: z.enum(ITEM_STATUSES).optional(),
@@ -63,7 +69,9 @@ export const updateChecklistItemSchema = z.object({
 
 export const createChecklistItemSchema = z.object({
   name: z.string().min(1).max(200),
-  category: z.enum(ITEM_CATEGORIES).default("Roupas"),
+  categoryId: z.number().int().positive().optional(),
+  // Front antigo em cache ainda manda o nome: a rota resolve na primeira lista.
+  category: z.string().trim().min(1).max(30).optional(),
   group: z.string().max(100).default("Adicionado por você"),
   qty: z.number().int().min(1).max(999).default(1),
   status: z.enum(ITEM_STATUSES).default("A comprar"),

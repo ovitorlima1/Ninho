@@ -3,18 +3,50 @@ import { Activity, Check, Gift, Heart, Pencil, Plus, Search, Sparkles, Trash2, X
 import { CategoryBadge } from "@/components/category-icon";
 import { Pill, TinyButton } from "@/components/controls";
 import { Progress } from "@/components/progress";
-import { type CategoryKey, type GiftReservationStatus, type ItemStatus } from "@/lib/api";
-import { CATEGORIES, ITEM_STATUS_OPTIONS, describeItemTotal, searchItems, type ChecklistItem } from "@/lib/items";
+import { type ChecklistTemplate, type GiftReservationStatus, type ItemStatus } from "@/lib/api";
+import {
+  MAX_CATEGORIES,
+  MAX_CHECKLISTS,
+  showSuggestionsNotice,
+  type Checklist,
+  type ListCategory,
+} from "@/lib/checklists";
+import { ITEM_STATUS_OPTIONS, describeItemTotal, searchItems, type ChecklistItem } from "@/lib/items";
 import { enxovalProgress } from "@/lib/overview";
 import { isRecommendationVisible } from "@/lib/recommendations";
+import { CategoryModal, CreateChecklistModal, EditChecklistModal, LimitDialog } from "@/features/checklist/list-modals";
 
+/** O que a tela pede para mudar em listas e categorias; cada ação só resolve depois de gravar. */
+export type ChecklistActions = {
+  createList: (data: { template: ChecklistTemplate; name: string }) => Promise<unknown>;
+  renameList: (id: number, name: string) => Promise<unknown>;
+  deleteList: (id: number) => Promise<unknown>;
+  dismissNotice: (id: number) => void;
+  createCategory: (listId: number, data: { name: string; icon: string }) => Promise<ListCategory>;
+  updateCategory: (id: number, data: { name: string; icon: string }) => Promise<unknown>;
+  deleteCategory: (id: number, moveTo: number | null) => Promise<unknown>;
+};
+
+type Dialog = "new-list" | "edit-list" | "new-category" | "edit-category" | null;
+
+/**
+ * Aba Enxoval: as listas da conta, a lista aberta com suas categorias e os itens da categoria
+ * escolhida. Recebe só os itens e as categorias da lista aberta; o Workspace remonta o painel
+ * (key) ao trocar de lista, então categoria escolhida e busca recomeçam.
+ */
 export function ChecklistPanel({
-  items, onToggle, onAdd, onEdit, onDelete, onOpenRecommendation, onUnlinkRecommendation,
+  lists, list, categories, items, actions, onSelectList,
+  onToggle, onAdd, onEdit, onDelete, onOpenRecommendation, onUnlinkRecommendation,
   onReleaseGiftReservation, onUpdateGiftReservation, pendingItemId, isActionPending,
 }: {
+  lists: Checklist[];
+  list: Checklist;
+  categories: ListCategory[];
   items: ChecklistItem[];
+  actions: ChecklistActions;
+  onSelectList: (id: number) => void;
   onToggle: (id: number, status: ItemStatus) => void;
-  onAdd: (category: CategoryKey) => void;
+  onAdd: (categoryId: number) => void;
   onEdit: (item: ChecklistItem) => void;
   onDelete: (id: number) => void;
   onOpenRecommendation: (id: string) => void;
@@ -25,19 +57,22 @@ export function ChecklistPanel({
   pendingItemId: number | null;
   isActionPending: boolean;
 }) {
-  const [category, setCategory] = useState<CategoryKey>("Roupas");
+  const [categoryId, setCategoryId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
+  const [dialog, setDialog] = useState<Dialog>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const visible = items.filter((i) => i.category === category);
+  // Categoria excluída ou ainda não escolhida: vale a primeira da lista.
+  const category = categories.find((c) => c.id === categoryId) ?? categories[0];
+  const visible = items.filter((i) => i.categoryId === category?.id);
   const progress = enxovalProgress(items);
   const allDone = progress.done;
   const rowActions = {
     onToggle, onEdit, onDelete, onOpenRecommendation, onUnlinkRecommendation,
     onReleaseGiftReservation, onUpdateGiftReservation, pendingItemId,
   };
-  // A busca atravessa as categorias: com texto no campo, o chip deixa de valer.
+  // A busca atravessa as categorias da lista aberta: com texto no campo, o chip deixa de valer.
   const searching = query.trim() !== "";
-  const results = searchItems(items, query);
+  const results = searchItems(items, query, categories);
   const found = results.reduce((n, g) => n + g.items.length, 0);
   const clearSearch = () => {
     setQuery("");
@@ -46,11 +81,43 @@ export function ChecklistPanel({
 
   return (
     <div className="screen checklist">
+      <nav className="list-switcher" aria-label="Suas listas">
+        {lists.map((other) => (
+          <button
+            type="button"
+            key={other.id}
+            className={`list-chip ${other.id === list.id ? "is-current" : ""}`}
+            aria-current={other.id === list.id ? "true" : undefined}
+            onClick={() => onSelectList(other.id)}
+            data-testid={`button-list-${other.id}`}
+          >
+            {other.name}
+          </button>
+        ))}
+        <button type="button" className="list-chip list-chip-add" onClick={() => setDialog("new-list")} data-testid="button-new-list">
+          <Plus size={16} aria-hidden /> nova lista
+        </button>
+      </nav>
       <div className="screen-intro">
-        <h2 className="screen-title">Tudo no lugar, na hora certa</h2>
+        <div className="list-heading">
+          <h2 className="screen-title" data-testid="text-list-name">{list.name}</h2>
+          <TinyButton onClick={() => setDialog("edit-list")} label={`Editar a lista ${list.name}`} testId="button-edit-list"><Pencil size={16} /></TinyButton>
+        </div>
         <p className="screen-lead"><strong>{allDone} de {items.length}</strong> itens resolvidos. Toque em um item para ajustar quantidade e preço.</p>
-        <Progress value={progress.percent} label={`Enxoval: ${allDone} de ${items.length} itens resolvidos`} />
+        <Progress value={progress.percent} label={`${list.name}: ${allDone} de ${items.length} itens resolvidos`} />
       </div>
+      {showSuggestionsNotice(list, items) && (
+        <div className="suggestion-notice" role="note" data-testid="suggestions-notice">
+          <span className="suggestion-notice-icon" aria-hidden><Sparkles size={18} /></span>
+          <p>
+            <strong>Começamos com sugestões do Ninho.</strong>{" "}
+            Apague, edite e acrescente à vontade. Quantidades e preços são estimativas.
+          </p>
+          <button type="button" className="secondary-button" onClick={() => actions.dismissNotice(list.id)} data-testid="button-dismiss-suggestions">
+            entendi
+          </button>
+        </div>
+      )}
       <div className="list-search">
         <Search size={18} aria-hidden />
         <label className="visually-hidden" htmlFor="checklist-search">Buscar item</label>
@@ -81,11 +148,14 @@ export function ChecklistPanel({
         {searching ? `${found} ${found === 1 ? "item encontrado" : "itens encontrados"}` : ""}
       </p>
       <div className="filter-row" role="group" aria-label="Categorias">
-        {CATEGORIES.map((key) => (
-          <Pill key={key} active={!searching && category === key} onClick={() => { setCategory(key); setQuery(""); }} testId={`button-phone-category-${key.toLowerCase()}`}>
-            <CategoryBadge category={key} small />{key}
+        {categories.map((c) => (
+          <Pill key={c.id} active={!searching && category?.id === c.id} onClick={() => { setCategoryId(c.id); setQuery(""); }} testId={`button-phone-category-${c.name.toLowerCase().replace(/\s+/g, "-")}`}>
+            <CategoryBadge icon={c.icon} tone={c.tone} small />{c.name}
           </Pill>
         ))}
+        <button type="button" className="pill pill-add" onClick={() => setDialog("new-category")} data-testid="button-new-category">
+          <Plus size={14} aria-hidden /> categoria
+        </button>
       </div>
       {searching ? (
         <section className="card checklist-card" aria-labelledby="checklist-category-title">
@@ -102,31 +172,34 @@ export function ChecklistPanel({
               </div>
             )}
             {results.map((group) => (
-              <div className="search-group" key={group.category}>
-                <h3 className="search-group-title"><CategoryBadge category={group.category} small />{group.category}</h3>
+              <div className="search-group" key={group.category.id}>
+                <h3 className="search-group-title"><CategoryBadge icon={group.category.icon} tone={group.category.tone} small />{group.category.name}</h3>
                 {group.items.map((item) => <ItemRow key={item.id} item={item} {...rowActions} />)}
               </div>
             ))}
           </div>
         </section>
-      ) : (
+      ) : category && (
         <section className="card checklist-card" aria-labelledby="checklist-category-title">
           <div className="card-header">
-            <h2 className="card-title card-title-with-badge" id="checklist-category-title"><CategoryBadge category={category} small />{category}</h2>
-            <TinyButton onClick={() => onAdd(category)} label={`Adicionar item em ${category}`} testId="button-phone-add-item"><Plus size={18} /></TinyButton>
+            <h2 className="card-title card-title-with-badge" id="checklist-category-title"><CategoryBadge icon={category.icon} tone={category.tone} small />{category.name}</h2>
+            <div className="card-header-actions">
+              <TinyButton onClick={() => setDialog("edit-category")} label={`Editar a categoria ${category.name}`} testId="button-edit-category"><Pencil size={16} /></TinyButton>
+              <TinyButton onClick={() => onAdd(category.id)} label={`Adicionar item em ${category.name}`} testId="button-phone-add-item"><Plus size={18} /></TinyButton>
+            </div>
           </div>
           <div className="check-list" aria-busy={isActionPending}>
             {visible.length === 0 && (
               <div className="empty-category">
-                <p>Nenhum item em {category} ainda.</p>
-                <button type="button" className="text-action" onClick={() => onAdd(category)} data-testid="button-phone-add-category-item">
+                <p>Nenhum item em {category.name} ainda.</p>
+                <button type="button" className="text-action" onClick={() => onAdd(category.id)} data-testid="button-phone-add-category-item">
                   <Plus size={13} /> adicionar primeiro item
                 </button>
               </div>
             )}
             {visible.map((item) => <ItemRow key={item.id} item={item} {...rowActions} />)}
           </div>
-          <button type="button" className="text-action" onClick={() => onAdd(category)} data-testid="button-phone-add-list-item">
+          <button type="button" className="text-action" onClick={() => onAdd(category.id)} data-testid="button-phone-add-list-item">
             <Plus size={16} aria-hidden /> adicionar item
           </button>
         </section>
@@ -138,6 +211,54 @@ export function ChecklistPanel({
           <div className="log-row" key={i.id}><span className="log-dot dim" /><span>{i.name} marcado como {i.status.toLowerCase()}</span></div>
         ))}
       </div>
+
+      {dialog === "new-list" && (lists.length >= MAX_CHECKLISTS ? (
+        <LimitDialog
+          title="Limite de listas"
+          message={`Você chegou ao limite de ${MAX_CHECKLISTS} listas. Exclua uma para criar outra.`}
+          onClose={() => setDialog(null)}
+        />
+      ) : (
+        <CreateChecklistModal onClose={() => setDialog(null)} onCreate={actions.createList} />
+      ))}
+      {dialog === "edit-list" && (
+        <EditChecklistModal
+          list={list}
+          itemCount={items.length}
+          isOnlyList={lists.length === 1}
+          onClose={() => setDialog(null)}
+          onRename={(name) => actions.renameList(list.id, name)}
+          onDelete={() => actions.deleteList(list.id)}
+        />
+      )}
+      {dialog === "new-category" && (categories.length >= MAX_CATEGORIES ? (
+        <LimitDialog
+          title="Limite de categorias"
+          message={`Esta lista chegou ao limite de ${MAX_CATEGORIES} categorias. Exclua uma para criar outra.`}
+          onClose={() => setDialog(null)}
+        />
+      ) : (
+        <CategoryModal
+          siblings={categories}
+          onClose={() => setDialog(null)}
+          onSave={async (data) => {
+            const created = await actions.createCategory(list.id, data);
+            // A categoria nova já abre, vazia, pronta para o primeiro item (LC-R7).
+            setCategoryId(created.id);
+            setQuery("");
+          }}
+        />
+      ))}
+      {dialog === "edit-category" && category && (
+        <CategoryModal
+          category={category}
+          siblings={categories}
+          itemCount={visible.length}
+          onClose={() => setDialog(null)}
+          onSave={(data) => actions.updateCategory(category.id, data)}
+          onDelete={(moveTo) => actions.deleteCategory(category.id, moveTo)}
+        />
+      )}
     </div>
   );
 }
@@ -170,6 +291,7 @@ function ItemRow({
           <small>
             {describeItemTotal(item)}
             {item.essential && <span className="badge badge-butter">Essencial</span>}
+            {item.suggested && <span className="badge badge-suggestion" data-testid={`badge-suggestion-${item.id}`}>Sugestão</span>}
           </small>
           {item.giftReservation && (
             <span className="gift-reservation-owner">

@@ -8,7 +8,7 @@ import { PixCard } from "@/features/gift-lists/pix-card";
 import { AccountSection } from "@/features/profile/account-section";
 
 export function ProfilePanel({
-  profile, onSave, saveState, saveError, share, onCreateShare, onRevokeShare, shareLoading, shareError,
+  profile, onSave, saveState, saveError, share, onCreateShare, onRevokeShare, shareLoading, shareError, sharedListName,
 }: {
   profile: ServerProfile;
   onSave: (data: UpdateProfileInput) => void;
@@ -19,6 +19,8 @@ export function ProfilePanel({
   onRevokeShare: () => void;
   shareLoading: boolean;
   shareError: string | null;
+  /** Nome da lista que o link mostra, quando a conta tem mais de uma (LC-R24). */
+  sharedListName: string | null;
 }) {
   const dueDateBounds = getDueDateBounds();
   const [name, setName] = useState(profile.displayName || "");
@@ -154,6 +156,7 @@ export function ProfilePanel({
         )}
       </div>
       <GiftShareCard
+        sharedListName={sharedListName}
         share={share}
         onCreate={onCreateShare}
         onRevoke={onRevokeShare}

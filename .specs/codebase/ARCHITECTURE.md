@@ -47,8 +47,11 @@ monta `health`, `/auth`, `/me` (todas atrás de `requireAuth`) e `/gift`.
 | GET | `/api/auth/session` | `routes/auth.ts:173` |
 | POST | `/api/auth/password-reset/request` \| `/complete` | `routes/auth.ts:196,237` |
 | GET | `/api/me/workspace` | `routes/me.ts:35` |
-| PUT | `/api/me/profile`, `/api/me/budget` | `routes/me.ts:171,358` |
-| POST/PATCH/DELETE | `/api/me/checklist[/:id]` | `routes/me.ts:195,239,298` |
+| PUT | `/api/me/profile`, `/api/me/budget` (planejado por `categoryId`) | `routes/me.ts` |
+| POST/PATCH/DELETE | `/api/me/checklist[/:id]` (item, com `categoryId`) | `routes/me.ts` |
+| POST/PATCH/DELETE | `/api/me/checklists[/:id]` (listas do Enxoval) | `routes/checklists.ts` |
+| POST | `/api/me/checklists/:id/categories` | `routes/checklists.ts` |
+| PATCH/DELETE | `/api/me/checklist-categories/:id` (`?moveTo=` ou `?items=delete`) | `routes/checklists.ts` |
 | PATCH | `/api/me/milestones/:id` | `routes/me.ts:328` |
 | GET/POST/DELETE | `/api/me/share` | `routes/me.ts:65,75,106` |
 | PATCH/DELETE | `/api/me/gift-reservations/:id` | `routes/me.ts:129,152` |
@@ -72,7 +75,9 @@ IP e por conta (`AuthAttemptLimiter`, `lib/auth.ts:42`).
 `GET /api/me/workspace` chama `initializeUser()` (`lib/seed.ts`) — que cria o
 profile com `INSERT ... ON CONFLICT DO NOTHING` e, **só** para perfis novos, semeia
 checklist/marcos/orçamento na mesma transação — e devolve
-`{ profile, items, milestones, budget, giftReservations }` em uma chamada.
+`{ profile, lists, categories, items, milestones, giftReservations }` em uma chamada
+(desde 2026-10-13 o orçamento é o `planned` de cada categoria; conta de antes das listas é
+migrada ao subir a API e, por garantia, aqui — `lib/checklist-store.ts`).
 
 ## Estado no cliente
 

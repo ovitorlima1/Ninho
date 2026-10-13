@@ -61,7 +61,7 @@ export function PublicGiftPage() {
         ) : items.map((item) => {
           return (
             <article className={`public-gift-item ${item.reserved ? "is-reserved" : ""}`} key={item.id}>
-              <span className="public-gift-item-icon"><CategoryIcon category={item.category} size={17} /></span>
+              <span className="public-gift-item-icon"><CategoryIcon category={item.category} icon={item.categoryIcon} size={17} /></span>
               <div className="public-gift-item-copy">
                 <small>{item.category} · {item.qty} {item.qty === 1 ? "unidade" : "unidades"}</small>
                 <h2>{item.name}</h2>
