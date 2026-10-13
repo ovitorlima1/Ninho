@@ -16,6 +16,7 @@ Códigos entre parênteses = achados da auditoria.
 | — | `busca-na-lista` | diagnóstico r08 | **Concluída** (PR #8, na main em 2026-09-29) | — |
 | — | `verificacao-email` | diagnóstico l02; resíduo de B4 | **Concluída** (PR #9, na main em 2026-09-29) | — |
 | — | `listas-de-presentes` (E1) | diagnóstico p01–p08, p10 | **E1 concluída** (PR #10, na main em 2026-10-02); E2 (fotos) e E3 (acompanhamento) especificadas | — |
+| — | `listas-e-categorias` | pedido do dono (2026-10-13) | **Código pronto na branch** (2026-10-13); falta PR e deploy | — |
 | — | `deploy-vps` | diagnóstico l04, l05, l09 | **Código pronto na branch** (2026-10-02); imagens ainda não construídas; falta o deploy na VPS | — |
 
 ## Marcos

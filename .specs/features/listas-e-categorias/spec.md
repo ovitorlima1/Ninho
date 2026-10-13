@@ -3,7 +3,7 @@
 **Tamanho:** Large (banco, API, cinco telas que dependem de categoria e migração de contas que já existem em produção).
 **Origem:** pedido do dono em 2026-10-13, sobre a tela Lista: "deixar claro que as opções que já vêm na lista são um
 template ou sugestões" e "ter a possibilidade de forma fácil criar uma nova lista e também categorias".
-**Estado desta spec:** em construção na branch `listas-e-categorias`.
+**Estado desta spec:** construída em 2026-10-13 na branch `listas-e-categorias` (108/108 E2E). Falta o dono conferir e o deploy.
 
 ## Decisões do dono (2026-10-13)
 
