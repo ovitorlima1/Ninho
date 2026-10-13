@@ -5,7 +5,9 @@ import {
   authSessions,
   authUsers,
   budgetCategories,
+  checklistCategories,
   checklistItems,
+  checklists,
   deleteAccountSchema,
   emailVerificationTokens,
   giftListItems,
@@ -54,10 +56,11 @@ router.get("/export", requireAuth, async (req, res) => {
     const [profile] = await db.select().from(profiles).where(eq(profiles.userId, userId));
     const items = await db.select().from(checklistItems).where(eq(checklistItems.userId, userId)).orderBy(asc(checklistItems.sortOrder), asc(checklistItems.id));
     const userMilestones = await db.select().from(milestones).where(eq(milestones.userId, userId)).orderBy(asc(milestones.week));
-    const budget = await db.select().from(budgetCategories).where(eq(budgetCategories.userId, userId));
+    const lists = await db.select().from(checklists).where(eq(checklists.userId, userId)).orderBy(asc(checklists.sortOrder), asc(checklists.id));
+    const categories = await db.select().from(checklistCategories).where(eq(checklistCategories.userId, userId)).orderBy(asc(checklistCategories.sortOrder), asc(checklistCategories.id));
     const shareLinks = await db.select().from(giftShareLinks).where(eq(giftShareLinks.userId, userId)).orderBy(asc(giftShareLinks.id));
     const reservations = await db.select().from(giftReservations).where(eq(giftReservations.userId, userId));
-    const lists = await db.select().from(giftLists).where(eq(giftLists.userId, userId)).orderBy(asc(giftLists.id));
+    const presentLists = await db.select().from(giftLists).where(eq(giftLists.userId, userId)).orderBy(asc(giftLists.id));
     const listItems = await db.select().from(giftListItems).where(eq(giftListItems.userId, userId)).orderBy(asc(giftListItems.id));
     const pledges = await db.select().from(giftPledges).where(eq(giftPledges.userId, userId)).orderBy(asc(giftPledges.id));
     const [pix] = await db.select().from(pixAccounts).where(eq(pixAccounts.userId, userId));
@@ -74,13 +77,15 @@ router.get("/export", requireAuth, async (req, res) => {
       exportedAt: exportedAt.toISOString(),
       account: account ?? null,
       profile: profile ? omitOwner(profile) : null,
+      // Listas do Enxoval, com as categorias e o valor planejado de cada uma (o orçamento).
+      checklists: lists.map(omitOwner),
+      checklistCategories: categories.map((category) => ({ ...omitOwner(category), planned: Number(category.planned) })),
       items: items.map((item) => ({ ...omitOwner(item), price: Number(item.price) })),
       milestones: userMilestones.map(omitOwner),
-      budget: budget.map((row) => ({ ...omitOwner(row), planned: Number(row.planned) })),
       giftShareLinks: shareLinks.map(({ id, createdAt, revokedAt }) => ({ id, createdAt, revokedAt, active: revokedAt === null })),
       giftReservations: reservations.map(omitOwner),
       // Os tokens (link da lista e link de gerenciamento do convidado) são credenciais e ficam de fora.
-      giftLists: lists.map(({ token: _token, ...list }) => omitOwner(list)),
+      giftLists: presentLists.map(({ token: _token, ...list }) => omitOwner(list)),
       giftListItems: listItems.map(omitOwner),
       giftPledges: pledges.map(({ manageTokenHash: _hash, ...pledge }) => omitOwner(pledge)),
       pixAccount: pix ? omitOwner(pix) : null,
@@ -133,6 +138,8 @@ router.delete("/account", requireAuth, async (req, res) => {
       await tx.delete(pixAccounts).where(eq(pixAccounts.userId, userId));
       await tx.delete(giftShareLinks).where(eq(giftShareLinks.userId, userId));
       await tx.delete(checklistItems).where(eq(checklistItems.userId, userId));
+      await tx.delete(checklistCategories).where(eq(checklistCategories.userId, userId));
+      await tx.delete(checklists).where(eq(checklists.userId, userId));
       await tx.delete(milestones).where(eq(milestones.userId, userId));
       await tx.delete(budgetCategories).where(eq(budgetCategories.userId, userId));
       await tx.delete(profiles).where(eq(profiles.userId, userId));

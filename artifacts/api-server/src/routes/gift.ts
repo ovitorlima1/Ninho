@@ -2,12 +2,14 @@ import { Router } from "express";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
+  checklistCategories,
   checklistItems,
   giftReservations,
   giftShareLinks,
   profiles,
   reserveGiftSchema,
 } from "@workspace/db/schema";
+import { primaryChecklist } from "../lib/checklist-store";
 import { giftReservationLimiter, limiterKey } from "../lib/rate-limit";
 
 const router = Router();
@@ -24,11 +26,16 @@ function getDatabaseErrorCode(error: unknown): string | undefined {
   return undefined;
 }
 
-function publicItem(item: typeof checklistItems.$inferSelect, reservation?: typeof giftReservations.$inferSelect) {
+function publicItem(
+  item: typeof checklistItems.$inferSelect,
+  reservation?: typeof giftReservations.$inferSelect,
+  categoryIcon: string | null = null,
+) {
   return {
     id: item.id,
     name: item.name,
     category: item.category,
+    categoryIcon,
     qty: item.qty,
     reserved: Boolean(reservation),
     reservation: reservation
@@ -56,27 +63,43 @@ router.get("/:token", async (req, res): Promise<void> => {
       )).for("update").limit(1);
       if (!share) return { kind: "invalid" as const };
 
-      const [[profile], items, reservations] = await Promise.all([
+      // O link mostra só a primeira lista (o enxoval): as outras não são de presente (LC-R24).
+      const list = await primaryChecklist(tx, share.userId);
+      if (!list) return { kind: "found" as const, profile: undefined, items: [], reservations: [], categories: [] };
+
+      const [[profile], items, reservations, categories] = await Promise.all([
         tx.select({ displayName: profiles.displayName, babyName: profiles.babyName })
           .from(profiles)
           .where(eq(profiles.userId, share.userId)),
         tx.select().from(checklistItems)
-          .where(and(eq(checklistItems.userId, share.userId), eq(checklistItems.status, "A comprar")))
-          .orderBy(checklistItems.category, checklistItems.sortOrder, checklistItems.createdAt),
+          .where(and(
+            eq(checklistItems.userId, share.userId),
+            eq(checklistItems.listId, list.id),
+            eq(checklistItems.status, "A comprar"),
+          ))
+          .orderBy(checklistItems.sortOrder, checklistItems.createdAt),
         tx.select().from(giftReservations).where(eq(giftReservations.userId, share.userId)),
+        tx.select().from(checklistCategories)
+          .where(and(eq(checklistCategories.userId, share.userId), eq(checklistCategories.listId, list.id)))
+          .orderBy(checklistCategories.sortOrder, checklistCategories.id),
       ]);
-      return { kind: "found" as const, profile, items, reservations };
+      return { kind: "found" as const, profile, items, reservations, categories };
     });
     if (result.kind === "invalid") {
       res.status(404).json({ error: "Este link não existe ou foi revogado." });
       return;
     }
     const byItem = new Map(result.reservations.map((reservation) => [reservation.checklistItemId, reservation]));
+    // Itens agrupados na ordem das categorias da lista, como a dona vê.
+    const order = new Map(result.categories.map((category, index) => [category.id, index]));
+    const icons = new Map(result.categories.map((category) => [category.id, category.icon]));
+    const rank = (categoryId: number | null) => order.get(categoryId ?? -1) ?? order.size;
+    const items = [...result.items].sort((a, b) => rank(a.categoryId) - rank(b.categoryId));
 
     res.json({
       ownerName: result.profile?.displayName || null,
       babyName: result.profile?.babyName || null,
-      items: result.items.map((item) => publicItem(item, byItem.get(item.id))),
+      items: items.map((item) => publicItem(item, byItem.get(item.id), icons.get(item.categoryId ?? -1) ?? null)),
     });
   } catch (err) {
     req.log.error({ err }, "public gift list error");
@@ -116,10 +139,14 @@ router.post("/:token/reservations", async (req, res): Promise<void> => {
       )).for("update").limit(1);
       if (!share) return { kind: "invalid" as const };
 
+      const list = await primaryChecklist(tx, share.userId);
+      if (!list) return { kind: "unavailable" as const };
+
       // This also serializes a concurrent owner update/delete of the item.
       const [item] = await tx.select().from(checklistItems).where(and(
         eq(checklistItems.id, parsed.data.itemId),
         eq(checklistItems.userId, share.userId),
+        eq(checklistItems.listId, list.id),
         eq(checklistItems.status, "A comprar"),
       )).for("update").limit(1);
       if (!item) return { kind: "unavailable" as const };
