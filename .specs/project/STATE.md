@@ -31,6 +31,8 @@
 | 2026-10-13 | Enxoval com várias listas (modelos: Mala da maternidade, Quarto do bebê, Enxoval do bebê, em branco), categorias que a mãe cria, renomeia e exclui (cada uma com linha no Orçamento) e itens do modelo marcados como "Sugestão" até ela mexer, com aviso que dá para fechar. | Escolhas do dono. |
 | 2026-10-13 | O planejado do Orçamento mora na categoria (`checklist_categories.planned`); `budget_categories` fica vazia no schema. Dado antigo é migrado pela API ao subir, porque o deploy usa `drizzle-kit push`, que não roda script de dados. | Push só acrescenta; apagar a tabela é limpeza manual futura. |
 | 2026-10-13 | O link público do Perfil e as inspirações usam a primeira lista; com mais de uma lista, o Orçamento agrupa por lista e o Início mostra "Por lista". | Assumido na spec `listas-e-categorias`; o dono pode mudar. |
+| 2026-10-13 | Foto do produto nos presentes e nos itens do Enxoval, enviada do aparelho; buscar a foto na página da loja fica para a entrega seguinte. | Escolhas do dono. |
+| 2026-10-13 | Fotos em WebP de até 1200px, sem metadados, num volume da VPS; endereço aleatório e público; foto de item apagado some numa limpeza de hora em hora (o que permite o Desfazer); 100 MB por conta. O sharp vai para a imagem da API por `pnpm deploy`. | Assumido na spec `foto-do-produto`; o dono pode mudar. |
 | 2026-10-02 | Produção vai para uma VPS (Docker Compose, Postgres na própria máquina), não para o Replit; fotos das listas (E2) ficam num volume da VPS. | Escolha do dono. |
 
 ## Bloqueios
@@ -63,6 +65,10 @@
 - Validar a migração numa cópia do banco de dev (`CREATE DATABASE … TEMPLATE ninho`, `push` sem `--force`, varredura por script) mostrou em minutos que o schema só acrescenta e que as contas antigas chegam inteiras — antes de escrever uma linha de tela.
 - Captura tirada logo depois de um clique pode pegar o primeiro quadro da transição de cor (o ícone antigo ainda pintado): conferir pelo `aria-checked`/classe ou mover o mouse e capturar de novo antes de concluir que há bug.
 
+- `pnpm deploy --legacy --prod` deixa o workspace marcado como instalação de produção: o próximo `pnpm run` tenta reinstalar e para por falta de terminal. `CI=true pnpm install --frozen-lockfile` devolve ao normal.
+- O conjunto de produção no computador (`compose.local.yml`) não deixa cadastrar: `PUBLIC_APP_URL` em http é recusado em produção. Para testar com conta, um terceiro arquivo de compose pondo `PUBLIC_APP_URL: https://localhost:8088` na `api`, e a conta confirmada direto no banco local.
+- Testar o que só existe em produção (binário nativo na imagem, volume com dono certo, limite de corpo do Nginx) com `docker run` da imagem e com o compose local pegou tudo antes do deploy, sem tocar na VPS.
+
 ## Todos
 
 - [x] Atualizar `replit.md` com a nova regra de "investido" (feito na Fase 0).
@@ -77,6 +83,7 @@
 
 ## Ideias adiadas
 
+- Foto do produto: usar a foto da página da loja (LP-R34, LP-R35), várias fotos por item, recorte, ampliar em tela cheia e mandar a cópia das fotos para fora da VPS.
 - Listas do Enxoval: mover item entre listas, reordenar listas e categorias, escolher a cor da categoria, compartilhar outra lista que não a primeira, e um "apagar as sugestões que não mexi" no aviso.
 - Apagar a tabela `budget_categories` (vazia em produção desde o deploy de `listas-e-categorias`, em 2026-10-13), à mão na VPS.
 - Mover catálogo de inspirações para o banco/CMS (Fase 3+).

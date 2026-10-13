@@ -3,7 +3,8 @@
 **Tamanho:** Large (envio de arquivo, tratamento de imagem, armazenamento na VPS, cinco telas e mudança no deploy).
 **Origem:** "não tem a opção de incluir a foto do produto" (dono, 2026-10-13). É a entrega E2 de
 `listas-de-presentes` (LP-R33 a LP-R39), agora estendida aos itens do Enxoval.
-**Estado desta spec:** em construção na branch `foto-do-produto`.
+**Estado desta spec:** construída em 2026-10-13 na branch `foto-do-produto` (122/122 E2E; envio conferido no conjunto de
+produção rodando no computador). Falta o PR e o deploy.
 
 ## Decisões do dono
 
