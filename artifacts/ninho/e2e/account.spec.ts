@@ -6,6 +6,8 @@ import { createAccount, expectAccessible, PASSWORD, randomClientIp } from "./sup
 const USER_TABLES = [
   "profiles",
   "checklist_items",
+  "checklists",
+  "checklist_categories",
   "milestones",
   "budget_categories",
   "gift_share_links",
@@ -101,16 +103,25 @@ test("exportar meus dados baixa um JSON com a lista e sem o token do link", asyn
   const data = JSON.parse(text) as {
     account: { email: string };
     profile: { displayName: string };
-    items: Array<{ name: string }>;
+    items: Array<{ name: string; suggested: boolean }>;
     milestones: unknown[];
-    budget: unknown[];
+    checklists: Array<{ name: string }>;
+    checklistCategories: Array<{ name: string; planned: number }>;
     giftShareLinks: Array<{ active: boolean }>;
   };
   expect(data.account.email).toBe(email);
   expect(data.profile.displayName).toBe("Lia");
   expect(data.items.map((item) => item.name)).toContain("Body manga curta");
   expect(data.milestones.length).toBeGreaterThan(0);
-  expect(data.budget).toHaveLength(4);
+  expect(data.items.every((item) => item.suggested)).toBe(true);
+  expect(data.checklists.map((list) => list.name)).toEqual(["Enxoval do bebê"]);
+  // O orçamento vai junto: é o valor planejado de cada categoria.
+  expect(data.checklistCategories.map(({ name, planned }) => ({ name, planned }))).toEqual([
+    { name: "Roupas", planned: 1240 },
+    { name: "Higiene", planned: 680 },
+    { name: "Alimentação", planned: 520 },
+    { name: "Acessórios", planned: 940 },
+  ]);
   expect(data.giftShareLinks).toEqual([expect.objectContaining({ active: true })]);
   expect(text).not.toContain(token);
   expect(text).not.toContain("user_id");
@@ -123,6 +134,8 @@ test("excluir a conta pede senha e EXCLUIR e apaga tudo", async ({ page }) => {
   const before = await rowsOwnedBy(email);
   expect(before.auth_users).toBe(1);
   expect(before.checklist_items).toBeGreaterThan(0);
+  expect(before.checklists).toBe(1);
+  expect(before.checklist_categories).toBe(4);
   expect(before.gift_share_links).toBe(1);
 
   await page.goto("/profile");
