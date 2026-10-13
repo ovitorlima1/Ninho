@@ -52,6 +52,8 @@ export const giftListItems = pgTable(
     note: text("note"),
     similarOk: boolean("similar_ok").notNull().default(false),
     storeUrl: text("store_url"),
+    /** Foto do produto (`media_files.key`), se a mãe enviou uma. */
+    photoKey: text("photo_key"),
     allowWhole: boolean("allow_whole").notNull().default(true),
     /** "Já tenho": sai da lista do convidado sem apagar o histórico. */
     hidden: boolean("hidden").notNull().default(false),

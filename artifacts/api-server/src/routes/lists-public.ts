@@ -67,6 +67,7 @@ function publicItem(item: GiftListItem, pledges: GiftPledge[]) {
     similarOk: item.similarOk,
     storeUrl: item.storeUrl,
     storeDomain: storeDomain(item.storeUrl),
+    photoKey: item.photoKey,
     state: summary.state,
     goal: summary.goal,
     committed: summary.committed,

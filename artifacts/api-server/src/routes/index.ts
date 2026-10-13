@@ -7,6 +7,7 @@ import accountRouter from "./account";
 import listsRouter from "./lists";
 import checklistsRouter from "./checklists";
 import publicListsRouter from "./lists-public";
+import mediaRouter from "./media";
 
 const router: IRouter = Router();
 
@@ -19,5 +20,6 @@ router.use("/me", checklistsRouter);
 router.use("/me", meRouter);
 router.use("/gift", giftRouter);
 router.use("/lists", publicListsRouter);
+router.use("/media", mediaRouter);
 
 export default router;

@@ -15,6 +15,7 @@ import {
   giftPledges,
   giftReservations,
   giftShareLinks,
+  mediaFiles,
   milestones,
   passwordResetTokens,
   pixAccounts,
@@ -22,6 +23,7 @@ import {
 } from "@workspace/db/schema";
 import { expiredSessionCookie, verifyPassword } from "../lib/auth";
 import { accountDeletionLimiter, authAttemptLimiter, limiterKey, passwordResetEmailLimiter, verificationEmailLimiter } from "../lib/rate-limit";
+import { deleteAllMedia, removeMediaFiles } from "../lib/media-store";
 import { revokeAllSessions } from "../lib/sessions";
 import { firstIssueMessage } from "../lib/validation";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -64,6 +66,7 @@ router.get("/export", requireAuth, async (req, res) => {
     const listItems = await db.select().from(giftListItems).where(eq(giftListItems.userId, userId)).orderBy(asc(giftListItems.id));
     const pledges = await db.select().from(giftPledges).where(eq(giftPledges.userId, userId)).orderBy(asc(giftPledges.id));
     const [pix] = await db.select().from(pixAccounts).where(eq(pixAccounts.userId, userId));
+    const photos = await db.select().from(mediaFiles).where(eq(mediaFiles.userId, userId)).orderBy(asc(mediaFiles.id));
     const sessions = await db
       .select({ createdAt: authSessions.createdAt, lastSeenAt: authSessions.lastSeenAt, expiresAt: authSessions.expiresAt, revokedAt: authSessions.revokedAt })
       .from(authSessions)
@@ -89,6 +92,10 @@ router.get("/export", requireAuth, async (req, res) => {
       giftListItems: listItems.map(omitOwner),
       giftPledges: pledges.map(({ manageTokenHash: _hash, ...pledge }) => omitOwner(pledge)),
       pixAccount: pix ? omitOwner(pix) : null,
+      // As fotos em si ficam nos endereços abaixo; o item aponta para a dele por `photoKey`.
+      photos: photos.map(({ key, bytes, width, height, createdAt }) => ({
+        key, bytes, width, height, createdAt, url: `${process.env.PUBLIC_APP_URL ?? ""}/api/media/${key}`,
+      })),
       sessions,
     };
 
@@ -130,7 +137,8 @@ router.delete("/account", requireAuth, async (req, res) => {
       return;
     }
 
-    await db.transaction(async (tx) => {
+    const photoKeys = await db.transaction(async (tx) => {
+      const keys = await deleteAllMedia(tx, userId);
       await tx.delete(giftReservations).where(eq(giftReservations.userId, userId));
       await tx.delete(giftPledges).where(eq(giftPledges.userId, userId));
       await tx.delete(giftListItems).where(eq(giftListItems.userId, userId));
@@ -147,7 +155,10 @@ router.delete("/account", requireAuth, async (req, res) => {
       await tx.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userId));
       await tx.delete(authSessions).where(eq(authSessions.userId, userId));
       await tx.delete(authUsers).where(eq(authUsers.id, userId));
+      return keys;
     });
+    // Os arquivos saem depois que o banco confirmou: se a exclusão falhar, nada se perde (FP-R14).
+    await removeMediaFiles(photoKeys);
 
     // Contadores de tentativa ligados à conta também saem (são só hashes).
     await authAttemptLimiter.release([

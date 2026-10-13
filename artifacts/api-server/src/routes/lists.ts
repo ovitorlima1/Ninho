@@ -23,6 +23,8 @@ import {
 import { requireAuth } from "../middlewares/requireAuth";
 import { checkItemChange, summarizeItem } from "../lib/gift-rules";
 import { GIFT_TEMPLATES } from "../lib/gift-templates";
+import { discardMedia } from "../lib/media-store";
+import { photoBody, receivePhoto } from "../lib/photo-upload";
 import { buildPixPayload, maskPixKey, normalizePixKey, sanitizePixText, type PixKeyType } from "../lib/pix";
 import { firstIssueMessage } from "../lib/validation";
 
@@ -362,6 +364,58 @@ router.delete("/lists/:id/items/:itemId", async (req, res) => {
     res.status(204).send();
   } catch (err) {
     fail(req, res, err, "gift item delete error", "Não foi possível remover o presente agora.");
+  }
+});
+
+async function findItem(userId: string, listId: number | null, itemId: number | null): Promise<GiftListItem | undefined> {
+  if (!listId || !itemId) return undefined;
+  const [item] = await db.select().from(giftListItems)
+    .where(and(eq(giftListItems.id, itemId), eq(giftListItems.listId, listId), eq(giftListItems.userId, userId)));
+  return item;
+}
+
+/** PUT /api/me/lists/:id/items/:itemId/photo — foto do presente; o corpo é a própria imagem (FP-R1). */
+router.put("/lists/:id/items/:itemId/photo", photoBody, async (req, res) => {
+  const userId = res.locals.userId as string;
+  try {
+    const current = await findItem(userId, idParam(req, "id"), idParam(req, "itemId"));
+    if (!current) {
+      res.status(404).json({ error: "Não encontramos esse presente." });
+      return;
+    }
+    const item = await receivePhoto(req, res, {
+      userId,
+      currentKey: current.photoKey,
+      link: async (tx, key) => {
+        const [updated] = await tx.update(giftListItems)
+          .set({ photoKey: key, updatedAt: new Date() })
+          .where(and(eq(giftListItems.id, current.id), eq(giftListItems.userId, userId)))
+          .returning({ photoKey: giftListItems.photoKey });
+        return updated;
+      },
+    });
+    if (item) res.json(item);
+  } catch (err) {
+    fail(req, res, err, "gift photo upload error", "Não foi possível guardar a foto agora.");
+  }
+});
+
+/** DELETE /api/me/lists/:id/items/:itemId/photo — tira a foto do presente e apaga o arquivo (FP-R12). */
+router.delete("/lists/:id/items/:itemId/photo", async (req, res) => {
+  const userId = res.locals.userId as string;
+  try {
+    const current = await findItem(userId, idParam(req, "id"), idParam(req, "itemId"));
+    if (!current) {
+      res.status(404).json({ error: "Não encontramos esse presente." });
+      return;
+    }
+    await db.update(giftListItems)
+      .set({ photoKey: null, updatedAt: new Date() })
+      .where(and(eq(giftListItems.id, current.id), eq(giftListItems.userId, userId)));
+    if (current.photoKey) await discardMedia(userId, current.photoKey);
+    res.json({ photoKey: null });
+  } catch (err) {
+    fail(req, res, err, "gift photo delete error", "Não foi possível remover a foto agora.");
   }
 });
 

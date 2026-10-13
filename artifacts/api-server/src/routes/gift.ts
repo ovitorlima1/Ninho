@@ -36,6 +36,7 @@ function publicItem(
     name: item.name,
     category: item.category,
     categoryIcon,
+    photoKey: item.photoKey,
     qty: item.qty,
     reserved: Boolean(reservation),
     reservation: reservation

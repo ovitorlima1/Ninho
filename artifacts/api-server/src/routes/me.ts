@@ -22,6 +22,8 @@ import {
 import { requireAuth } from "../middlewares/requireAuth";
 import { clearsSuggestion, defaultLook, nextTone, normalizeName } from "../lib/checklist-rules";
 import { listCategories, listChecklists, migrateLegacyUser, primaryChecklist } from "../lib/checklist-store";
+import { discardMedia, findMedia, isMediaLinked } from "../lib/media-store";
+import { photoBody, receivePhoto } from "../lib/photo-upload";
 import { ensureUserInitialized } from "../lib/seed";
 import { firstIssueMessage } from "../lib/validation";
 
@@ -241,7 +243,7 @@ router.post("/checklist", async (req, res) => {
     return;
   }
   try {
-    const { categoryId, category: categoryName, ...fields } = parsed.data;
+    const { categoryId, category: categoryName, photoKey: wantedPhoto, ...fields } = parsed.data;
     if (fields.recommendationId) {
       const [existing] = await db
         .select({ id: checklistItems.id })
@@ -276,6 +278,11 @@ router.post("/checklist", async (req, res) => {
       return;
     }
 
+    // "Desfazer" de uma remoção: a foto volta se ainda é da conta e nenhum item a usa (FP-R13).
+    const photoKey = wantedPhoto && (await findMedia(db, userId, wantedPhoto)) && !(await isMediaLinked(db, wantedPhoto))
+      ? wantedPhoto
+      : null;
+
     const [item] = await db
       .insert(checklistItems)
       .values({
@@ -287,6 +294,7 @@ router.post("/checklist", async (req, res) => {
         category: category.name,
         // O que a mãe adiciona é dela, nunca sugestão (LC-R5).
         suggested: false,
+        photoKey,
       })
       .returning();
     res.status(201).json(item);
@@ -396,6 +404,62 @@ router.delete("/checklist/:id", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "checklist delete error");
     res.status(500).json({ error: "Não foi possível remover o item agora." });
+  }
+});
+
+/** PUT /api/me/checklist/:id/photo — foto do produto; o corpo é a própria imagem (FP-R1) */
+router.put("/checklist/:id/photo", photoBody, async (req, res) => {
+  const userId = res.locals.userId as string;
+  const id = parseInt(String(req.params.id), 10);
+  try {
+    const [current] = isNaN(id) ? [] : await db
+      .select({ photoKey: checklistItems.photoKey })
+      .from(checklistItems)
+      .where(and(eq(checklistItems.id, id), eq(checklistItems.userId, userId)));
+    if (!current) {
+      res.status(404).json({ error: "Não encontramos esse item. Atualize a página e tente de novo." });
+      return;
+    }
+    const item = await receivePhoto(req, res, {
+      userId,
+      currentKey: current.photoKey,
+      link: async (tx, key) => {
+        const [updated] = await tx.update(checklistItems)
+          .set({ photoKey: key, updatedAt: new Date() })
+          .where(and(eq(checklistItems.id, id), eq(checklistItems.userId, userId)))
+          .returning();
+        return updated;
+      },
+    });
+    if (item) res.json(item);
+  } catch (err) {
+    req.log.error({ err }, "checklist photo upload error");
+    res.status(500).json({ error: "Não foi possível guardar a foto agora." });
+  }
+});
+
+/** DELETE /api/me/checklist/:id/photo — tira a foto do item e apaga o arquivo (FP-R12) */
+router.delete("/checklist/:id/photo", async (req, res) => {
+  const userId = res.locals.userId as string;
+  const id = parseInt(String(req.params.id), 10);
+  try {
+    const [current] = isNaN(id) ? [] : await db
+      .select({ photoKey: checklistItems.photoKey })
+      .from(checklistItems)
+      .where(and(eq(checklistItems.id, id), eq(checklistItems.userId, userId)));
+    if (!current) {
+      res.status(404).json({ error: "Não encontramos esse item. Atualize a página e tente de novo." });
+      return;
+    }
+    const [updated] = await db.update(checklistItems)
+      .set({ photoKey: null, updatedAt: new Date() })
+      .where(and(eq(checklistItems.id, id), eq(checklistItems.userId, userId)))
+      .returning();
+    if (current.photoKey) await discardMedia(userId, current.photoKey);
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, "checklist photo delete error");
+    res.status(500).json({ error: "Não foi possível remover a foto agora." });
   }
 });
 
