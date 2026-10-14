@@ -35,6 +35,8 @@ Construída em 2026-10-14 na branch `contato-do-convidado`. Spec: CC-R1 a CC-R18
   Cobrem: 400 sem nome, sem telefone e com telefone inválido (nada gravado); telefone normalizado; nenhuma resposta
   pública (lista, reserva, consulta das reservas) com o telefone; exportação com o telefone; nome escondido no Enxoval;
   aparelho que lembra o contato.
+- CC-R10 (telefone fora do log): conferido lendo o código — o log de requisição guarda só id, método e caminho, e nenhuma
+  rota registra o corpo. Não há teste automatizado para isso.
 - Capturas conferidas em 375 e 1280px (formulários com e sem erro, telas da mãe, página pública).
 - Achado na conferência visual e corrigido: com o interruptor ligado e o nome vazio, o texto dizia "já escolhido".
 

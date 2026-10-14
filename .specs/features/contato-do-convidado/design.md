@@ -33,12 +33,13 @@ Mora em `lib/db/src/schema/guestContact.ts` (sem banco), usada pelos esquemas zo
 - Mãe: `ownerPledge` e a lista do workspace já espalham a linha inteira, então `guestPhone` chega sozinho; o teste de API
   fixa isso para ninguém tirar sem querer. O PATCH da mãe continua sem aceitar telefone.
 - Exportação e exclusão de conta: já usam `select()` da linha toda e `delete` por conta; só ganham teste.
-- Log: o handler não registra o corpo; o teste de CC-R10 confere a saída do log numa reserva.
+- Log: o serializer de requisição (`app.ts`) guarda só id, método e caminho sem a query, e nenhuma rota registra o corpo;
+  os erros do banco já passam pelo `errSerializer` sem os valores. CC-R10 vale por construção, sem teste automatizado.
 
 ## Front
 
 - `ContactFields` (novo, `components/contact-fields.tsx`): nome + WhatsApp + aviso de privacidade, com validação em
-  linha, `autocomplete="name"` / `"tel"`, `inputMode="tel"`; devolve `{ name, phone, valid, errors }`.
+  linha, `autocomplete="name"` / `"tel"`, `inputMode="tel"`; o estado mora em `useGuestContact` (`contact`, `errors`, `change`, `check`).
   Usado pelos dois formulários, para a validação e o texto serem os mesmos.
 - `lib/guest-contact.ts`: lê e grava `{ name, phone }` em `localStorage` (`ninho:convidado`),
   com `try/catch` e validação ao ler.
@@ -48,7 +49,7 @@ Mora em `lib/db/src/schema/guestContact.ts` (sem banco), usada pelos esquemas zo
   Recebe o nome da mãe para o aviso.
 - Página pública do Enxoval: texto "Já escolhido" / "Já presenteado" quando o nome vem nulo.
 - Mãe: `list-modals.tsx` (contribuições) e `checklist-panel.tsx` (item reservado) mostram telefone formatado e o atalho
-  do WhatsApp; um pequeno `ContactLine` reaproveitado.
+  do WhatsApp; o componente `GuestPhone` (`components/guest-phone.tsx`) é o mesmo nas duas.
 
 ## Riscos
 
