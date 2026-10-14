@@ -1,39 +1,48 @@
 import { useState } from "react";
 import { Gift, X } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
+import { ContactFields, useGuestContact } from "@/components/contact-fields";
 import { TinyButton } from "@/components/controls";
 import { ModalShell } from "@/components/modal-shell";
 import { reservePublicGift, type GiftReservationStatus, type PublicGiftItem } from "@/lib/api";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { saveGuestContact } from "@/lib/guest-contact";
 
 export function GiftReservationModal({
-  item, token, onClose, onReserved,
+  item, token, ownerName, onClose, onReserved,
 }: {
   item: PublicGiftItem;
   token: string;
+  /** Nome de quem recebe, para o aviso de privacidade. */
+  ownerName: string | null;
   onClose: () => void;
   onReserved: () => void;
 }) {
-  const [guestName, setGuestName] = useState("");
+  const { contact, errors, change, check } = useGuestContact();
+  const [showName, setShowName] = useState(true);
   const [status, setStatus] = useState<GiftReservationStatus>("vou presentear");
   const mutation = useMutation({
-    mutationFn: () => reservePublicGift(token, {
-      itemId: item.id,
-      guestName: guestName.trim() || null,
-      status,
-    }),
+    mutationFn: (who: { guestName: string; guestPhone: string }) => reservePublicGift(token, { itemId: item.id, ...who, showName, status }),
     onSuccess: () => {
+      saveGuestContact(contact);
       onReserved();
       onClose();
     },
   });
+
+  const submit = () => {
+    if (mutation.isPending) return;
+    const who = check();
+    if (who) mutation.mutate(who);
+  };
+  const name = contact.name.trim();
 
   return (
     <ModalShell
       className="gift-reservation-modal"
       labelledBy="reserve-gift-title"
       onClose={onClose}
-      onSubmit={() => !mutation.isPending && mutation.mutate()}
+      onSubmit={submit}
     >
       <>
         <div className="modal-top">
@@ -41,9 +50,13 @@ export function GiftReservationModal({
           <TinyButton onClick={onClose} label="Fechar" testId="button-close-gift-reservation"><X size={17} /></TinyButton>
         </div>
         <p>Você está reservando {item.qty > 1 ? `${item.qty} unidades` : "este item"} para que ele não se repita.</p>
-        <label className="modal-label">
-          Seu nome <small>(opcional)</small>
-          <input value={guestName} maxLength={120} onChange={(event) => setGuestName(event.target.value)} placeholder="Como a família vai reconhecer você?" data-testid="input-gift-guest-name" />
+        <ContactFields contact={contact} errors={errors} onChange={change} ownerName={ownerName} testIdPrefix="gift-guest" />
+        <label className="switch-row">
+          <span className="switch-copy">
+            <strong>Mostrar meu nome na lista</strong>
+            <small>{name ? `Os outros convidados veem “${name}”.` : "Os outros convidados veem “já escolhido”."}</small>
+          </span>
+          <input type="checkbox" role="switch" className="switch" checked={showName} onChange={(event) => setShowName(event.target.checked)} data-testid="switch-gift-show-name" />
         </label>
         <fieldset className="gift-status-picker">
           <legend>Como você quer marcar?</legend>

@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { Check, Copy, ExternalLink, Gift, Heart, Minus, Plus, ShieldCheck, Sparkles, X } from "lucide-react";
+import { Check, Copy, ExternalLink, Gift, Heart, Minus, Plus, Sparkles, X } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { TinyButton } from "@/components/controls";
 import { ItemPhoto } from "@/components/item-photo";
+import { ContactFields, useGuestContact } from "@/components/contact-fields";
 import { ModalShell } from "@/components/modal-shell";
 import { PixCode } from "@/components/pix-code";
 import { SplitProgress } from "@/components/progress";
 import { copyText } from "@/lib/clipboard";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { saveGuestContact } from "@/lib/guest-contact";
 import { formatCents, formatCentsShort, parseCentsInput, percentOf, progressText, suggestedAmounts } from "@/lib/gift-lists";
 import {
   createPledge,
@@ -66,7 +68,7 @@ export function GuestItemModal({
   const [usingCustom, setUsingCustom] = useState(false);
   const [units, setUnits] = useState(1);
   const [wholeMode, setWholeMode] = useState<WholeMode>("bring");
-  const [guestName, setGuestName] = useState("");
+  const { contact, errors: contactErrors, change: changeContact, check: checkContact } = useGuestContact();
   const [showName, setShowName] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ pledge: GuestPledge; manageToken: string } | null>(null);
@@ -75,6 +77,7 @@ export function GuestItemModal({
   const pledge = useMutation({
     mutationFn: (input: PledgeInput) => createPledge(listToken, input),
     onSuccess: (data) => {
+      saveGuestContact(contact);
       setResult(data);
       onPledged(data.manageToken);
       setStep(data.pledge.pix ? "pix" : "done");
@@ -85,7 +88,7 @@ export function GuestItemModal({
     onSettled: () => setStep("done"),
   });
 
-  const name = guestName.trim() || null;
+  const name = contact.name.trim();
   const chosenCents = usingCustom ? parseCentsInput(customAmount) : amountCents;
   const suggestions = suggestedAmounts(item.remaining);
   const manageLink = result ? `${window.location.origin}${window.location.pathname}#p=${result.manageToken}` : "";
@@ -95,16 +98,17 @@ export function GuestItemModal({
     if (chosenCents === null || chosenCents < 100) return setError("Escolha um valor a partir de R$ 1,00.");
     if (chosenCents > item.remaining) return setError(`Faltam só ${formatCents(item.remaining)} para este presente.`);
     setError(null);
-    pledge.mutate({ itemId: item.id, kind: "money", amountCents: chosenCents, guestName: name });
+    const who = checkContact();
+    if (who) pledge.mutate({ itemId: item.id, kind: "money", amountCents: chosenCents, ...who });
   };
-  const submitUnits = () => pledge.mutate({ itemId: item.id, kind: "units", units, guestName: name });
-  const submitWhole = () => pledge.mutate({
-    itemId: item.id,
-    kind: "whole",
-    wholeMode: item.kind === "money" ? wholeMode : undefined,
-    guestName: name,
-    showName: Boolean(name) && showName,
-  });
+  const submitUnits = () => {
+    const who = checkContact();
+    if (who) pledge.mutate({ itemId: item.id, kind: "units", units, ...who });
+  };
+  const submitWhole = () => {
+    const who = checkContact();
+    if (who) pledge.mutate({ itemId: item.id, kind: "whole", wholeMode: item.kind === "money" ? wholeMode : undefined, ...who, showName });
+  };
   const onSubmit = step === "amount" ? submitAmount : step === "units" ? submitUnits : step === "whole" ? submitWhole : undefined;
 
   // A foto maior aparece só no primeiro passo: nos seguintes o espaço é do formulário.
@@ -117,11 +121,8 @@ export function GuestItemModal({
       {item.photoKey && step === firstStep(item) && <ItemPhoto photoKey={item.photoKey} name={item.name} size="lg" />}
     </>
   );
-  const nameField = (
-    <label className="modal-label">
-      <span>Seu nome <small>(opcional)</small></span>
-      <input value={guestName} maxLength={120} onChange={(event) => setGuestName(event.target.value)} placeholder="Como a família vai reconhecer você?" data-testid="input-guest-name" />
-    </label>
+  const contactFields = (extraNote?: string) => (
+    <ContactFields contact={contact} errors={contactErrors} onChange={changeContact} ownerName={ownerName} testIdPrefix="guest" extraNote={extraNote} />
   );
   const failure = (error || pledge.isError) && (
     <p className="field-error" role="alert">{error ?? getFriendlyErrorMessage(pledge.error)}</p>
@@ -210,8 +211,7 @@ export function GuestItemModal({
                 </span>
               </label>
             )}
-            {nameField}
-            <p className="privacy-note"><ShieldCheck size={16} aria-hidden /><span>Só {ownerName} vê quem deu e quanto. Os outros convidados veem apenas quanto falta.</span></p>
+            {contactFields("Os outros convidados veem apenas quanto falta.")}
             {failure}
             <button type="submit" className="primary-button" disabled={pledge.isPending} data-testid="button-confirm-amount">
               {pledge.isPending ? "registrando…" : chosenCents ? `Continuar para o Pix · ${formatCentsShort(chosenCents)}` : "Continuar para o Pix"}
@@ -232,7 +232,7 @@ export function GuestItemModal({
                 <button type="button" onClick={() => setUnits((value) => Math.min(item.remaining, value + 1))} disabled={units >= item.remaining} aria-label="Aumentar" data-testid="button-units-plus"><Plus size={18} /></button>
               </div>
             </div>
-            {nameField}
+            {contactFields()}
             {failure}
             <button type="submit" className="primary-button" disabled={pledge.isPending} data-testid="button-confirm-units">
               <Gift size={16} aria-hidden /> {pledge.isPending ? "reservando…" : `Reservar ${units} ${item.unitLabel}`}
@@ -257,10 +257,10 @@ export function GuestItemModal({
                 </button>
               </div>
             )}
-            {nameField}
+            {contactFields()}
             <label className="switch-row">
-              <span className="switch-copy"><strong>Mostrar meu nome na lista</strong><small>{name ? `Os outros convidados veem “Presente de ${name}”.` : "Preencha seu nome para ele aparecer."}</small></span>
-              <input type="checkbox" role="switch" className="switch" checked={Boolean(name) && showName} disabled={!name} onChange={(event) => setShowName(event.target.checked)} data-testid="switch-show-name" />
+              <span className="switch-copy"><strong>Mostrar meu nome na lista</strong><small>{name ? `Os outros convidados veem “Presente de ${name}”.` : "Os outros convidados veem “já escolhido”."}</small></span>
+              <input type="checkbox" role="switch" className="switch" checked={showName} onChange={(event) => setShowName(event.target.checked)} data-testid="switch-show-name" />
             </label>
             {failure}
             <button type="submit" className="primary-button" disabled={pledge.isPending} data-testid="button-confirm-whole">
@@ -284,7 +284,7 @@ export function GuestItemModal({
 
         {step === "done" && result && (
           <>
-            {top("Tudo certo", name ? `Reserva feita, ${name}.` : "Reserva feita.")}
+            {top("Tudo certo", `Reserva feita, ${name}.`)}
             <p className="guest-done" role="status">
               <Check size={18} aria-hidden />
               <span>
