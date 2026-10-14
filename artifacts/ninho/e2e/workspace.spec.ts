@@ -106,9 +106,12 @@ test("Enxoval: o convidado esconde o nome dos outros e só a dona vê nome e tel
   const dialog = guestPage.getByRole("dialog");
   await expect(dialog.getByText(/ficam só com Carla/)).toBeVisible();
   await expect(dialog.getByTestId("switch-gift-show-name")).toBeChecked();
+  await expect(dialog.getByText("Os outros convidados veem o seu nome.")).toBeVisible();
   await dialog.getByTestId("input-gift-guest-name").fill("Tia Rosa");
+  await expect(dialog.getByText("Os outros convidados veem “Tia Rosa”.")).toBeVisible();
   await dialog.getByTestId("input-gift-guest-phone").fill("11 91234-5678");
   await dialog.getByTestId("switch-gift-show-name").uncheck();
+  await expect(dialog.getByText("Os outros convidados veem “já escolhido”.")).toBeVisible();
   await expectAccessible(guestPage);
   await dialog.getByTestId("button-confirm-gift-reservation").click();
   await expect(dialog).toBeHidden();

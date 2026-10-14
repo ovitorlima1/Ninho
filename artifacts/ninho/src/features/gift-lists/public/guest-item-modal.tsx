@@ -259,7 +259,9 @@ export function GuestItemModal({
             )}
             {contactFields()}
             <label className="switch-row">
-              <span className="switch-copy"><strong>Mostrar meu nome na lista</strong><small>{name ? `Os outros convidados veem “Presente de ${name}”.` : "Os outros convidados veem “já escolhido”."}</small></span>
+              <span className="switch-copy"><strong>Mostrar meu nome na lista</strong><small>
+                {!showName ? "Os outros convidados veem “já escolhido”." : name ? `Os outros convidados veem “Presente de ${name}”.` : "Os outros convidados veem o seu nome."}
+              </small></span>
               <input type="checkbox" role="switch" className="switch" checked={showName} onChange={(event) => setShowName(event.target.checked)} data-testid="switch-show-name" />
             </label>
             {failure}

@@ -54,7 +54,9 @@ export function GiftReservationModal({
         <label className="switch-row">
           <span className="switch-copy">
             <strong>Mostrar meu nome na lista</strong>
-            <small>{name ? `Os outros convidados veem “${name}”.` : "Os outros convidados veem “já escolhido”."}</small>
+            <small>
+              {!showName ? "Os outros convidados veem “já escolhido”." : name ? `Os outros convidados veem “${name}”.` : "Os outros convidados veem o seu nome."}
+            </small>
           </span>
           <input type="checkbox" role="switch" className="switch" checked={showName} onChange={(event) => setShowName(event.target.checked)} data-testid="switch-gift-show-name" />
         </label>
