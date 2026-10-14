@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Activity, Check, Gift, Heart, Pencil, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import { CategoryBadge } from "@/components/category-icon";
 import { Pill, TinyButton } from "@/components/controls";
+import { GuestPhone } from "@/components/guest-phone";
 import { ItemPhoto } from "@/components/item-photo";
 import { Progress } from "@/components/progress";
 import { type ChecklistTemplate, type GiftReservationStatus, type ItemStatus } from "@/lib/api";
@@ -352,6 +353,7 @@ function ItemRow({
       )}
       {item.giftReservation && (
         <span className="gift-reservation-actions">
+          <GuestPhone phone={item.giftReservation.guestPhone} testId={`reservation-phone-${item.id}`} />
           <button
             type="button"
             className="gift-reservation-status"

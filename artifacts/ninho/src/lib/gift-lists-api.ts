@@ -68,6 +68,8 @@ export interface OwnerPledge {
   units: number | null;
   wholeMode: WholeMode | null;
   guestName: string | null;
+  /** Vazio nas contribuições feitas antes de o telefone ser pedido. */
+  guestPhone: string | null;
   showName: boolean;
   guestSaysPaid: boolean;
   status: PledgeStatus;
@@ -209,7 +211,9 @@ export interface PledgeInput {
   amountCents?: number;
   units?: number;
   wholeMode?: WholeMode;
-  guestName?: string | null;
+  guestName: string;
+  /** Normalizado (`+5511912345678`); só a mãe vê. */
+  guestPhone: string;
   showName?: boolean;
 }
 

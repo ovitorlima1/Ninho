@@ -1,6 +1,7 @@
-import { integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { isNull } from "drizzle-orm";
 import { z } from "zod/v4";
+import { guestNameSchema, guestPhoneSchema } from "./guestContact";
 
 export const GIFT_RESERVATION_STATUSES = ["vou presentear", "presenteado"] as const;
 
@@ -28,6 +29,10 @@ export const giftReservations = pgTable(
     checklistItemId: integer("checklist_item_id").notNull(),
     shareLinkId: integer("share_link_id").notNull(),
     guestName: text("guest_name"),
+    /** Telefone que o convidado digitou, em `+55…`. Só a dona vê; reservas antigas não têm. */
+    guestPhone: text("guest_phone"),
+    /** O nome aparece para os outros convidados? Reservas antigas continuam mostrando. */
+    showName: boolean("show_name").notNull().default(true),
     status: text("status").notNull().default("vou presentear"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -39,7 +44,9 @@ export const giftReservations = pgTable(
 
 export const reserveGiftSchema = z.object({
   itemId: z.number().int().positive(),
-  guestName: z.string().trim().max(120).optional().nullable(),
+  guestName: guestNameSchema,
+  guestPhone: guestPhoneSchema,
+  showName: z.boolean().default(true),
   status: z.enum(GIFT_RESERVATION_STATUSES).default("vou presentear"),
 });
 

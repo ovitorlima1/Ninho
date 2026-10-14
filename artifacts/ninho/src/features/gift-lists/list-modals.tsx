@@ -3,6 +3,7 @@ import { Check, Trash2, X } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { TinyButton } from "@/components/controls";
 import { DraftNumberInput, parseQtyInput } from "@/components/draft-number-input";
+import { GuestPhone } from "@/components/guest-phone";
 import { ConfirmDialog, ModalShell } from "@/components/modal-shell";
 import { PhotoField } from "@/components/photo-field";
 import { NO_PHOTO_CHANGE, type PhotoDraft } from "@/lib/photos";
@@ -433,6 +434,7 @@ export function PledgesModal({
                 <div className="pledge-copy">
                   <strong>{pledge.guestName || "Alguém"}</strong>
                   <small>{pledgeWhen(pledge)}{pledge.kind !== "units" && pledge.wholeMode !== "bring" ? ` · ${pledge.code}` : ""}</small>
+                  <GuestPhone phone={pledge.guestPhone} testId={`pledge-phone-${pledge.id}`} />
                 </div>
                 <span className="pledge-amount">{pledgeAmount(pledge, item)}</span>
                 <div className="pledge-actions">

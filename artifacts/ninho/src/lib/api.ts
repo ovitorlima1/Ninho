@@ -339,7 +339,7 @@ export async function fetchPublicGiftList(token: string): Promise<PublicGiftList
 
 export async function reservePublicGift(
   token: string,
-  data: { itemId: number; guestName?: string | null; status: GiftReservationStatus },
+  data: { itemId: number; guestName: string; guestPhone: string; showName: boolean; status: GiftReservationStatus },
 ): Promise<{ item: PublicGiftItem }> {
   return customFetch<{ item: PublicGiftItem }>(`${BASE}/api/gift/${encodeURIComponent(token)}/reservations`, {
     method: "POST",
@@ -385,6 +385,10 @@ export interface ServerGiftReservation {
   checklistItemId: number;
   shareLinkId: number;
   guestName: string | null;
+  /** `+55…`, ou vazio nas reservas feitas antes de o telefone ser pedido. Só a dona vê. */
+  guestPhone: string | null;
+  /** O nome aparece para os outros convidados na página pública. */
+  showName: boolean;
   status: GiftReservationStatus;
   createdAt: string;
   updatedAt: string;

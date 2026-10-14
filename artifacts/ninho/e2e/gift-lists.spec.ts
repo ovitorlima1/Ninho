@@ -57,7 +57,19 @@ test("chá de bebê: criar pelo modelo, cadastrar o Pix, dois convidados fecham 
   await expect(carla.getByRole("dialog").getByText(/faltam R\$\s1\.200/)).toBeVisible();
   await carla.getByTestId("button-guest-contribute").click();
   await carla.getByTestId("button-amount-10000").click();
+  // Sem nome e sem telefone nada é enviado: o erro aparece junto do campo.
+  await carla.getByTestId("button-confirm-amount").click();
+  await expect(carla.getByText("Informe seu nome (pelo menos 2 letras).")).toBeVisible();
+  await expect(carla.getByText("Informe seu WhatsApp com DDD.")).toBeVisible();
+  await expect(carla.getByTestId("input-guest-name")).toBeFocused();
   await carla.getByTestId("input-guest-name").fill("Tia Carla");
+  await carla.getByTestId("input-guest-phone").fill("123");
+  await carla.getByTestId("button-confirm-amount").click();
+  await expect(carla.getByText(/Esse WhatsApp não parece certo/)).toBeVisible();
+  await carla.getByTestId("input-guest-phone").fill("11912345678");
+  await carla.getByTestId("input-guest-phone").blur();
+  await expect(carla.getByTestId("input-guest-phone")).toHaveValue("(11) 91234-5678");
+  await expect(carla.getByText(/ficam só com Ana/)).toBeVisible();
   await expectAccessible(carla);
   await carla.getByTestId("button-confirm-amount").click();
   await expect(carla.getByRole("heading", { name: /Pix de R\$\s100,00 para Ana/ })).toBeVisible();
@@ -76,6 +88,8 @@ test("chá de bebê: criar pelo modelo, cadastrar o Pix, dois convidados fecham 
   await expect(pedro.getByTestId("button-guest-whole")).toHaveCount(0);
   await pedro.getByTestId("button-guest-complete").click();
   await expect(pedro.getByTestId("button-amount-rest")).toHaveAttribute("aria-pressed", "true");
+  await pedro.getByTestId("input-guest-name").fill("Pedro");
+  await pedro.getByTestId("input-guest-phone").fill("(21) 98765-4321");
   await pedro.getByTestId("button-confirm-amount").click();
   await expect(pedro.getByTestId("pix-payload")).toContainText("54071100.00");
   await pedro.getByTestId("button-pix-later").click();
@@ -91,6 +105,11 @@ test("chá de bebê: criar pelo modelo, cadastrar o Pix, dois convidados fecham 
   const dialog = page.getByRole("dialog", { name: "Carrinho de bebê" });
   await expect(dialog.getByText(/disse que já fez o Pix/)).toBeVisible();
   await expect(dialog.getByText(/vai fazer o Pix/)).toBeVisible();
+  // Nome, telefone e o atalho do WhatsApp são só da mãe.
+  await expect(dialog.getByText("(11) 91234-5678")).toBeVisible();
+  await expect(dialog.getByText("(21) 98765-4321")).toBeVisible();
+  await expect(dialog.getByRole("link", { name: "Chamar (11) 91234-5678 no WhatsApp" })).toHaveAttribute("href", "https://wa.me/5511912345678");
+  await expect(dialog.getByRole("link", { name: "Chamar (21) 98765-4321 no WhatsApp" })).toHaveAttribute("rel", "noopener noreferrer");
   await expectAccessible(page);
   await dialog.getByRole("button", { name: "Recebi" }).first().click();
   await expect(dialog.getByText("recebido", { exact: true })).toHaveCount(1);
@@ -109,9 +128,9 @@ test("presente inteiro com o nome à mostra, pacotes divididos e cancelamento pe
 
   const guest = await openAsGuest(browser, baseURL, link);
   await guestItem(guest, "Kit de mamadeiras").getByRole("button", { name: "Quero dar" }).click();
-  await expect(guest.getByTestId("switch-show-name")).toBeDisabled();
-  await guest.getByTestId("input-guest-name").fill("Marina");
   await expect(guest.getByTestId("switch-show-name")).toBeChecked();
+  await guest.getByTestId("input-guest-name").fill("Marina");
+  await guest.getByTestId("input-guest-phone").fill("(31) 99876-5432");
   await expectAccessible(guest);
   await guest.getByTestId("button-confirm-whole").click();
   await expect(guest.getByRole("heading", { name: "Reserva feita, Marina." })).toBeVisible();
@@ -119,6 +138,9 @@ test("presente inteiro com o nome à mostra, pacotes divididos e cancelamento pe
   await expect(guestItem(guest, "Kit de mamadeiras").getByText("Presente de Marina")).toBeVisible();
 
   await guestItem(guest, "Fralda P").getByRole("button", { name: "Quero dar" }).click();
+  // O aparelho lembra nome e telefone da reserva anterior (CC-R18).
+  await expect(guest.getByTestId("input-guest-name")).toHaveValue("Marina");
+  await expect(guest.getByTestId("input-guest-phone")).toHaveValue("(31) 99876-5432");
   await guest.getByTestId("button-units-plus").click();
   await guest.getByTestId("button-units-plus").click();
   await expect(guest.getByTestId("text-units")).toHaveText("3");
@@ -148,7 +170,7 @@ test("link particular abre as reservas em outro aparelho e sai da barra de ender
   const token = link.split("/lista/")[1]!;
   const list = await (await page.request.get(`/api/lists/${token}`)).json() as { items: { id: number; name: string }[] };
   const pledge = await page.request.post(`/api/lists/${token}/pledges`, {
-    data: { itemId: list.items.find((item) => item.name === "Fralda M")!.id, kind: "units", units: 2, guestName: "Juliana" },
+    data: { itemId: list.items.find((item) => item.name === "Fralda M")!.id, kind: "units", units: 2, guestName: "Juliana", guestPhone: "(11) 91234-5678" },
     headers: { "x-forwarded-for": randomClientIp() },
   });
   const { manageToken } = await pledge.json() as { manageToken: string };

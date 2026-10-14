@@ -33,6 +33,8 @@
 | 2026-10-13 | O link público do Perfil e as inspirações usam a primeira lista; com mais de uma lista, o Orçamento agrupa por lista e o Início mostra "Por lista". | Assumido na spec `listas-e-categorias`; o dono pode mudar. |
 | 2026-10-13 | Foto do produto nos presentes e nos itens do Enxoval, enviada do aparelho; buscar a foto na página da loja fica para a entrega seguinte. | Escolhas do dono. |
 | 2026-10-13 | Fotos em WebP de até 1200px, sem metadados, num volume da VPS; endereço aleatório e público; foto de item apagado some numa limpeza de hora em hora (o que permite o Desfazer); 100 MB por conta. O sharp vai para a imagem da API por `pnpm deploy`. | Assumido na spec `foto-do-produto`; o dono pode mudar. |
+| 2026-10-14 | Nome e telefone (WhatsApp) do convidado são obrigatórios no Enxoval e em Presentes; só a dona vê o telefone, com atalho para o WhatsApp; no Enxoval o convidado escolhe se o nome aparece; aviso curto de privacidade, sem caixa de aceite. Substitui "nada além do nome" (LP-R32). | Escolhas do dono, para saber quem escolheu o item. |
+| 2026-10-14 | Telefone brasileiro com DDD, guardado em `+55…`; sem confirmação por código; a dona não edita o telefone. | Assumido na spec `contato-do-convidado`; o dono pode mudar. |
 | 2026-10-02 | Produção vai para uma VPS (Docker Compose, Postgres na própria máquina), não para o Replit; fotos das listas (E2) ficam num volume da VPS. | Escolha do dono. |
 
 ## Bloqueios
@@ -76,7 +78,7 @@
 - [ ] Conta de teste local `qa-ninho@teste.local` pode ser apagada do banco de dev quando não for mais útil.
 - [x] Fases 0–4 na `main` (PR #1); actions em Node 24 (PR #2); CI obrigatório na `main` pelo ruleset `main protegida` (2026-09-16).
 - [ ] Deploy da Fase 4: `db push` em produção (2 tabelas novas); todos precisarão entrar de novo; conferir `ALLOWED_ORIGINS` se houver outro domínio.
-- [ ] Política de privacidade e termos de uso (texto jurídico) — decisão do dono.
+- [ ] Política de privacidade e termos de uso (texto jurídico) — decisão do dono. Ficou mais urgente em 2026-10-14: o Ninho passou a guardar o telefone de convidados.
 - [ ] Ajustes pequenos vistos na divisão: plural "que já está" no modal de inspiração; iniciais do avatar do perfil diferentes das do topo; "gerar novo link" usa o mesmo handler de criar.
 - [x] `public/login-pregnancy.png` apagado; login com foto licenciada (Pexels desde 2026-09-18).
 - [ ] Modo escuro: os tokens estão prontos para uma paleta escura, que ficou fora da Fase 2.

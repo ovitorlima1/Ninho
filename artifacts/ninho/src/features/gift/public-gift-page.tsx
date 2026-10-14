@@ -68,7 +68,7 @@ export function PublicGiftPage() {
               <div className="public-gift-item-copy">
                 <small>{item.category} · {item.qty} {item.qty === 1 ? "unidade" : "unidades"}</small>
                 <h2>{item.name}</h2>
-                {item.reserved && <p><CheckCircle2 size={13} /> {item.reservation?.guestName ? `${item.reservation.guestName} ${item.reservation.status}` : `Item ${item.reservation?.status || "reservado"}`}</p>}
+                {item.reserved && <p><CheckCircle2 size={13} /> {item.reservation?.guestName ? `${item.reservation.guestName} ${item.reservation.status}` : item.reservation?.status === "presenteado" ? "Já presenteado" : "Já escolhido"}</p>}
               </div>
               {item.reserved ? (
                 <span className="public-gift-reserved">reservado</span>
@@ -86,6 +86,7 @@ export function PublicGiftPage() {
         <GiftReservationModal
           item={selectedItem}
           token={token}
+          ownerName={listQuery.data?.ownerName ?? null}
           onClose={() => setSelectedItem(null)}
           onReserved={() => qc.invalidateQueries({ queryKey: ["public-gift-list", token] })}
         />

@@ -1585,6 +1585,16 @@
   .pledge-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); grid-column: 1 / -1; }
   .guest-mine .pledge-actions { grid-column: auto; justify-content: flex-end; }
   .pledge-actions .text-action { font-size: var(--text-sm); }
+  .guest-phone {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--space-2);
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+  .guest-phone .text-action { padding: 0; font-size: var(--text-sm); }
   .modal-card .pledge-confirm { min-height: var(--touch-target); margin-top: 0; padding: 0 var(--space-4); }
 
   .pix-code { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: var(--space-3); }

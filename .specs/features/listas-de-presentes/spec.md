@@ -85,7 +85,7 @@ do Enxoval; LP-R34 e LP-R35 (foto da página da loja) continuam só especificado
 | ID | Requisito |
 |---|---|
 | LP-R19 | Em item em reais com saldo, o convidado escolhe um valor sugerido, digita outro ou escolhe "completar o que falta". O app recusa valor menor que R$ 1,00 ou maior que o que falta, dizendo quanto falta. |
-| LP-R20 | O convidado pode informar o nome (opcional, até 120 caracteres). |
+| LP-R20 | O convidado informa o nome (de 2 a 120 caracteres) e o telefone. **Revisado em 2026-10-14** por `contato-do-convidado`: antes o nome era opcional e não havia telefone. |
 | LP-R21 | QUANDO a contribuição é registrada, ela entra como **prometida**, o saldo do item diminui na hora e o convidado vê o QR Code e o "Pix copia e cola" com o valor, o nome do recebedor e um identificador que a mãe reconhece no extrato. |
 | LP-R22 | SE duas pessoas tentam fechar o mesmo saldo ao mesmo tempo, só a primeira entra; a segunda é avisada do novo saldo. A soma de prometido e recebido nunca passa da meta. |
 | LP-R23 | O convidado escolhe "já fiz o Pix" ou "vou fazer depois"; nos dois casos a contribuição continua prometida até a mãe confirmar. A mãe vê o que o convidado disse. |
@@ -112,7 +112,7 @@ do Enxoval; LP-R34 e LP-R35 (foto da página da loja) continuam só especificado
 
 | ID | Requisito |
 |---|---|
-| LP-R32 | A página pública limita reservas e contribuições por origem; nomes e recados são tratados como texto; links só `https`; nada de dado do convidado além do nome que ele digitou; AA, alvos de 44px, foco visível e sem rolagem lateral em 320–1280px, como no resto do app. |
+| LP-R32 | A página pública limita reservas e contribuições por origem; nomes e recados são tratados como texto; links só `https`; nada de dado do convidado além do nome e do telefone que ele digitou, e o telefone só vai para a mãe (revisado em 2026-10-14, `contato-do-convidado`); AA, alvos de 44px, foco visível e sem rolagem lateral em 320–1280px, como no resto do app. |
 
 ### E2 · Foto do produto
 

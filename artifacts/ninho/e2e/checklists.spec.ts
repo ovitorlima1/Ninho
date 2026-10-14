@@ -306,7 +306,7 @@ test("lista em branco começa com uma categoria e sem aviso; o link público mos
   // E um convidado não consegue reservar item de outra lista pelo link.
   const balloons = (await workspace(page)).items.find((item) => item.name === "Balões")!;
   const reserve = await page.request.post(`/api/gift/${token}/reservations`, {
-    data: { itemId: balloons.id, guestName: "Tia Rosa", status: "vou presentear" },
+    data: { itemId: balloons.id, guestName: "Tia Rosa", guestPhone: "(11) 91234-5678", status: "vou presentear" },
   });
   expect(reserve.status()).toBe(404);
 });
