@@ -1,5 +1,6 @@
 import { boolean, index, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
+import { guestNameSchema, guestPhoneSchema } from "./guestContact";
 
 /**
  * Listas de presentes (chá de fralda, chá de bebê…). São dados separados do
@@ -81,6 +82,8 @@ export const giftPledges = pgTable(
     units: integer("units"),
     wholeMode: text("whole_mode"),
     guestName: text("guest_name"),
+    /** Telefone que o convidado digitou, em `+55…`. Só a mãe vê; promessas antigas não têm. */
+    guestPhone: text("guest_phone"),
     showName: boolean("show_name").notNull().default(false),
     guestSaysPaid: boolean("guest_says_paid").notNull().default(false),
     status: text("status").notNull().default("promised"),
@@ -194,7 +197,8 @@ export const createPledgeSchema = z.object({
   amountCents: z.number().int().positive().optional(),
   units: z.number().int().positive().optional(),
   wholeMode: z.enum(GIFT_WHOLE_MODES).optional(),
-  guestName: z.string().trim().max(120).nullable().optional(),
+  guestName: guestNameSchema,
+  guestPhone: guestPhoneSchema,
   showName: z.boolean().optional(),
 });
 export const lookupPledgesSchema = z.object({ tokens: z.array(manageToken).max(20) });

@@ -4,6 +4,7 @@ export * from "./checklistItems";
 export * from "./checklists";
 export * from "./milestones";
 export * from "./budgetCategories";
+export * from "./guestContact";
 export * from "./giftSharing";
 export * from "./giftLists";
 export * from "./media";
