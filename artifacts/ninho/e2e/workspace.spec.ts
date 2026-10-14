@@ -81,9 +81,53 @@ test("página pública de presentes reserva um item sem conta", async ({ page, b
   const item = guestPage.locator(".public-gift-item").first();
   await item.getByRole("button", { name: "vou presentear" }).click();
   const dialog = guestPage.getByRole("dialog");
+  // Sem nome e telefone a reserva não é enviada.
+  await dialog.getByTestId("button-confirm-gift-reservation").click();
+  await expect(dialog.getByText("Informe seu nome (pelo menos 2 letras).")).toBeVisible();
+  await expect(dialog.getByText("Informe seu WhatsApp com DDD.")).toBeVisible();
+  await expect(dialog).toBeVisible();
   await dialog.getByTestId("input-gift-guest-name").fill("Tia Rosa");
+  await dialog.getByTestId("input-gift-guest-phone").fill("(11) 91234-5678");
   await dialog.getByTestId("button-confirm-gift-reservation").click();
   await expect(dialog).toBeHidden();
   await expect(guestPage.locator(".public-gift-item.is-reserved").first()).toContainText("Tia Rosa");
+  await guest.close();
+});
+
+test("Enxoval: o convidado esconde o nome dos outros e só a dona vê nome e telefone", async ({ page, browser }) => {
+  await createAccount(page, { displayName: "Carla" });
+  const share = await page.request.post("/api/me/share", { data: {} });
+  const { token } = (await share.json()) as { token: string };
+
+  const guest = await browser.newContext({ viewport: page.viewportSize() ?? undefined, reducedMotion: "reduce" });
+  const guestPage = await guest.newPage();
+  await guestPage.goto(`/gift/${token}`);
+  await guestPage.locator(".public-gift-item").first().getByRole("button", { name: "vou presentear" }).click();
+  const dialog = guestPage.getByRole("dialog");
+  await expect(dialog.getByText(/ficam só com Carla/)).toBeVisible();
+  await expect(dialog.getByTestId("switch-gift-show-name")).toBeChecked();
+  await dialog.getByTestId("input-gift-guest-name").fill("Tia Rosa");
+  await dialog.getByTestId("input-gift-guest-phone").fill("11 91234-5678");
+  await dialog.getByTestId("switch-gift-show-name").uncheck();
+  await expectAccessible(guestPage);
+  await dialog.getByTestId("button-confirm-gift-reservation").click();
+  await expect(dialog).toBeHidden();
+
+  // Para os outros convidados, o item só aparece como escolhido.
+  const reserved = guestPage.locator(".public-gift-item.is-reserved").first();
+  await expect(reserved).toContainText("Já escolhido");
+  await expect(reserved).not.toContainText("Tia Rosa");
+  const publicText = await (await page.request.get(`/api/gift/${token}`)).text();
+  expect(publicText).not.toContain("Tia Rosa");
+  expect(publicText).not.toContain("91234");
+  expect(publicText).not.toContain("5511912345678");
+
+  // A dona vê os dois e chama no WhatsApp.
+  await page.goto("/checklist");
+  const phone = page.locator("[data-testid^='reservation-phone-']").first();
+  await expect(phone).toContainText("(11) 91234-5678");
+  await expect(phone.getByRole("link", { name: "Chamar (11) 91234-5678 no WhatsApp" })).toHaveAttribute("href", "https://wa.me/5511912345678");
+  const workspace = await (await page.request.get("/api/me/workspace")).json() as { giftReservations: Array<{ guestName: string; guestPhone: string; showName: boolean }> };
+  expect(workspace.giftReservations).toMatchObject([{ guestName: "Tia Rosa", guestPhone: "+5511912345678", showName: false }]);
   await guest.close();
 });

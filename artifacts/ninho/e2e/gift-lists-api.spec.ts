@@ -4,7 +4,7 @@ import { createAccount, randomClientIp } from "./support";
 const PIX = { key: "529.982.247-25", recipientName: "Ana Lima", city: "São Paulo" };
 
 type OwnerItem = { id: number; name: string; kind: string; summary: { state: string; committed: number; confirmed: number; remaining: number } };
-type OwnerList = { list: { id: number; token: string; items: OwnerItem[] }; pledges: { id: number; status: string; guestName: string | null }[]; pixReady: boolean };
+type OwnerList = { list: { id: number; token: string; items: OwnerItem[] }; pledges: { id: number; status: string; guestName: string | null; guestPhone: string | null }[]; pixReady: boolean };
 
 async function createList(page: Page, template: string): Promise<OwnerList> {
   const created = await page.request.post("/api/me/lists", { data: { template } });
@@ -19,9 +19,14 @@ async function readList(page: Page, id: number): Promise<OwnerList> {
   return detail.json() as Promise<OwnerList>;
 }
 
-/** Cada pedido de convidado vem de uma origem diferente, para o limite por origem não interferir. */
+const CONTACT = { guestName: "Convidado", guestPhone: "(11) 91234-5678" };
+
+/**
+ * Cada pedido de convidado vem de uma origem diferente, para o limite por origem
+ * não interferir. Nome e telefone são obrigatórios: o apoio põe os de sempre.
+ */
 function pledge(request: APIRequestContext, token: string, data: Record<string, unknown>) {
-  return request.post(`/api/lists/${token}/pledges`, { data, headers: { "x-forwarded-for": randomClientIp() } });
+  return request.post(`/api/lists/${token}/pledges`, { data: { ...CONTACT, ...data }, headers: { "x-forwarded-for": randomClientIp() } });
 }
 
 const byName = (list: OwnerList, name: string) => list.list.items.find((item) => item.name === name)!;
@@ -110,6 +115,52 @@ test("item inteiro: o nome só aparece se a pessoa deixar, e o item fecha", asyn
   expect(items.find((item) => item.id === banheira.id)).toMatchObject({ state: "whole", wholeBy: "Marina" });
   expect(items.find((item) => item.id === kit.id)).toMatchObject({ state: "whole", wholeBy: null });
   expect(text).not.toContain("Rafa");
+  // O nome escondido continua com a mãe, junto do telefone.
+  const owner = await readList(page, list.list.id);
+  expect(owner.pledges.find((item) => item.guestName === "Rafa")).toMatchObject({ guestPhone: "+5511912345678" });
+});
+
+test("nome e telefone são obrigatórios; o telefone fica normalizado e só a mãe vê", async ({ page }) => {
+  await createAccount(page);
+  const list = await createList(page, "cha-de-fralda");
+  const { token } = list.list;
+  const fralda = byName(list, "Fralda P");
+  const raw = (data: Record<string, unknown>) =>
+    page.request.post(`/api/lists/${token}/pledges`, { data: { itemId: fralda.id, kind: "units", units: 1, ...data }, headers: { "x-forwarded-for": randomClientIp() } });
+
+  const noPhone = await raw({ guestName: "Juliana" });
+  expect(noPhone.status()).toBe(400);
+  expect(await noPhone.json()).toMatchObject({ field: "guestPhone", error: expect.stringContaining("WhatsApp") });
+  const noName = await raw({ guestPhone: "(11) 91234-5678" });
+  expect(noName.status()).toBe(400);
+  expect(await noName.json()).toMatchObject({ field: "guestName" });
+  expect((await raw({ guestName: "J", guestPhone: "(11) 91234-5678" })).status()).toBe(400);
+  expect((await raw({ guestName: "Juliana", guestPhone: "91234-5678" })).status()).toBe(400);
+  expect((await raw({ guestName: "Juliana", guestPhone: "telefone" })).status()).toBe(400);
+  // Nada foi gravado e a meta continua inteira.
+  expect((await readList(page, list.list.id)).pledges).toHaveLength(0);
+
+  const ok = await raw({ guestName: "  Juliana Souza ", guestPhone: "+55 (11) 91234-5678" });
+  expect(ok.status(), await ok.text()).toBe(201);
+  const created = await ok.json() as { manageToken: string };
+  expect(JSON.stringify(created)).not.toContain("91234");
+  expect(JSON.stringify(created)).not.toContain("5511912345678");
+
+  // A mãe vê o número normalizado e o nome sem espaços nas pontas.
+  const owner = await readList(page, list.list.id);
+  expect(owner.pledges).toMatchObject([{ guestName: "Juliana Souza", guestPhone: "+5511912345678" }]);
+
+  // Nenhuma resposta pública devolve o telefone.
+  const publicText = await (await page.request.get(`/api/lists/${token}`)).text();
+  const lookupText = await (await page.request.post(`/api/lists/${token}/pledges/lookup`, { data: { tokens: [created.manageToken] } })).text();
+  for (const text of [publicText, lookupText]) {
+    expect(text).not.toContain("91234");
+    expect(text).not.toContain("5511912345678");
+  }
+
+  // A exportação de dados leva o telefone (CC-R11).
+  const exported = await (await page.request.get("/api/me/export")).text();
+  expect(exported).toContain("+5511912345678");
 });
 
 test("unidades divididas, cancelamento pelo convidado e trava depois de confirmado", async ({ page }) => {
