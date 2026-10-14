@@ -5,8 +5,8 @@
 ("a pessoa pagar uma parte do valor e mostrar quanto falta"; "se alguém quiser comprar o item todo, deixar marcado";
 "foto do produto e link em cada item"). Itens p01–p12 do diagnóstico.
 **Desenho:** canvas "Ninho · Telas", etapas 6 a 9 — https://claude.ai/artifact/LC23F4YQ2QhTzVc42TPdHA
-**Estado desta spec:** E1 construída (2026-10-02, branch `listas-de-presentes-e1`). A E2 (foto) foi construída em
-2026-10-13 na feature `foto-do-produto`, que tem spec própria: LP-R33 e LP-R36 a LP-R39 atendidos lá, e também nos itens
+**Estado desta spec:** E1 construída (2026-10-02, branch `listas-de-presentes-e1`). A E2 (foto) está no ar desde
+2026-10-13 (PR #15), pela feature `foto-do-produto`, que tem spec própria: LP-R33 e LP-R36 a LP-R39 atendidos lá, e também nos itens
 do Enxoval; LP-R34 e LP-R35 (foto da página da loja) continuam só especificados. E3 só especificada.
 
 ## Decisões do dono

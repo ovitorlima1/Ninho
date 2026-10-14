@@ -1,6 +1,6 @@
 # Foto do produto — resumo
 
-Construída em 2026-10-13 na branch `foto-do-produto`. Spec: FP-R1 a FP-R21, todos atendidos.
+Na main pelo PR #15 e no ar desde 2026-10-13. Spec: FP-R1 a FP-R21, todos atendidos.
 
 ## O que mudou para a mãe e para o convidado
 
@@ -32,10 +32,16 @@ Construída em 2026-10-13 na branch `foto-do-produto`. Spec: FP-R1 a FP-R21, tod
   a cópia diária gera o `.tar.gz`.
 - Capturas conferidas em 375, 834 e 1280px.
 
-## No deploy
+## Deploy (2026-10-13)
 
-- É o mesmo `git pull` + `up -d --build`. O build demora mais (baixa o sharp) e sobem um volume (`ninho_media`) e um
-  serviço (`mediabackups`) novos.
+- Backup do banco logo antes (`ninho-20261013-201816.sql.gz`, no volume `ninho_pgbackups`).
+- Mesmo `git pull` + `up -d --build`. O `migrate` aplicou o schema e terminou com "Exited (0)". Subiram o volume
+  `ninho_media` e o serviço `mediabackups`, que já gravou a primeira cópia (vazia).
+- No container da API em produção: o sharp 0.35.5 carrega, e `/data/media` tem dono `node` e aceita gravação.
+- Antes e depois: 5 contas, 6 listas, 51 itens, 30 presentes e 2 chaves Pix; nenhum erro no log da API.
+- De fora: `/api/healthz` e a página respondem 200. A rota de foto aceita um corpo de 4 MB (a API responde 401 sem
+  sessão) e recusa 10 MB (413). Foto inexistente responde 404. A política da página tem `blob:`.
+- Não conferido em produção: um envio real com conta.
 - Não conferido: envio a partir de um celular real (câmera e galeria) e fotos HEIC do iPhone, que o Safari costuma
   converter para JPEG ao escolher.
 
