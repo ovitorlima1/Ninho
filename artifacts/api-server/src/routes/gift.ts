@@ -39,8 +39,9 @@ function publicItem(
     photoKey: item.photoKey,
     qty: item.qty,
     reserved: Boolean(reservation),
+    // O telefone nunca sai daqui; o nome só sai se a pessoa deixou aparecer (CC-R9, CC-R14).
     reservation: reservation
-      ? { status: reservation.status, guestName: reservation.guestName }
+      ? { status: reservation.status, guestName: reservation.showName ? reservation.guestName : null }
       : null,
   };
 }
@@ -113,7 +114,12 @@ router.post("/:token/reservations", async (req, res): Promise<void> => {
   const token = Array.isArray(req.params.token) ? req.params.token[0] : req.params.token;
   const parsed = reserveGiftSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Escolha um item e uma forma de presentear." });
+    // Nome e telefone têm mensagem própria; o resto é o mesmo recado de sempre.
+    const contact = parsed.error.issues.find((issue) => issue.path[0] === "guestName" || issue.path[0] === "guestPhone");
+    res.status(400).json({
+      error: contact?.message ?? "Escolha um item e uma forma de presentear.",
+      ...(contact ? { field: contact.path[0] } : {}),
+    });
     return;
   }
 
@@ -156,7 +162,9 @@ router.post("/:token/reservations", async (req, res): Promise<void> => {
         userId: share.userId,
         checklistItemId: item.id,
         shareLinkId: share.id,
-        guestName: parsed.data.guestName || null,
+        guestName: parsed.data.guestName,
+        guestPhone: parsed.data.guestPhone,
+        showName: parsed.data.showName,
         status: parsed.data.status,
       }).returning();
       return { kind: "reserved" as const, item, reservation };
@@ -176,7 +184,7 @@ router.post("/:token/reservations", async (req, res): Promise<void> => {
       res.status(409).json({ error: "Alguém acabou de reservar este item. Escolha outro para presentear." });
       return;
     }
-    // Drizzle errors can include bound values such as the optional guest name.
+    // Drizzle errors can include bound values such as the guest name and phone.
     // Keep logs useful without retaining visitor-provided information.
     req.log.error({ databaseCode: databaseCode ?? "unknown" }, "gift reservation error");
     res.status(500).json({ error: "Não foi possível reservar este item agora." });

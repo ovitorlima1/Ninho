@@ -174,7 +174,16 @@ router.post("/:token/pledges", async (req, res): Promise<void> => {
   const token = listToken(req);
   const parsed = createPledgeSchema.safeParse(req.body);
   if (!token || !parsed.success) {
-    res.status(token ? 400 : 404).json({ error: token ? "Escolha um presente e como você quer dar." : INVALID_LINK });
+    if (token && !parsed.success) {
+      // Nome e telefone têm mensagem própria; o resto é o mesmo recado de sempre.
+      const contact = parsed.error.issues.find((issue) => issue.path[0] === "guestName" || issue.path[0] === "guestPhone");
+      res.status(400).json({
+        error: contact?.message ?? "Escolha um presente e como você quer dar.",
+        ...(contact ? { field: contact.path[0] } : {}),
+      });
+      return;
+    }
+    res.status(404).json({ error: INVALID_LINK });
     return;
   }
 
@@ -215,8 +224,9 @@ router.post("/:token/pledges", async (req, res): Promise<void> => {
         amountCents: data.kind === "money" ? data.amountCents! : wholeMode === "pix" ? item.goalCents : null,
         units: data.kind === "units" ? data.units! : null,
         wholeMode: wholeMode ?? null,
-        guestName: data.guestName || null,
-        showName: data.kind === "whole" ? Boolean(data.showName && data.guestName) : false,
+        guestName: data.guestName,
+        guestPhone: data.guestPhone,
+        showName: data.kind === "whole" ? Boolean(data.showName) : false,
         code: createPledgeCode(),
         manageTokenHash: tokenHash,
       }).returning();
