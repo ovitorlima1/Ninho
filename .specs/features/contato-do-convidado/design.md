@@ -17,7 +17,7 @@ Uma função pura, `normalizeBrPhone(input) → "+55DDNNNNNNNNN" | null`, reapro
 - tira tudo que não é dígito; aceita `+55`/`55` na frente (só quando sobram 12 ou 13 dígitos);
 - fixo: `[1-9]\d[2-5]\d{7}`; celular: `[1-9]\d9\d{8}`.
 
-Mora em `lib/db/src/schema/phone.ts` (sem banco), usada pelos esquemas zod. O front tem a própria cópia pequena em
+Mora em `lib/db/src/schema/guestContact.ts` (sem banco), usada pelos esquemas zod. O front tem a própria cópia pequena em
 `ninho/src/lib/phone.ts` (normalizar e formatar), com os mesmos casos de teste. O front não importa `@workspace/db`.
 
 ## API
@@ -40,7 +40,7 @@ Mora em `lib/db/src/schema/phone.ts` (sem banco), usada pelos esquemas zod. O fr
 - `ContactFields` (novo, `components/contact-fields.tsx`): nome + WhatsApp + aviso de privacidade, com validação em
   linha, `autocomplete="name"` / `"tel"`, `inputMode="tel"`; devolve `{ name, phone, valid, errors }`.
   Usado pelos dois formulários, para a validação e o texto serem os mesmos.
-- `guest-contact-storage.ts` (`features/gift`): lê e grava `{ name, phone }` em `localStorage` (`ninho:convidado`),
+- `lib/guest-contact.ts`: lê e grava `{ name, phone }` em `localStorage` (`ninho:convidado`),
   com `try/catch` e validação ao ler.
 - Presentes (`guest-item-modal.tsx`): `nameField` vira `ContactFields` nos passos valor, unidades e inteiro. O botão de
   confirmar valida antes de chamar a API.
