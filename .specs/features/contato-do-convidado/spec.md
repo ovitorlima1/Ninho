@@ -3,7 +3,8 @@
 **Tamanho:** Large (duas tabelas, duas rotas públicas, dois formulários, três telas da mãe, regra de privacidade).
 **Origem:** "preciso identificar quem está escolhendo o item da lista … pegar o nome e número de contato, semelhante a
 landing pages que capturam dados" (dono, 2026-10-14). Revisa LP-R20 e LP-R32 de `listas-de-presentes`.
-**Estado desta spec:** em implementação. As "Decisões desta spec" ficam abertas à revisão do dono.
+**Estado desta spec:** concluída na branch `contato-do-convidado` (126/126 E2E); ainda sem PR e sem deploy. As
+"Decisões desta spec" continuam abertas à revisão do dono.
 
 ## Decisões do dono
 

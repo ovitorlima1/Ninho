@@ -18,6 +18,7 @@ Códigos entre parênteses = achados da auditoria.
 | — | `listas-de-presentes` (E1) | diagnóstico p01–p08, p10 | **E1 concluída** (PR #10, na main em 2026-10-02); E2 (fotos) e E3 (acompanhamento) especificadas | — |
 | — | `listas-e-categorias` | pedido do dono (2026-10-13) | **Concluída** (PR #12, na main e no ar em 2026-10-13) | — |
 | — | `foto-do-produto` | diagnóstico p09; pedido do dono (2026-10-13) | **Código pronto na branch** (2026-10-13); falta PR e deploy (volume e serviço novos na VPS) | — |
+| — | `contato-do-convidado` | pedido do dono (2026-10-14) | **Concluída na branch** (2026-10-14); falta PR e deploy | — |
 | — | `deploy-vps` | diagnóstico l04, l05, l09 | **Código pronto na branch** (2026-10-02); imagens ainda não construídas; falta o deploy na VPS | — |
 
 ## Marcos
